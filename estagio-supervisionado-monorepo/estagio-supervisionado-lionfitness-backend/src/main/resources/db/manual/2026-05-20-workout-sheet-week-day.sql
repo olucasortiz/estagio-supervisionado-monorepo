@@ -1,2 +1,0 @@
-ALTER TABLE workout_sheets
-ADD COLUMN IF NOT EXISTS week_day VARCHAR(20);
