@@ -17,7 +17,6 @@ public record PaymentUpdateRequest(
         @DecimalMin(value = "0.01", message = "Valor deve ser maior que zero.")
         BigDecimal amount,
 
-        @NotNull(message = "Data de pagamento é obrigatória.")
         @JsonAlias("paymentDate")
         LocalDate paidAt,
 

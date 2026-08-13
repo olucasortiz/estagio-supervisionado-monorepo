@@ -19,7 +19,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class SubscriptionRepository {
 
-    public record PlanSubscriptionData(String type, int durationDays) {
+    public record PlanSubscriptionData(String type, int durationDays, BigDecimal price) {
     }
 
     private static final RowMapper<Subscription> SUBSCRIPTION_ROW_MAPPER = (resultSet, rowNum) -> new Subscription(
@@ -126,13 +126,14 @@ public class SubscriptionRepository {
     public Optional<PlanSubscriptionData> findActivePlanData(UUID planId) {
         List<PlanSubscriptionData> plans = jdbcTemplate.query(
                 """
-                select type::text as type, duration_days
+                select type::text as type, duration_days, price
                 from plans
                 where id = ? and is_active = true
                 """,
                 (resultSet, rowNum) -> new PlanSubscriptionData(
                         resultSet.getString("type"),
-                        resultSet.getInt("duration_days")
+                        resultSet.getInt("duration_days"),
+                        resultSet.getBigDecimal("price")
                 ),
                 planId
         );

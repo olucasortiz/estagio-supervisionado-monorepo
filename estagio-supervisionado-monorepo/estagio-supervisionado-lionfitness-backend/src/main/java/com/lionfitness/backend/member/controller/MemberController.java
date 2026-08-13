@@ -91,8 +91,8 @@ public class MemberController {
     }
 
     @GetMapping
-    public List<MemberResponse> findAll() {
-        return memberService.findAll();
+    public List<MemberResponse> findAll(@RequestParam(required = false, defaultValue = "false") boolean includeInactive) {
+        return memberService.findAll(includeInactive);
     }
 
     @GetMapping("/overdue")

@@ -58,9 +58,11 @@ public class SecurityConfig {
                         .requestMatchers("/members/me").hasAnyRole("OPERATIONAL", "ADMIN")
                         .requestMatchers("/subscriptions/me").hasAnyRole("OPERATIONAL", "ADMIN")
                         .requestMatchers("/members/my-students").hasAnyRole("OPERATIONAL", "ADMIN")
+                        .requestMatchers("/payments/pix/**", "/payments/pix").hasAnyRole("OPERATIONAL", "ALUNO", "ADMIN")
                         .requestMatchers("/exercise-catalog/**").hasAnyRole("PERSONAL_TRAINER", "ADMIN")
                         .requestMatchers("/workout-exercises/**").hasAnyRole("PERSONAL_TRAINER", "ADMIN")
                         .requestMatchers("/workout-sheets/**").hasAnyRole("PERSONAL_TRAINER", "ADMIN")
+
 
                         // 3. Permissão para visualizar listas básicas
                         .requestMatchers(HttpMethod.GET, "/members", "/members/").hasAnyRole("OPERATIONAL", "ADMIN")

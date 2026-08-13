@@ -108,8 +108,12 @@ public class MemberService {
         return findById(response.id());
     }
 
+    public List<MemberResponse> findAll(boolean includeInactive) {
+        return memberRepository.findAll(includeInactive).stream().map(this::toResponse).toList();
+    }
+
     public List<MemberResponse> findAll() {
-        return memberRepository.findAll().stream().map(this::toResponse).toList();
+        return findAll(false);
     }
 
     public MemberResponse findById(UUID id) {

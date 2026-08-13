@@ -1,10 +1,14 @@
 package com.lionfitness.backend.subscription.service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.lionfitness.backend.payment.model.PaymentMethod;
+import com.lionfitness.backend.payment.model.PaymentStatus;
+import com.lionfitness.backend.payment.repository.PaymentRepository;
 import com.lionfitness.backend.subscription.dto.MySubscriptionResponse;
 import com.lionfitness.backend.subscription.dto.SubscriptionCreateRequest;
 import com.lionfitness.backend.subscription.dto.SubscriptionResponse;
@@ -18,6 +22,7 @@ import com.lionfitness.backend.subscription.repository.SubscriptionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class SubscriptionService {
@@ -25,11 +30,17 @@ public class SubscriptionService {
     private static final Logger logger = LoggerFactory.getLogger(SubscriptionService.class);
 
     private final SubscriptionRepository subscriptionRepository;
+    private final PaymentRepository paymentRepository;
 
-    public SubscriptionService(SubscriptionRepository subscriptionRepository) {
+    public SubscriptionService(
+            SubscriptionRepository subscriptionRepository,
+            PaymentRepository paymentRepository
+    ) {
         this.subscriptionRepository = subscriptionRepository;
+        this.paymentRepository = paymentRepository;
     }
 
+    @Transactional
     public SubscriptionResponse create(SubscriptionCreateRequest request) {
         logger.info("Creating subscription for memberId {} and planId {}", request.memberId(), request.planId());
 
@@ -41,6 +52,17 @@ public class SubscriptionService {
         LocalDate endDate = calculateEndDate(request.startDate(), planData);
 
         Subscription subscription = subscriptionRepository.save(UUID.randomUUID(), request, endDate);
+
+        BigDecimal amount = planData.price() != null ? planData.price() : BigDecimal.ZERO;
+        paymentRepository.save(
+                UUID.randomUUID(),
+                subscription.id(),
+                amount,
+                null,
+                PaymentMethod.CASH,
+                PaymentStatus.PENDING
+        );
+
         return toResponse(subscription);
     }
 

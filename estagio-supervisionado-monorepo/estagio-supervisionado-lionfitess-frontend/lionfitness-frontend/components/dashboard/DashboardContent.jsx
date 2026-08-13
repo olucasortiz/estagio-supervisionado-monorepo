@@ -441,7 +441,7 @@ export default function DashboardContent({ activeReport, styles } = {}) {
   const currentActiveReport = activeReport ?? navigation?.activeReport ?? 19;
 
   const [data, setData] = useState({
-    members: [], plans: [], users: [], personalTrainers: [],
+    members: [], allMembers: [], plans: [], users: [], personalTrainers: [],
     subscriptions: [], payments: [], overdueMembers: [],
   });
   const [forms, setForms] = useState(initialForms);
@@ -456,18 +456,20 @@ export default function DashboardContent({ activeReport, styles } = {}) {
       setLoading(true);
       setError("");
       const results = await Promise.allSettled([
-        getMembers(), getPlans(), getUsers(), getPersonalTrainers(),
-        getSubscriptions(), getPayments(), getOverdueMembers(),
+        getMembers(false), getPlans(), getUsers(), getPersonalTrainers(),
+        getSubscriptions(), getPayments(), getOverdueMembers(), getMembers(true),
       ]);
-      const rawMembers  = getSettledValue(results[0]);
-      const rawPlans    = getSettledValue(results[1]);
-      const rawUsers    = getSettledValue(results[2]);
-      const rawTrainers = getSettledValue(results[3]);
-      const rawSubs     = getSettledValue(results[4]);
-      const rawPayments = getSettledValue(results[5]);
-      const rawOverdue  = getSettledValue(results[6]);
+      const rawMembers    = getSettledValue(results[0]);
+      const rawPlans      = getSettledValue(results[1]);
+      const rawUsers      = getSettledValue(results[2]);
+      const rawTrainers   = getSettledValue(results[3]);
+      const rawSubs       = getSettledValue(results[4]);
+      const rawPayments   = getSettledValue(results[5]);
+      const rawOverdue    = getSettledValue(results[6]);
+      const rawAllMembers = getSettledValue(results[7]);
 
-      const members = rawMembers.map(normalizeMember);
+      const members    = rawMembers.map(normalizeMember);
+      const allMembers = rawAllMembers.map(normalizeMember);
       const plans   = rawPlans.map(normalizePlan);
       const users   = rawUsers.map(normalizeUser);
       const personalTrainers = Array.isArray(rawTrainers) ? rawTrainers.map(normalizePersonalTrainer) : [];
@@ -475,7 +477,7 @@ export default function DashboardContent({ activeReport, styles } = {}) {
       const payments = rawPayments.map((p) => normalizePayment(p, subscriptions));
       const overdueMembers = rawOverdue.map(normalizeOverdueMember);
 
-      setData({ members, plans, users, personalTrainers, subscriptions, payments, overdueMembers });
+      setData({ members, allMembers, plans, users, personalTrainers, subscriptions, payments, overdueMembers });
     } catch (err) {
       console.error("Erro crítico no Dashboard:", err);
       setError("Alguns módulos podem estar indisponíveis para o seu nível de acesso.");
@@ -650,7 +652,7 @@ export default function DashboardContent({ activeReport, styles } = {}) {
   const sections = {
     19: <NewMembersReport     styles={currentStyles} members={data.members} toDate={toDate} fmtDate={fmtDate} />,
     20: <CancellationsReport  styles={currentStyles} cancellations={data.cancellations} toDate={toDate} fmtDate={fmtDate} />,
-    21: <ActiveMembersReport  styles={currentStyles} members={data.members} Badge={null} />,
+    21: <ActiveMembersReport  styles={currentStyles} members={data.allMembers || data.members} Badge={null} />,
     22: <OverdueMembersReport styles={currentStyles} members={data.members} Badge={null} />,
     30: <MembersSection       {...sectionProps} />,
     31: <PlansSection         {...sectionProps} />,

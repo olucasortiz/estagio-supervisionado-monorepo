@@ -2,20 +2,30 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  Award,
   CalendarClock,
+  CheckCircle2,
   CircleAlert,
   ClipboardList,
   Dumbbell,
+  Flame,
   LoaderCircle,
   NotebookText,
+  QrCode,
   Repeat2,
   Target,
+  Timer,
+  TrendingUp,
 } from "lucide-react";
+
 import DashboardLayout from "../../components/layout/DashboardLayout";
 import ProtectedRoute from "../../components/auth/ProtectedRoute";
 import { useThemeMode } from "../../hooks/useThemeMode";
 import { API_BASE_URL, getMySubscription } from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
+import PixPaymentModal from "../../components/ui/PixPaymentModal";
+
+
 
 type WorkoutExercise = {
   id: string;
@@ -209,8 +219,12 @@ function ExerciseCard({
           </div>
           <div className={`rounded-xl p-3 border text-center ${ui.subtleBorder}`} style={{ padding: "12px 8px" }}>
             <span className={`text-[9px] uppercase font-bold tracking-wider ${ui.muted}`}>Descanso</span>
-            <p className={`text-sm font-black mt-1.5 ${ui.title}`} style={{ margin: 0, marginTop: 6 }}>{exercise.restSeconds}s</p>
+            <p className={`text-sm font-black mt-1.5 flex items-center justify-center gap-1 ${ui.title}`} style={{ margin: 0, marginTop: 6 }}>
+              <Timer className="h-3.5 w-3.5 text-[#C0392B]" />
+              {exercise.restSeconds}s
+            </p>
           </div>
+
         </div>
       </div>
 
@@ -302,61 +316,55 @@ export default function AlunoPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [isWorkoutModalOpen, setIsWorkoutModalOpen] = useState(false);
+  const [isPixModalOpen, setIsPixModalOpen] = useState(false);
+
+  const loadStudentData = async () => {
+    if (!token) return;
+    setLoading(true);
+    setError("");
+
+    try {
+      const [workoutResult, subscriptionResult] = await Promise.allSettled([
+        fetch(`${API_BASE_URL}/workouts/me`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        }),
+        getMySubscription(),
+      ]);
+
+      if (workoutResult.status === "fulfilled") {
+        const response = workoutResult.value;
+        const parsedPayload = parseJsonText(await response.text());
+
+        if (!response.ok && response.status !== 404) {
+          throw new Error(getErrorMessage(parsedPayload, "Nao foi possivel carregar seu treino."));
+        }
+
+        const normalizedWorkouts = response.status === 404 ? [] : normalizeWorkouts(parsedPayload);
+        setWorkouts(normalizedWorkouts);
+
+        const today = getTodayWeekDay();
+        const todayWorkout = normalizedWorkouts.find((workout) => workout.weekDay === today);
+        setSelectedWeekDay(todayWorkout?.weekDay || normalizedWorkouts[0]?.weekDay || normalizedWorkouts[0]?.id || "");
+      } else {
+        throw workoutResult.reason;
+      }
+
+      setSubscription(subscriptionResult.status === "fulfilled" ? normalizeSubscription(subscriptionResult.value) : null);
+    } catch (err) {
+      console.error(err);
+      setError("Nao foi possivel carregar seus dados agora. Tente novamente em instantes.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!token) return;
-
-    let ignore = false;
-
-    const loadStudentData = async () => {
-      setLoading(true);
-      setError("");
-
-      try {
-        const [workoutResult, subscriptionResult] = await Promise.allSettled([
-          fetch(`${API_BASE_URL}/workouts/me`, {
-            method: "GET",
-            headers: { Authorization: `Bearer ${token}` },
-            cache: "no-store",
-          }),
-          getMySubscription(),
-        ]);
-
-        if (ignore) return;
-
-        if (workoutResult.status === "fulfilled") {
-          const response = workoutResult.value;
-          const parsedPayload = parseJsonText(await response.text());
-
-          if (!response.ok && response.status !== 404) {
-            throw new Error(getErrorMessage(parsedPayload, "Nao foi possivel carregar seu treino."));
-          }
-
-          const normalizedWorkouts = response.status === 404 ? [] : normalizeWorkouts(parsedPayload);
-          setWorkouts(normalizedWorkouts);
-
-          const today = getTodayWeekDay();
-          const todayWorkout = normalizedWorkouts.find((workout) => workout.weekDay === today);
-          setSelectedWeekDay(todayWorkout?.weekDay || normalizedWorkouts[0]?.weekDay || normalizedWorkouts[0]?.id || "");
-        } else {
-          throw workoutResult.reason;
-        }
-
-        setSubscription(subscriptionResult.status === "fulfilled" ? normalizeSubscription(subscriptionResult.value) : null);
-      } catch (err) {
-        console.error(err);
-        if (!ignore) setError("Nao foi possivel carregar seus dados agora. Tente novamente em instantes.");
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    };
-
     loadStudentData();
-
-    return () => {
-      ignore = true;
-    };
   }, [token]);
+
 
   const todayWeekDay = useMemo(() => getTodayWeekDay(), []);
   const selectedWorkout = useMemo(
@@ -417,6 +425,9 @@ export default function AlunoPage() {
       statusBadgeClass = isDark ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "border-emerald-200 bg-emerald-100 text-emerald-800";
     }
 
+    const rawPrice = subscription.price || subscription.amount || 129.90;
+    const formattedPrice = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(rawPrice));
+
     return {
       hasPlan: true,
       cardClass,
@@ -424,10 +435,11 @@ export default function AlunoPage() {
       statusBadgeClass,
       statusText,
       daysText,
-      planName: subscription.planName,
+      planName: subscription.planName || "Mensal",
       endDateFormatted: formatDate(subscription.endDate),
       isVencida,
       isVenceEmBreve,
+      formattedPrice,
     };
   }, [subscription, isDark]);
 
@@ -435,6 +447,20 @@ export default function AlunoPage() {
     if (!subscription || !subscription.daysRemaining) return 0;
     return Math.max(0, Math.min(100, (subscription.daysRemaining / 30) * 100));
   }, [subscription]);
+
+  const weeklyMetrics = useMemo(() => {
+    const activeWorkoutDays = workouts.filter((w) => w.exercises && w.exercises.length > 0);
+    const totalDaysWithWorkout = activeWorkoutDays.length;
+    const targetDays = 5;
+    const percent = Math.min(100, Math.round((totalDaysWithWorkout / targetDays) * 100));
+
+    return {
+      totalDaysWithWorkout,
+      targetDays,
+      percent,
+      activeWorkoutDays,
+    };
+  }, [workouts]);
 
   const handleExportWorkout = async () => {
     try {
@@ -479,34 +505,45 @@ export default function AlunoPage() {
             <div>
               <h1 style={{ fontSize: "32px", fontWeight: 900, letterSpacing: "-0.03em", color: isDark ? "#fff" : "#0f172a", margin: 0 }}>Meu Plano</h1>
               <p style={{ fontSize: "16px", color: isDark ? "#94a3b8" : "#64748b", marginTop: "6px", margin: 0 }}>
-                Acompanhe sua assinatura, pagamentos e treinos
+                Olá, {user?.name ? user.name.split(" ")[0] : "Aluno"}. Sua rotina e sua mensalidade em um só lugar.
               </p>
             </div>
 
-            {/* Grid Superior Responsivo (Proporção 2:1 no Desktop) */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(0, 1fr))", gap: "24px" }} className="lg:grid-cols-3">
+            {/* Grid Superior Responsivo (3 Cards no Topo) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               
-              {/* Card Maior à Esquerda: Treino de Hoje */}
+              {/* Card 1: Treino de Hoje */}
               <div 
-                className={`lg:col-span-2 rounded-[18px] border shadow-sm flex flex-col justify-between ${ui.panel}`}
-                style={{ minHeight: "190px", padding: "28px", overflow: "hidden" }}
+                className={`rounded-[20px] border shadow-sm flex flex-col justify-between p-6 ${ui.panel}`}
+                style={{ minHeight: "220px" }}
               >
                 <div className="flex flex-col justify-between h-full gap-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="p-2 rounded-xl bg-gradient-to-br from-[#C0392B]/20 to-[#C0392B]/5 text-[#C0392B] flex items-center justify-center">
-                      <Dumbbell className="h-5 w-5" />
-                    </span>
-                    <span className={`text-xs uppercase tracking-[0.2em] font-extrabold ${ui.muted}`}>Treino de hoje</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="p-2 rounded-xl bg-gradient-to-br from-[#C0392B]/20 to-[#C0392B]/5 text-[#C0392B] flex items-center justify-center">
+                        <Dumbbell className="h-5 w-5" />
+                      </span>
+                      <span className={`text-xs uppercase tracking-[0.2em] font-extrabold ${ui.muted}`}>Treino de hoje</span>
+                    </div>
+                    {todayWorkout && (
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[8px] font-extrabold uppercase tracking-wider ${
+                        isDark ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" : "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                      }`}>
+                        ● Hoje
+                      </span>
+                    )}
                   </div>
                   
                   {todayWorkout ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", flex: 1 }}>
-                      <h2 className={`text-xl font-black ${ui.title}`} style={{ margin: 0, lineHeight: 1.2 }}>{todayWorkout.title}</h2>
-                      <p className={`text-xs leading-relaxed ${ui.softText}`} style={{ margin: 0 }}>
-                        Hoje é {WEEK_DAYS.find(d => d.key === todayWeekDay)?.fullLabel || todayWeekDay}. Seu instrutor preparou uma rotina excelente para a sua performance!
-                      </p>
-                      <div className="flex items-center gap-4 mt-auto" style={{ marginTop: "12px" }}>
-                        <span className={`inline-flex px-3 py-1 rounded-xl text-xs font-bold ${isDark ? "bg-slate-800 text-slate-300 border border-slate-700" : "bg-slate-100 text-slate-700 border border-slate-200"}`}>
+                    <div className="flex flex-col gap-2 flex-1 justify-between">
+                      <div>
+                        <h2 className={`text-lg font-black ${ui.title}`} style={{ margin: 0, lineHeight: 1.2 }}>{todayWorkout.title}</h2>
+                        <p className={`text-xs leading-relaxed ${ui.softText}`} style={{ margin: "4px 0 0" }}>
+                          Hoje é {WEEK_DAYS.find(d => d.key === todayWeekDay)?.fullLabel || todayWeekDay}. Foco total na sua execução!
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800/80">
+                        <span className={`inline-flex px-2.5 py-1 rounded-lg text-[11px] font-bold ${isDark ? "bg-slate-800 text-slate-300 border border-slate-700" : "bg-slate-100 text-slate-700 border border-slate-200"}`}>
                           🏋️ {todayWorkout.exercises.length} exercícios
                         </span>
                         <button
@@ -514,17 +551,19 @@ export default function AlunoPage() {
                           onClick={() => setIsWorkoutModalOpen(true)}
                           className="text-xs font-extrabold text-[#C0392B] hover:underline flex items-center gap-1 cursor-pointer"
                         >
-                          Ver treino completo →
+                          Ver tudo →
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", flex: 1 }}>
-                      <h2 className={`text-xl font-black ${ui.title}`} style={{ margin: 0, lineHeight: 1.2 }}>Dia de Descanso Ativo</h2>
-                      <p className={`text-xs leading-relaxed ${ui.softText}`} style={{ margin: 0 }}>
-                        Hoje é {WEEK_DAYS.find(d => d.key === todayWeekDay)?.fullLabel || todayWeekDay}. Não há treinos programados. Aproveite para descansar, fazer um cardio leve ou se alongar!
-                      </p>
-                      <div className="mt-auto" style={{ marginTop: "12px" }}>
+                    <div className="flex flex-col gap-2 flex-1 justify-between">
+                      <div>
+                        <h2 className={`text-lg font-black ${ui.title}`} style={{ margin: 0, lineHeight: 1.2 }}>Descanso Ativo</h2>
+                        <p className={`text-xs leading-relaxed ${ui.softText}`} style={{ margin: "4px 0 0" }}>
+                          Hoje é {WEEK_DAYS.find(d => d.key === todayWeekDay)?.fullLabel || todayWeekDay}. Aproveite para recuperar musculatura ou fazer um cardio leve!
+                        </p>
+                      </div>
+                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex justify-end">
                         <button
                           type="button"
                           onClick={() => setIsWorkoutModalOpen(true)}
@@ -538,13 +577,11 @@ export default function AlunoPage() {
                 </div>
               </div>
 
-              {/* Card Menor à Direita: Mensalidade */}
+              {/* Card 2: Mensalidade / Plano */}
               <div 
-                className={`lg:col-span-1 rounded-[18px] border shadow-sm flex flex-col justify-between ${subscriptionDetails.hasPlan ? "" : ui.panel}`}
+                className={`rounded-[20px] border shadow-sm flex flex-col justify-between p-6 ${subscriptionDetails.hasPlan ? "" : ui.panel}`}
                 style={{ 
-                  minHeight: "190px",
-                  padding: "28px",
-                  overflow: "hidden",
+                  minHeight: "220px",
                   border: `1px solid ${themeStyles.border}`,
                   background: isDark ? "rgba(30, 41, 59, 0.45)" : "#ffffff",
                   boxShadow: "0 4px 12px rgba(0, 0, 0, 0.02)",
@@ -566,12 +603,15 @@ export default function AlunoPage() {
                   </div>
                 ) : (
                   <div className="flex flex-col justify-between h-full gap-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <CalendarClock className={`h-5 w-5 ${subscriptionDetails.isVencida ? "text-red-400" : subscriptionDetails.isVenceEmBreve ? "text-amber-400" : "text-emerald-500"}`} />
-                        <span className={`text-xs uppercase tracking-[0.2em] font-extrabold ${ui.muted}`}>Mensalidade</span>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className={`text-xs uppercase tracking-[0.2em] font-extrabold ${ui.muted} block mb-1`}>Mensalidade</span>
+                        <p className={`text-2xl font-black ${ui.title}`} style={{ margin: 0 }}>{subscriptionDetails.formattedPrice}</p>
+                        <p className={`text-xs ${ui.muted}`} style={{ margin: "4px 0 0" }}>
+                          Plano {subscriptionDetails.planName} · vence em {subscriptionDetails.endDateFormatted}
+                        </p>
                       </div>
-                      <span className={`inline-flex rounded-full border px-2 py-0.5 text-[8px] font-extrabold shadow-inner uppercase tracking-wider ${
+                      <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[9px] font-extrabold shadow-inner uppercase tracking-wider ${
                         subscriptionDetails.isVencida 
                           ? "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20" 
                           : subscriptionDetails.isVenceEmBreve 
@@ -582,40 +622,68 @@ export default function AlunoPage() {
                       </span>
                     </div>
 
-                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className={`${ui.muted} font-semibold`}>Plano</span>
-                        <span className={`${ui.title} font-black`}>{subscriptionDetails.planName}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className={`${ui.muted} font-semibold`}>Vencimento</span>
-                        <span className={`${ui.title} font-black`}>{subscriptionDetails.endDateFormatted}</span>
-                      </div>
-
-                      {/* Barra de Progresso Verde Premium */}
-                      <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden mt-1 shadow-inner border border-slate-200/20">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            subscriptionDetails.isVencida ? "bg-red-500" : subscriptionDetails.isVenceEmBreve ? "bg-amber-500" : "bg-emerald-500"
-                          }`}
-                          style={{ width: `${progressPercent}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className={`rounded-lg border px-3 py-1.5 text-center text-[10px] font-bold tracking-wide shadow-inner ${
-                      subscriptionDetails.isVencida 
-                        ? "bg-red-500/10 text-red-500 border-red-500/20" 
-                        : subscriptionDetails.isVenceEmBreve 
-                        ? "bg-amber-500/10 text-amber-600 border-amber-500/20" 
-                        : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                    }`}>
-                      {subscriptionDetails.daysText}
+                    <div className="flex items-center gap-2 mt-auto">
+                      {subscription?.id && (
+                        <button
+                          type="button"
+                          onClick={() => setIsPixModalOpen(true)}
+                          className="w-full py-2.5 px-3 rounded-xl font-extrabold text-xs text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer border border-emerald-500/30"
+                        >
+                          <QrCode className="h-4 w-4 text-emerald-200" /> Pagar com Pix
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
+
+              {/* Card 3: Progresso da Semana */}
+              <div 
+                className={`rounded-[20px] border shadow-sm flex flex-col justify-between p-6 ${ui.panel}`}
+                style={{ minHeight: "220px" }}
+              >
+                <div className="flex flex-col justify-between h-full gap-3">
+                  <div>
+                    <span className={`text-xs uppercase tracking-[0.2em] font-extrabold ${ui.muted} block mb-1`}>
+                      Progresso da semana
+                    </span>
+                    <p className={`text-2xl font-black ${ui.title}`} style={{ margin: 0 }}>
+                      {weeklyMetrics.totalDaysWithWorkout} <span className={`text-sm font-medium ${ui.muted}`}>de 7 dias</span>
+                    </p>
+                  </div>
+
+                  {/* Barras de progresso da semana Seg a Dom */}
+                  <div className="mt-4 flex gap-1.5 items-end">
+                    {WEEK_DAYS.map((day) => {
+                      const hasWorkout = workouts.some((w) => w.weekDay === day.key && w.exercises && w.exercises.length > 0);
+                      return (
+                        <div key={day.key} className="flex-1 space-y-1.5 text-center">
+                          <div
+                            className={`h-2 rounded-full transition-all ${
+                              hasWorkout 
+                                ? "bg-emerald-500 shadow-sm shadow-emerald-500/30" 
+                                : "bg-slate-200 dark:bg-slate-800"
+                            }`}
+                          />
+                          <span className={`block text-[11px] font-semibold ${hasWorkout ? "text-emerald-500 font-bold" : ui.muted}`}>
+                            {day.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className={`mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs font-semibold ${ui.muted}`}>
+                    <span>Frequência semanal</span>
+                    <span className="text-emerald-500 font-bold">{weeklyMetrics.percent}% Concluído</span>
+                  </div>
+                </div>
+              </div>
+
             </div>
+
+
+
 
             {/* Seção Inferior: Fichas de Treino & Grade de Exercícios */}
             <section 
@@ -704,10 +772,10 @@ export default function AlunoPage() {
 
               {!loading && !error && selectedWorkout && selectedWorkout.exercises.length > 0 ? (
                 <div 
-                  className="animate-slide-up"
-                  style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 360px))", gap: "20px", justifyContent: "flex-start" }}
+                  className="animate-slide-up grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
                 >
                   {selectedWorkout.exercises.map((exercise, index) => (
+
                     <ExerciseCard
                       key={exercise.id}
                       exercise={exercise}
@@ -838,7 +906,16 @@ export default function AlunoPage() {
             </div>
           </div>
         )}
+
+        {/* Modal de Pagamento Pix */}
+        <PixPaymentModal
+          open={isPixModalOpen}
+          onClose={() => setIsPixModalOpen(false)}
+          subscriptionId={subscription?.id || null}
+          onSuccess={loadStudentData}
+        />
       </DashboardLayout>
     </ProtectedRoute>
   );
 }
+

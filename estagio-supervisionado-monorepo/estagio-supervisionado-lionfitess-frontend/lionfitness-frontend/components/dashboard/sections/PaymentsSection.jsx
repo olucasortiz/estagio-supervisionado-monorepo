@@ -6,10 +6,14 @@ import DataTable from "../../ui/DataTable";
 import Modal from "../../ui/Modal";
 import DashboardCard from "../../ui/DashboardCard";
 import StatusBadge from "../../ui/StatusBadge";
+import PixPaymentModal from "../../ui/PixPaymentModal";
+
 
 const METHOD_LABELS = { PIX: "Pix", CASH: "Dinheiro", CARD: "Cartão", Dinheiro: "Dinheiro", Cartão: "Cartão", Pix: "Pix", Boleto: "Boleto" };
 
 function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, feedback, isEditing, data }) {
+  const isPixMethod = ["Pix", "PIX"].includes(form.method);
+
   return (
     <Modal
       open={open}
@@ -20,7 +24,7 @@ function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, fee
         <>
           <button className="btn btn-ghost" onClick={onClose} type="button">Cancelar</button>
           <button className="btn btn-primary" onClick={onSubmit} disabled={saving} type="button">
-            {saving ? "Salvando..." : isEditing ? "Salvar" : "Registrar"}
+            {saving ? "Salvando..." : isEditing ? "Salvar" : isPixMethod ? "Registrar com Pix ✨" : "Registrar"}
           </button>
         </>
       }
@@ -73,12 +77,13 @@ function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, fee
     </Modal>
   );
 }
-
 export default function PaymentsSection({
   data, forms, editing, feedback, saving,
-  fmtDate, fmtCurrency, onChangeFormValue, onSubmitForm, onStartEdit, onRemoveItem, onResetForm,
+  fmtDate, fmtCurrency, onChangeFormValue, onSubmitForm, onStartEdit, onRemoveItem, onResetForm, onRefreshData
 }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [pixModalSubId, setPixModalSubId] = useState(null);
+  const [pixModalAmount, setPixModalAmount] = useState(null);
 
   const handleOpen = (item = null) => {
     if (item) onStartEdit("payments", item);
@@ -89,6 +94,19 @@ export default function PaymentsSection({
   const handleClose = () => { setModalOpen(false); onResetForm("payments"); };
 
   const handleSubmit = async () => {
+    const isPixMethod = ["Pix", "PIX"].includes(forms.payments.method);
+
+    if (!editing.payments && isPixMethod) {
+      if (!forms.payments.subscriptionId) {
+        alert("Por favor, selecione uma assinatura para gerar a cobrança Pix.");
+        return;
+      }
+      setModalOpen(false);
+      setPixModalAmount(forms.payments.amount ? Number(forms.payments.amount) : null);
+      setPixModalSubId(forms.payments.subscriptionId);
+      return;
+    }
+
     await onSubmitForm("payments", null, forms.payments);
     if (!feedback.payments?.includes("Falha")) setModalOpen(false);
   };
@@ -124,10 +142,10 @@ export default function PaymentsSection({
 
       {/* KPI cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 20 }}>
-        <DashboardCard value={fmtCurrency(totalRecebido)} label="Total recebido"  accentColor="#22C55E" icon="💰" />
-        <DashboardCard value={fmtCurrency(totalPendente)} label="Pendente"       accentColor="#F59E0B" icon="⏳" />
-        <DashboardCard value={fmtCurrency(totalAtrasado)} label="Em atraso"      accentColor="#EF4444" icon="⚠️" />
-        <DashboardCard value={data.payments.length}       label="Total de lançamentos" accentColor="#3B82F6" icon="📊" />
+        <DashboardCard value={fmtCurrency(totalRecebido)} label="Total recebido" accentColor="#22C55E" icon="💰" />
+        <DashboardCard value={fmtCurrency(totalPendente)} label="Pendente" accentColor="#F59E0B" icon="⏳" />
+        <DashboardCard value={fmtCurrency(totalAtrasado)} label="Em atraso" accentColor="#EF4444" icon="⚠️" />
+        <DashboardCard value={data.payments.length} label="Total de lançamentos" accentColor="#3B82F6" icon="📊" />
       </div>
 
       <div className="card card-md">
@@ -146,6 +164,18 @@ export default function PaymentsSection({
           ]}
           actions={(item) => (
             <>
+              {item.subscriptionId && ["PENDING", "Pendente", "OVERDUE", "Atrasado"].includes(item.status) && (
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ color: "#10B981", fontWeight: 700 }}
+                  onClick={() => {
+                    setPixModalAmount(item.amount ? Number(item.amount) : null);
+                    setPixModalSubId(item.subscriptionId);
+                  }}
+                >
+                  ✨ Pix
+                </button>
+              )}
               <button className="btn btn-ghost btn-sm" onClick={() => handleOpen(item)}>Editar</button>
               <button className="btn btn-ghost btn-sm" style={{ color: "var(--error)" }} onClick={() => onRemoveItem("payments", item)}>Excluir</button>
             </>
@@ -164,6 +194,21 @@ export default function PaymentsSection({
         isEditing={!!editing.payments}
         data={data}
       />
+
+      <PixPaymentModal
+        open={!!pixModalSubId}
+        onClose={() => {
+          setPixModalSubId(null);
+          setPixModalAmount(null);
+        }}
+        subscriptionId={pixModalSubId}
+        amount={pixModalAmount}
+        onSuccess={() => {
+          if (onRefreshData) onRefreshData();
+        }}
+      />
     </div>
   );
 }
+
+

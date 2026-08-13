@@ -151,17 +151,20 @@ public class MemberRepository {
                 personalTrainerId
         );
     }
-    public List<Member> findAll() {
-        return jdbcTemplate.query(
-                """
+    public List<Member> findAll(boolean includeInactive) {
+        String sql = """
                 select
                 """ + MEMBER_SELECT_COLUMNS + """
                 from members m
                 left join users u on u.id = m.user_id
+                """ + (includeInactive ? "" : "where m.is_active = true ") + """
                 order by m.created_at desc
-                """,
-                MEMBER_ROW_MAPPER
-        );
+                """;
+        return jdbcTemplate.query(sql, MEMBER_ROW_MAPPER);
+    }
+
+    public List<Member> findAll() {
+        return findAll(false);
     }
 
     public Optional<Member> findActiveById(UUID id) {

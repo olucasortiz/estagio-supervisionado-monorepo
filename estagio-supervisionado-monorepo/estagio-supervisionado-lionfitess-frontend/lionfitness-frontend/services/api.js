@@ -264,8 +264,9 @@ async function deleteResource(path, id, errorMessage) {
   );
 }
 
-export async function getMembers() {
-  const list = await getResource("/members", "Failed to fetch members");
+export async function getMembers(includeInactive = false) {
+  const endpoint = includeInactive ? "/members?includeInactive=true" : "/members";
+  const list = await getResource(endpoint, "Failed to fetch members");
   return Array.isArray(list) ? list.map(normalizeMemberPhoto) : list;
 }
 
@@ -425,3 +426,21 @@ export async function getNewMembersReport(startDate, endDate) {
 export async function getCancellationsReport(startDate, endDate) {
   return getResource(`/reports/cancellations?startDate=${startDate}&endDate=${endDate}`, "Failed to fetch cancellations report");
 }
+
+export async function generatePixTransaction(subscriptionId, amount = null) {
+  return createResource(
+    "/payments/pix/generate",
+    { subscriptionId, amount },
+    "Falha ao gerar cobrança Pix"
+  );
+}
+
+
+export async function simulateConfirmPix(transactionId) {
+  return createResource(
+    `/payments/pix/simulate-confirm/${transactionId}`,
+    {},
+    "Falha ao simular confirmação de Pix"
+  );
+}
+

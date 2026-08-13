@@ -60,13 +60,19 @@ public class PaymentService {
 
         validateRequest(request.subscriptionId(), request.amount());
 
+        PaymentStatus status = PaymentStatus.fromRequestValue(request.status());
+        java.time.LocalDate effectivePaidAt = request.paidAt();
+        if (status == PaymentStatus.PAID && effectivePaidAt == null) {
+            effectivePaidAt = java.time.LocalDate.now();
+        }
+
         paymentRepository.update(
                 id,
                 request.subscriptionId(),
                 request.amount(),
-                request.paidAt(),
+                effectivePaidAt,
                 PaymentMethod.fromRequestValue(request.method()),
-                PaymentStatus.fromRequestValue(request.status())
+                status
         );
         return findById(id);
     }
