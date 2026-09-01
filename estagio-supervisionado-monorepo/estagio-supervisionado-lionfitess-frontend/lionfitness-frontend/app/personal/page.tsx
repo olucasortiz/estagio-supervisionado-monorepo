@@ -306,30 +306,30 @@ function ExerciseCatalogCard({
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <article className="rounded-[24px] border border-slate-200 dark:border-slate-800 p-5 shadow-sm bg-white dark:bg-slate-900/60 flex flex-col justify-between gap-4 transition-all duration-300 hover:shadow-md hover:scale-[1.01]">
+    <article className="rounded-[24px] border border-slate-200 dark:border-slate-800 p-6 shadow-sm bg-white dark:bg-slate-900/60 flex flex-col justify-between gap-5 transition-all duration-300 hover:shadow-md hover:scale-[1.01]">
       <div className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white" style={{ margin: 0 }}>
+          <h3 className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white leading-snug" style={{ margin: 0 }}>
             {exercise.name}
           </h3>
           {exercise.isCustom && (
-            <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
+            <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 shrink-0">
               Personalizado
             </span>
           )}
         </div>
 
         {/* Badges */}
-        <div className="flex gap-2 flex-wrap">
-          <span className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20">
+        <div className="flex flex-wrap gap-1.5">
+          <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-500/20">
             {exercise.muscle}
           </span>
           {exercise.equipment && (
-            <span className="inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20">
+            <span className="inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-700 dark:text-purple-400 border border-purple-500/20">
               {exercise.equipment}
             </span>
           )}
-          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+          <span className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-bold border ${
             difficulty === "Iniciante"
               ? "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
               : difficulty === "Intermediário"
@@ -341,13 +341,13 @@ function ExerciseCatalogCard({
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 mt-2">
+      <div className="flex flex-col gap-3 mt-1">
         {/* Accordion Instructions */}
         <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className="w-full flex items-center justify-between p-3 text-left text-xs font-semibold bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="w-full flex items-center justify-between p-3 text-left text-xs font-semibold bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <span>📖 Instruções</span>
             <svg
@@ -374,7 +374,7 @@ function ExerciseCatalogCard({
         <button
           type="button"
           onClick={onAdd}
-          className="w-full h-10 rounded-xl bg-[#C0392B] hover:bg-[#A93226] text-white font-bold text-xs shadow-sm transition-all"
+          className="w-full h-10 rounded-xl bg-[#C0392B] hover:bg-[#A93226] text-white font-bold text-xs shadow-sm transition-all cursor-pointer flex items-center justify-center"
         >
           Adicionar ao treino
         </button>
@@ -1237,7 +1237,7 @@ export default function PersonalPage() {
                       {catalogLoading ? <p style={{ ...styles.empty, marginTop: 18 }}>Buscando catálogo...</p> : null}
 
                       {!catalogLoading && finalCatalogResults.length > 0 ? (
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, marginTop: 18 }}>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
                           {finalCatalogResults.map((exercise, index) => (
                             <ExerciseCatalogCard
                               key={exercise.id || `${exercise.name}-${index}`}

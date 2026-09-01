@@ -12,6 +12,9 @@ public record PixGenerateResponse(
         BigDecimal amount,
         String status,
         String qrCodePayload,
+        String qrCodeBase64,
+        Long externalTransactionId,
         LocalDateTime requestedAt
 ) {
 }
+

@@ -13,6 +13,7 @@ import com.lionfitness.backend.common.api.ApiValidationError;
 import com.lionfitness.backend.member.exception.DuplicateCpfException;
 import com.lionfitness.backend.member.exception.MemberNotFoundException;
 import com.lionfitness.backend.payment.exception.InvalidPaymentAmountException;
+import com.lionfitness.backend.payment.exception.MercadoPagoGatewayException;
 import com.lionfitness.backend.payment.exception.PaymentNotFoundException;
 import com.lionfitness.backend.payment.exception.PaymentSubscriptionNotFoundException;
 import com.lionfitness.backend.personaltrainer.exception.DuplicatePersonalTrainerCpfException;
@@ -530,6 +531,24 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(status).body(response);
+    }
+
+    @ExceptionHandler(MercadoPagoGatewayException.class)
+    public ResponseEntity<ApiErrorResponse> handleMercadoPagoGatewayException(
+            MercadoPagoGatewayException exception,
+            HttpServletRequest request
+    ) {
+        logger.error("Falha na comunicação com o gateway Mercado Pago em {}: httpStatus={} message={}",
+                request.getRequestURI(), exception.getHttpStatus(), exception.getMessage(), exception);
+
+        ApiErrorResponse response = buildErrorResponse(
+                HttpStatus.BAD_GATEWAY,
+                exception.getMessage(),
+                request.getRequestURI(),
+                List.of()
+        );
+
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(response);
     }
 
     @ExceptionHandler(Exception.class)

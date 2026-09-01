@@ -6,6 +6,7 @@ import DataTable from "../../ui/DataTable";
 import Modal from "../../ui/Modal";
 import DashboardCard from "../../ui/DashboardCard";
 import StatusBadge from "../../ui/StatusBadge";
+import Combobox from "../../ui/Combobox";
 
 function SubscriptionFormModal({ open, onClose, form, onChange, onSubmit, saving, feedback, isEditing, data, projectedEndDate, fmtDate, normalizeUppercase, findById }) {
   const selectedPlan = findById(data.plans, form.planId);
@@ -28,25 +29,36 @@ function SubscriptionFormModal({ open, onClose, form, onChange, onSubmit, saving
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
         <div className="form-field">
           <label className="label">Aluno *</label>
-          <select className="select" value={form.memberId} onChange={(e) => onChange("memberId", e.target.value)} required>
-            <option value="">Selecione um aluno</option>
-            {data.members.map((m) => (
-              <option key={m.id ?? m.memberId} value={m.id ?? m.memberId}>
-                {m.nome || m.name}
-              </option>
-            ))}
-          </select>
+          <Combobox
+            items={data.members}
+            value={form.memberId}
+            onChange={(id) => onChange("memberId", id)}
+            getId={(m) => String(m.id ?? m.memberId ?? "")}
+            getLabel={(m) => m.nome || m.name || ""}
+            getSubLabel={(m) => m.email ? `✉ ${m.email}` : null}
+            placeholder="Buscar aluno pelo nome ou e-mail..."
+            required
+            emptyMessage="Nenhum aluno encontrado."
+          />
         </div>
         <div className="form-field">
           <label className="label">Plano *</label>
-          <select className="select" value={form.planId} onChange={(e) => onChange("planId", e.target.value)} required>
-            <option value="">Selecione um plano</option>
-            {data.plans.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} • {p.durationDays ?? p.duration_days ?? "—"} dias
-              </option>
-            ))}
-          </select>
+          <Combobox
+            items={data.plans}
+            value={form.planId}
+            onChange={(id) => onChange("planId", id)}
+            getId={(p) => String(p.id ?? "")}
+            getLabel={(p) => p.name || ""}
+            getSubLabel={(p) => {
+              const days = p.durationDays ?? p.duration_days;
+              const price = p.price != null ? `R$ ${Number(p.price).toFixed(2).replace(".", ",")}` : null;
+              const parts = [days ? `${days} dias` : null, price].filter(Boolean);
+              return parts.length > 0 ? parts.join(" • ") : null;
+            }}
+            placeholder="Buscar plano..."
+            required
+            emptyMessage="Nenhum plano encontrado."
+          />
         </div>
         <div className="form-field">
           <label className="label">Data de início *</label>
@@ -73,6 +85,7 @@ function SubscriptionFormModal({ open, onClose, form, onChange, onSubmit, saving
     </Modal>
   );
 }
+
 
 export default function SubscriptionsSection({
   data, forms, editing, feedback, saving,

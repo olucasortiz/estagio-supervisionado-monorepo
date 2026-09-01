@@ -68,6 +68,14 @@ export async function getMySubscription() {
   return getResource("/subscriptions/me", "Não foi possível carregar sua assinatura.");
 }
 
+export async function getMyWorkouts() {
+  return getResource("/workouts/me", "Não foi possível carregar seus treinos.");
+}
+
+export async function getMemberProfile() {
+  return getResource("/members/me", "Não foi possível carregar seu perfil.");
+}
+
 export async function searchExerciseCatalog(filters = {}) {
   const params = new URLSearchParams();
 

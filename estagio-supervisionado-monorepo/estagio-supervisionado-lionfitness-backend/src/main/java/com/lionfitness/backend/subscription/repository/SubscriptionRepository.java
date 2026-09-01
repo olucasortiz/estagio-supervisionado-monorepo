@@ -173,6 +173,26 @@ public class SubscriptionRepository {
         return updatedRows > 0;
     }
 
+    public Optional<Subscription> findActiveByIdAndUserEmail(UUID subscriptionId, String email) {
+        List<Subscription> subscriptions = jdbcTemplate.query(
+                """
+                select s.id, s.member_id, s.plan_id, s.start_date, s.end_date, s.status::text as status, s.created_at
+                from subscriptions s
+                inner join members m on m.id = s.member_id
+                inner join users u on u.id = m.user_id
+                where s.id = ?
+                  and lower(u.email) = lower(?)
+                  and m.is_active = true
+                  and s.status::text <> 'CANCELED'
+                """,
+                SUBSCRIPTION_ROW_MAPPER,
+                subscriptionId,
+                email
+        );
+
+        return subscriptions.stream().findFirst();
+    }
+
     public Optional<MySubscriptionResponse> findActiveByUserEmail(String email) {
         List<MySubscriptionResponse> subscriptions = jdbcTemplate.query(
                 """
@@ -201,5 +221,27 @@ public class SubscriptionRepository {
         );
 
         return subscriptions.stream().findFirst();
+    }
+
+    public boolean renewSubscription(UUID subscriptionId) {
+        int updatedRows = jdbcTemplate.update(
+                """
+                update subscriptions s
+                set end_date = (
+                    case
+                        when s.end_date >= current_date then s.end_date + (p.duration_days * interval '1 day')::interval
+                        else current_date + (p.duration_days * interval '1 day')::interval
+                    end
+                )::date,
+                status = cast('ACTIVE' as subscription_status_enum)
+                from plans p
+                where s.id = ?
+                  and p.id = s.plan_id
+                  and s.status::text <> 'CANCELED'
+                """,
+                subscriptionId
+        );
+
+        return updatedRows > 0;
     }
 }

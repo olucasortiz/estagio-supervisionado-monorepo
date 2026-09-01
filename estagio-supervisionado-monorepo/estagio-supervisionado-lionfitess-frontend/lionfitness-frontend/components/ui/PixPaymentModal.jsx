@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, LoaderCircle, QrCode, ShieldCheck, Sparkles, X } from "lucide-react";
+import { Check, Copy, LoaderCircle, QrCode, ShieldCheck, X } from "lucide-react";
 import { generatePixTransaction, simulateConfirmPix } from "../../services/api";
 
 function formatCurrency(val) {
@@ -123,7 +123,7 @@ export default function PixPaymentModal({ open, onClose, subscriptionId, amount,
           {loading && (
             <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-400">
               <LoaderCircle className="h-8 w-8 animate-spin text-emerald-400" />
-              <span className="text-sm font-semibold">Gerando transação Pix simulada...</span>
+              <span className="text-sm font-semibold">Gerando cobrança Pix via Mercado Pago...</span>
             </div>
           )}
 
@@ -159,45 +159,25 @@ export default function PixPaymentModal({ open, onClose, subscriptionId, amount,
                 </div>
               </div>
 
-              {/* QR Code Simulado Graphic */}
-              <div className="flex flex-col items-center justify-center p-6 rounded-2xl bg-white text-slate-900 border border-slate-700 shadow-inner">
-                <div className="w-44 h-44 rounded-xl bg-slate-100 border-2 border-slate-900 p-2 flex flex-col items-center justify-center relative">
-                  <svg className="w-full h-full text-slate-900" viewBox="0 0 100 100" fill="currentColor">
-                    {/* Abstract QR code shapes pattern */}
-                    <rect x="5" y="5" width="25" height="25" rx="3" fill="#0f172a" />
-                    <rect x="10" y="10" width="15" height="15" fill="#ffffff" />
-                    <rect x="13" y="13" width="9" height="9" fill="#0f172a" />
-
-                    <rect x="70" y="5" width="25" height="25" rx="3" fill="#0f172a" />
-                    <rect x="75" y="10" width="15" height="15" fill="#ffffff" />
-                    <rect x="78" y="13" width="9" height="9" fill="#0f172a" />
-
-                    <rect x="5" y="70" width="25" height="25" rx="3" fill="#0f172a" />
-                    <rect x="10" y="75" width="15" height="15" fill="#ffffff" />
-                    <rect x="13" y="78" width="9" height="9" fill="#0f172a" />
-
-                    {/* Data pixels simulation */}
-                    <rect x="35" y="10" width="8" height="8" />
-                    <rect x="48" y="10" width="8" height="8" />
-                    <rect x="35" y="25" width="8" height="8" />
-                    <rect x="10" y="38" width="8" height="8" />
-                    <rect x="25" y="38" width="8" height="8" />
-                    <rect x="40" y="38" width="8" height="8" />
-                    <rect x="55" y="38" width="8" height="8" />
-                    <rect x="70" y="38" width="8" height="8" />
-                    <rect x="85" y="38" width="8" height="8" />
-                    <rect x="38" y="52" width="12" height="12" rx="2" fill="#059669" />
-                    <rect x="60" y="55" width="8" height="8" />
-                    <rect x="75" y="55" width="8" height="8" />
-                    <rect x="48" y="70" width="8" height="8" />
-                    <rect x="65" y="70" width="12" height="12" />
-                    <rect x="82" y="70" width="8" height="8" />
-                    <rect x="48" y="85" width="8" height="8" />
-                    <rect x="82" y="85" width="8" height="8" />
-                  </svg>
-                </div>
-                <span className="text-[11px] font-bold text-slate-600 mt-2 flex items-center gap-1">
-                  <Sparkles className="h-3 w-3 text-emerald-600" /> QR Code Simulado Lion Fitness
+              {/* QR Code Real — Mercado Pago */}
+              <div className="flex flex-col items-center justify-center p-6 rounded-2xl bg-white border border-slate-700 shadow-inner">
+                {pixData.qrCodeBase64 ? (
+                  <img
+                    src={
+                      pixData.qrCodeBase64.startsWith("data:")
+                        ? pixData.qrCodeBase64
+                        : `data:image/png;base64,${pixData.qrCodeBase64}`
+                    }
+                    alt="QR Code Pix — escaneie com o app do seu banco"
+                    className="w-48 h-48 object-contain rounded-lg"
+                  />
+                ) : (
+                  <div className="w-48 h-48 rounded-lg bg-slate-100 flex items-center justify-center">
+                    <QrCode className="h-16 w-16 text-slate-400" />
+                  </div>
+                )}
+                <span className="text-[11px] font-semibold text-slate-500 mt-3">
+                  Escaneie com o app do seu banco
                 </span>
               </div>
 
@@ -249,7 +229,7 @@ export default function PixPaymentModal({ open, onClose, subscriptionId, amount,
                     </>
                   ) : (
                     <>
-                      <ShieldCheck className="h-4 w-4" /> Confirmar Pagamento Pix (Simular Aprovação)
+                      <ShieldCheck className="h-4 w-4" /> Confirmar Pagamento Pix
                     </>
 
                   )}

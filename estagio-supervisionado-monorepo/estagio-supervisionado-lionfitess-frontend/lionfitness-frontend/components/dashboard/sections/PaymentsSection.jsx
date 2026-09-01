@@ -7,6 +7,7 @@ import Modal from "../../ui/Modal";
 import DashboardCard from "../../ui/DashboardCard";
 import StatusBadge from "../../ui/StatusBadge";
 import PixPaymentModal from "../../ui/PixPaymentModal";
+import Combobox from "../../ui/Combobox";
 
 
 const METHOD_LABELS = { PIX: "Pix", CASH: "Dinheiro", CARD: "Cartão", Dinheiro: "Dinheiro", Cartão: "Cartão", Pix: "Pix", Boleto: "Boleto" };
@@ -32,12 +33,23 @@ function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, fee
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
         <div className="form-field">
           <label className="label">Assinatura *</label>
-          <select className="select" value={form.subscriptionId} onChange={(e) => onChange("subscriptionId", e.target.value)} required>
-            <option value="">Selecione</option>
-            {data.subscriptions.map((s) => (
-              <option key={s.id} value={s.id}>{s.memberName || "Assinatura"} — {s.planName || "—"}</option>
-            ))}
-          </select>
+          <Combobox
+            items={data.subscriptions}
+            value={form.subscriptionId}
+            onChange={(id) => onChange("subscriptionId", id)}
+            getId={(s) => String(s.id ?? "")}
+            getLabel={(s) => s.memberName || "Assinatura"}
+            getSubLabel={(s) => {
+              const parts = [
+                s.planName ? `📋 ${s.planName}` : null,
+                s.status ? `· ${s.status}` : null,
+              ].filter(Boolean);
+              return parts.length > 0 ? parts.join("  ") : null;
+            }}
+            placeholder="Buscar por aluno ou plano..."
+            required
+            emptyMessage="Nenhuma assinatura encontrada."
+          />
         </div>
         <div className="form-grid">
           <div className="form-field">

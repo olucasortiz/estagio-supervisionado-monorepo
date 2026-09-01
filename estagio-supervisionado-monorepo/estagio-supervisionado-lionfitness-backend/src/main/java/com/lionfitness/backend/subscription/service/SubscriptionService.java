@@ -102,6 +102,12 @@ public class SubscriptionService {
         }
     }
 
+    @Transactional
+    public boolean renewSubscription(UUID id) {
+        logger.info("Renewing subscription for id {}", id);
+        return subscriptionRepository.renewSubscription(id);
+    }
+
     public Optional<MySubscriptionResponse> findMine(String authenticatedEmail) {
         logger.info("Loading active subscription for authenticated email {}", authenticatedEmail);
         return subscriptionRepository.findActiveByUserEmail(authenticatedEmail)

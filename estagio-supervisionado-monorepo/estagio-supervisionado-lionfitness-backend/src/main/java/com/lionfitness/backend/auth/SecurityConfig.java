@@ -50,6 +50,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/login", "/auth/forgot-password", "/auth/reset-password", "/health",
                                 "/db-test")
                         .permitAll()
+                        .requestMatchers("/payments/webhook", "/payments/webhook/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/users/*/photo").permitAll()
 
