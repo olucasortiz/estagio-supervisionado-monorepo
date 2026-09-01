@@ -19,13 +19,13 @@ export function Sheet({ children }: { children: ReactNode }) {
   );
 }
 
-export function SheetTrigger({ children, asChild }: { children: React.ReactElement; asChild?: boolean }) {
+export function SheetTrigger({ children, asChild }: { children: React.ReactElement<any>; asChild?: boolean }) {
   const context = useContext(SheetContext);
   if (!context) return children;
 
   return React.cloneElement(children, {
     onClick: (e: React.MouseEvent) => {
-      children.props.onClick?.(e);
+      children.props?.onClick?.(e);
       context.setOpen(true);
     },
   });
