@@ -2,7 +2,7 @@ name: Deploy to AWS
 
 on:
   push:
-    branches: [ master ] # ou main, dependendo da sua branch
+    branches: [ master ]
 
 jobs:
   deploy:
@@ -14,9 +14,9 @@ jobs:
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.AWS_HOST }}
-          username: ${{ secrets.AWS_USER }}
-          key: ${{ secrets.AWS_SSH_KEY }}
+          host: \${{ secrets.AWS_HOST }}
+          username: \${{ secrets.AWS_USER }}
+          key: \${{ secrets.AWS_SSH_KEY }}
           script: |
             cd estagio-supervisionado-monorepo/estagio-supervisionado-lionfitess-frontend/lionfitness-frontend
             git pull origin master
