@@ -29,7 +29,7 @@ public class JwtService {
     private final long expirationSeconds;
 
     public JwtService(
-            @Value("${security.jwt.secret:lionfitness-development-secret-change-me}") String secret,
+            @Value("${security.jwt.secret}") String secret,
             @Value("${security.jwt.expiration-seconds:86400}") long expirationSeconds
     ) {
         if (secret == null || secret.trim().isEmpty()) {

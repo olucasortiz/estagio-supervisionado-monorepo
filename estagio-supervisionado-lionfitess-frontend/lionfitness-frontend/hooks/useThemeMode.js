@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 
 export const THEME_STORAGE_KEY = "lion-theme";
 export const THEME_CHANGE_EVENT = "lion-theme-change";
@@ -26,15 +27,55 @@ function normalizeTheme(value) {
   return value === "dark" ? "dark" : "light";
 }
 
+function getInitialTheme() {
+  if (typeof window === "undefined") {
+    return "light";
+  }
+
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+  if (stored === "dark" || stored === "light") {
+    return stored;
+  }
+
+  if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+    return "dark";
+  }
+
+  return "light";
+}
+
+function applyThemeToDOM(theme, isLoginPage) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+
+  if (isLoginPage) {
+    root.classList.remove("dark");
+    root.setAttribute("data-theme", "light");
+    return;
+  }
+
+  const isDark = theme === "dark";
+  root.classList.toggle("dark", isDark);
+  root.setAttribute("data-theme", isDark ? "dark" : "light");
+}
+
 export function useThemeMode() {
-  const [theme, setTheme] = useState(() => {
-    if (typeof window === "undefined") {
-      return "light";
-    }
+  let pathname = null;
+  try {
+    pathname = usePathname();
+  } catch {
+    pathname = null;
+  }
 
-    return normalizeTheme(window.localStorage.getItem(THEME_STORAGE_KEY));
-  });
+  const isLoginPage = typeof pathname === "string" && pathname.startsWith("/login");
+  const [theme, setTheme] = useState(getInitialTheme);
 
+  // Aplica o tema na raiz DOM e reaplica ao mudar de rota ou tema
+  useEffect(() => {
+    applyThemeToDOM(theme, isLoginPage);
+  }, [theme, isLoginPage]);
+
+  // Sincronização entre abas e componentes da mesma página
   useEffect(() => {
     const handleStorage = (event) => {
       if (event.key === THEME_STORAGE_KEY) {
@@ -57,7 +98,6 @@ export function useThemeMode() {
 
   const toggleTheme = useCallback(() => {
     const nextTheme = theme === "dark" ? "light" : "dark";
-
     setTheme(nextTheme);
 
     if (typeof window !== "undefined") {
@@ -66,6 +106,16 @@ export function useThemeMode() {
     }
   }, [theme]);
 
+  const setExplicitTheme = useCallback((newTheme) => {
+    const normalized = normalizeTheme(newTheme);
+    setTheme(normalized);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(THEME_STORAGE_KEY, normalized);
+      window.dispatchEvent(new CustomEvent(THEME_CHANGE_EVENT, { detail: normalized }));
+    }
+  }, []);
+
   const isDark = theme === "dark";
   const themeStyles = useMemo(() => themePalettes[theme], [theme]);
 
@@ -73,6 +123,9 @@ export function useThemeMode() {
     theme,
     isDark,
     toggleTheme,
+    setTheme: setExplicitTheme,
     themeStyles,
   };
 }
+
+export default useThemeMode;

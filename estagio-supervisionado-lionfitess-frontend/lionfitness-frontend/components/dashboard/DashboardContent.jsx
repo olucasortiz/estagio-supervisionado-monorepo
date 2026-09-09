@@ -53,6 +53,7 @@ import SubscriptionsSection from "./sections/SubscriptionsSection";
 import PaymentsSection   from "./sections/PaymentsSection";
 import OverdueSection    from "./sections/OverdueSection";
 import CancellationSection from "./sections/CancellationSection";
+import AdminDashboardView from "../admin/AdminDashboardView";
 
 // ─── Utilitários (mantidos idênticos ao original) ─────────────────────────
 
@@ -438,7 +439,7 @@ function getSettledValue(result) {
 export default function DashboardContent({ activeReport, styles } = {}) {
   const navigation = useDashboardNavigation();
   const currentStyles = styles || navigation?.styles;
-  const currentActiveReport = activeReport ?? navigation?.activeReport ?? 19;
+  const currentActiveReport = activeReport ?? navigation?.activeReport ?? "dashboard";
 
   const [data, setData] = useState({
     members: [], allMembers: [], plans: [], users: [], personalTrainers: [],
@@ -594,26 +595,40 @@ export default function DashboardContent({ activeReport, styles } = {}) {
   // ─── Loading state ────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+      <div className="space-y-6 animate-pulse">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="card card-md">
-              <div className="skeleton skeleton-text" style={{ width: "40%", marginBottom: 8 }} />
-              <div className="skeleton" style={{ width: "60%", height: 32 }} />
+            <div key={i} className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+              <div className="flex items-start justify-between">
+                <div className="size-10 rounded-xl bg-muted" />
+                <div className="h-5 w-14 rounded-md bg-muted" />
+              </div>
+              <div className="mt-4 h-8 w-24 rounded-lg bg-muted" />
+              <div className="mt-2 h-4 w-32 rounded-md bg-muted" />
             </div>
           ))}
         </div>
-        <div className="card card-md" style={{ height: 300 }}>
-          <div className="skeleton skeleton-text" style={{ width: "30%", marginBottom: 16 }} />
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} style={{ display: "flex", gap: 12, marginBottom: 12 }}>
-              <div className="skeleton skeleton-circle" style={{ width: 36, height: 36, flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <div className="skeleton skeleton-text" style={{ width: "60%", marginBottom: 6 }} />
-                <div className="skeleton skeleton-text" style={{ width: "40%" }} />
-              </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs xl:col-span-2">
+            <div className="h-6 w-40 rounded-lg bg-muted mb-2" />
+            <div className="h-4 w-64 rounded-md bg-muted mb-6" />
+            <div className="h-56 rounded-xl bg-muted/60" />
+          </div>
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs">
+            <div className="h-6 w-36 rounded-lg bg-muted mb-2" />
+            <div className="h-4 w-48 rounded-md bg-muted mb-6" />
+            <div className="space-y-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="flex justify-between">
+                    <div className="h-4 w-28 rounded-md bg-muted" />
+                    <div className="h-4 w-16 rounded-md bg-muted" />
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-muted" />
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       </div>
     );
@@ -647,9 +662,15 @@ export default function DashboardContent({ activeReport, styles } = {}) {
     moduleConfig,
   };
 
-  const reportId = Number(currentActiveReport);
-
   const sections = {
+    dashboard: (
+      <AdminDashboardView
+        data={data}
+        fmtDate={fmtDate}
+        fmtCurrency={fmtCurrency}
+        onNavigate={navigation?.setActiveReport}
+      />
+    ),
     19: <NewMembersReport     styles={currentStyles} members={data.members} toDate={toDate} fmtDate={fmtDate} />,
     20: <CancellationsReport  styles={currentStyles} cancellations={data.cancellations} toDate={toDate} fmtDate={fmtDate} />,
     21: <ActiveMembersReport  styles={currentStyles} members={data.allMembers || data.members} Badge={null} />,
@@ -664,7 +685,7 @@ export default function DashboardContent({ activeReport, styles } = {}) {
     37: <CancellationSection  {...sectionProps} onSubmitCancellation={submitCancellation} />,
   };
 
-  return sections[reportId] || (
+  return sections[currentActiveReport] || sections[Number(currentActiveReport)] || (
     <div className="card card-md" style={{ textAlign: "center", padding: "48px 0" }}>
       <p style={{ color: "var(--text-muted)" }}>Painel</p>
     </div>

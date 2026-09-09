@@ -15,9 +15,9 @@ export default function OverdueSection({ data }) {
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="Inadimplentes"
-        subtitle="Alunos com pagamento pendente ou vencido"
-        breadcrumb={<><span>Financeiro</span><span style={{ opacity: 0.4 }}>›</span><span>Inadimplentes</span></>}
+        title="Inadimplência"
+        subtitle="Gestão operacional de alunos com pagamento pendente ou vencido"
+        breadcrumb={<><span>Financeiro</span><span style={{ opacity: 0.4 }}>›</span><span>Inadimplência</span></>}
       />
 
       {overdue.length > 0 && (

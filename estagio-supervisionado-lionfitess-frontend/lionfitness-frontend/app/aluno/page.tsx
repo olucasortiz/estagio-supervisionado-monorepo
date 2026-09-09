@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import PlanoAlunoPage from "./PlanoAluno";
 import PixPaymentModal from "@/components/ui/PixPaymentModal";
 import CardPaymentModal from "@/components/ui/CardPaymentModal";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 export default function AlunoPage() {
   const [pixOpen, setPixOpen] = useState(false);
@@ -37,7 +38,7 @@ export default function AlunoPage() {
   }, []);
 
   return (
-    <>
+    <ProtectedRoute allowedRoles={["OPERATIONAL", "USER", "ADMIN"]}>
       <PlanoAlunoPage
         key={refreshKey}
         onOpenPixModal={() => setPixOpen(true)}
@@ -62,7 +63,7 @@ export default function AlunoPage() {
           onSuccess={handlePaymentSuccess}
         />
       )}
-    </>
+    </ProtectedRoute>
   );
 }
 

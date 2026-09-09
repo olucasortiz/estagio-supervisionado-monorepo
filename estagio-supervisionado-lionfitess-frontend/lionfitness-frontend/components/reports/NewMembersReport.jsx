@@ -89,34 +89,57 @@ export default function NewMembersReport({ styles }) {
       return;
     }
     const filtersStr = {
-      "Período": `${formatSecureDate(di)} até ${formatSecureDate(df)}`
+      "Período": `${formatSecureDate(di)} — ${formatSecureDate(df)}`
     };
-    const summaryData = [
+
+    const ativos = members.filter(m => m.active !== false).length;
+    const inativos = members.length - ativos;
+    const pctAtivo = members.length > 0 ? Math.round((ativos / members.length) * 100) : 0;
+    const pctInativo = 100 - pctAtivo;
+
+    const formattedAvg = avgPerDay !== "—" ? String(avgPerDay).replace(".", ",") : "—";
+
+    const kpiData = [
       { label: "Novos alunos no período", value: members.length },
-      { label: "Média por dia", value: avgPerDay },
-      { label: "Alunos ativos", value: members.filter(m => m.active !== false).length }
+      { label: "Média por dia", value: formattedAvg },
+      { label: "Alunos ativos", value: ativos },
     ];
+
+    const chartData = members.length > 0 ? {
+      type: "proportional_bar",
+      title: "Distribuição dos novos alunos por status",
+      items: [
+        { label: "Ativos", count: ativos, percentage: pctAtivo, color: [21, 128, 61] },
+        { label: "Inativos", count: inativos, percentage: pctInativo, color: [148, 163, 184] },
+      ]
+    } : null;
+
     const exportColumns = [
       { title: "Nome", dataKey: "name" },
       { title: "CPF", dataKey: "cpf" },
       { title: "E-mail", dataKey: "email" },
-      { title: "Data de Cadastro", dataKey: "createdAt" },
+      { title: "Cadastro", dataKey: "createdAt" },
+      { title: "Status", dataKey: "status" },
     ];
+
     const exportRows = members.map(m => ({
       name: m.name || m.nome || "—",
       cpf: maskCPF(m.cpf),
       email: m.email || "—",
       createdAt: formatSecureDate(m.createdAt || m.dataCadastro),
+      status: m.active === false ? "Inativo" : "Ativo",
     }));
 
     const todayStr = new Date().toISOString().split("T")[0];
     await exportReportPdf({
-      title: "Relatório de Novos Alunos por Período",
+      title: "Relatório de Novos Alunos",
+      subtitle: "Cadastros realizados no período selecionado",
       user,
       filters: filtersStr,
       columns: exportColumns,
       rows: exportRows,
-      summary: summaryData,
+      kpis: kpiData,
+      chart: chartData,
       filename: `relatorio-novos-alunos-${todayStr}.pdf`
     });
   }

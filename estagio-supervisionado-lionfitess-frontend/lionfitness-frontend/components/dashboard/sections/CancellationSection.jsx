@@ -40,9 +40,9 @@ export default function CancellationSection({
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="Cancelamento"
+        title="Registrar Cancelamento"
         subtitle="Registre o cancelamento de matrícula de um aluno"
-        breadcrumb={<><span>Financeiro</span><span style={{ opacity: 0.4 }}>›</span><span>Cancelamentos</span></>}
+        breadcrumb={<><span>Financeiro</span><span style={{ opacity: 0.4 }}>›</span><span>Registrar Cancelamento</span></>}
       />
 
       <div className="alert alert-warning" style={{ marginBottom: 20 }}>

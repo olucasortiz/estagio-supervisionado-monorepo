@@ -92,33 +92,50 @@ export default function CancellationsReport({ styles }) {
       return;
     }
     const filtersStr = {
-      "Período": `${formatSecureDate(di)} até ${formatSecureDate(df)}`
+      "Período": `${formatSecureDate(di)} — ${formatSecureDate(df)}`
     };
-    const summaryData = [
+
+    const kpiData = [
       { label: "Cancelamentos no período", value: cancellations.length },
       { label: "Motivo mais frequente", value: topMotivo }
     ];
+
+    const sortedMotivos = Object.entries(motivoCount).sort((a, b) => b[1] - a[1]);
+    const chartData = cancellations.length > 0 && sortedMotivos.length > 0 ? {
+      type: "category_bars",
+      title: "Distribuição de cancelamentos por motivo",
+      items: sortedMotivos.slice(0, 5).map(([motivo, count]) => ({
+        label: motivo,
+        count,
+        percentage: Math.round((count / cancellations.length) * 100),
+        color: [192, 57, 43],
+      })),
+    } : null;
+
     const exportColumns = [
       { title: "Nome do Aluno", dataKey: "memberName" },
       { title: "CPF", dataKey: "memberCpf" },
       { title: "Data do Cancelamento", dataKey: "cancellationDate" },
       { title: "Motivo", dataKey: "reason" },
     ];
+
     const exportRows = cancellations.map(c => ({
       memberName: c.memberName || "—",
       memberCpf: maskCPF(c.memberCpf),
       cancellationDate: formatSecureDate(c.cancellationDate),
-      reason: c.reason || "—",
+      reason: c.reason || c.cancellationReason || "Não informado",
     }));
 
     const todayStr = new Date().toISOString().split("T")[0];
     await exportReportPdf({
-      title: "Relatório de Cancelamentos por Período",
+      title: "Relatório de Cancelamentos",
+      subtitle: "Cancelamentos registrados no período selecionado",
       user,
       filters: filtersStr,
       columns: exportColumns,
       rows: exportRows,
-      summary: summaryData,
+      kpis: kpiData,
+      chart: chartData,
       filename: `relatorio-cancelamentos-${todayStr}.pdf`
     });
   }

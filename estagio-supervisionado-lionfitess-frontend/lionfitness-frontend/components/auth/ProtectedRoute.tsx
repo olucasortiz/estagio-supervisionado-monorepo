@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, type CSSProperties, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { dashboardStyles } from "../layout/DashboardLayout";
 import { useAuth } from "../../hooks/useAuth";
 import { getDefaultRouteByRole } from "../../services/auth";
 
@@ -12,29 +11,12 @@ type ProtectedRouteProps = {
   guestOnly?: boolean;
 };
 
-type ProtectedRouteStyles = {
-  root: CSSProperties;
-  card: CSSProperties;
-  pageTitle: CSSProperties;
-  pageDesc: CSSProperties;
-};
-
 function LoadingState() {
-  const styles = dashboardStyles as unknown as ProtectedRouteStyles;
-
   return (
-    <div
-      style={{
-        ...styles.root,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}
-    >
-      <div style={{ ...styles.card, width: "100%", maxWidth: 420, textAlign: "center" }}>
-        <h1 style={{ ...styles.pageTitle, marginBottom: 8 }}>Lion Fitness</h1>
-        <p style={{ ...styles.pageDesc, margin: 0 }}>Carregando acesso...</p>
+    <div className="flex min-h-screen items-center justify-center bg-background p-6">
+      <div className="w-full max-w-[420px] rounded-2xl border border-border bg-card p-8 text-center shadow-lg animate-rise">
+        <h1 className="mb-2 text-2xl font-bold tracking-tight text-foreground">Lion Fitness</h1>
+        <p className="m-0 text-sm text-muted-foreground">Carregando acesso...</p>
       </div>
     </div>
   );

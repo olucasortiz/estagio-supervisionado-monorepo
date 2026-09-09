@@ -67,11 +67,25 @@ export default function OverdueMembersReport({ styles, members = [], Badge }) {
     const filtersStr = {
       "Filtro": "Todos os inadimplentes"
     };
-    const summaryData = [
+
+    const emDia = Math.max(0, members.length - overdue.length);
+    const pctEmDia = 100 - taxa;
+
+    const kpiData = [
       { label: "Alunos inadimplentes", value: overdue.length },
       { label: "Total no sistema", value: members.length },
       { label: "Taxa de inadimplência", value: `${taxa}%` }
     ];
+
+    const chartData = members.length > 0 ? {
+      type: "proportional_bar",
+      title: "Proporção de adimplência da base",
+      items: [
+        { label: "Em dia (Adimplentes)", count: emDia, percentage: pctEmDia, color: [21, 128, 61] },
+        { label: "Inadimplentes", count: overdue.length, percentage: taxa, color: [185, 28, 28] },
+      ]
+    } : null;
+
     const exportColumns = [
       { title: "Nome do Aluno", dataKey: "nome" },
       { title: "CPF", dataKey: "cpf" },
@@ -91,12 +105,14 @@ export default function OverdueMembersReport({ styles, members = [], Badge }) {
 
     const todayStr = new Date().toISOString().split("T")[0];
     await exportReportPdf({
-      title: "Relatório de Alunos Inadimplentes",
+      title: "Relatório de Inadimplência",
+      subtitle: "Análise analítica de alunos com pendências financeiras",
       user,
       filters: filtersStr,
       columns: exportColumns,
       rows: exportRows,
-      summary: summaryData,
+      kpis: kpiData,
+      chart: chartData,
       filename: `relatorio-inadimplentes-${todayStr}.pdf`
     });
   }
@@ -104,9 +120,9 @@ export default function OverdueMembersReport({ styles, members = [], Badge }) {
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="Inadimplentes"
-        subtitle="Alunos com pagamento pendente ou vencido"
-        breadcrumb={<><span>Relatórios</span><span style={{ opacity: 0.4 }}>›</span><span>Inadimplentes</span></>}
+        title="Relatório de Inadimplência"
+        subtitle="Análise analítica de alunos com situação financeira pendente ou vencida"
+        breadcrumb={<><span>Relatórios</span><span style={{ opacity: 0.4 }}>›</span><span>Relatório de Inadimplência</span></>}
         action={
           <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
             {generated && overdue.length > 0 && (

@@ -35,7 +35,7 @@ public class PasswordResetService {
             PasswordResetTokenRepository tokenRepository,
             EmailService emailService,
             PasswordEncoder passwordEncoder,
-            @Value("${app.frontend.url:http://18.116.33.225:3000}") String frontendUrl
+            @Value("${app.frontend.url:https://lionfitness-sa.duckdns.org}") String frontendUrl
     ) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
@@ -82,7 +82,7 @@ public class PasswordResetService {
     }
 
     private String buildResetLink(String token) {
-        String base = (frontendUrl != null && !frontendUrl.isBlank()) ? frontendUrl.split(",")[0].trim() : "http://18.116.33.225:3000";
+        String base = (frontendUrl != null && !frontendUrl.isBlank()) ? frontendUrl.split(",")[0].trim() : "https://lionfitness-sa.duckdns.org";
         return UriComponentsBuilder
                 .fromUriString(base)
                 .path("/reset-password")

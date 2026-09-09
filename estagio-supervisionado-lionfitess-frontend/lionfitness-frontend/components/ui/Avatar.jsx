@@ -1,15 +1,7 @@
 "use client";
 
+import { useState } from "react";
 import { API_BASE_URL } from "../../services/api";
-
-const COLORS = [
-  { bg: "linear-gradient(135deg, #C0392B 0%, #E74C3C 100%)", text: "#fff" },
-  { bg: "linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)", text: "#fff" },
-  { bg: "linear-gradient(135deg, #059669 0%, #10B981 100%)", text: "#fff" },
-  { bg: "linear-gradient(135deg, #7C3AED 0%, #8B5CF6 100%)", text: "#fff" },
-  { bg: "linear-gradient(135deg, #D97706 0%, #F59E0B 100%)", text: "#fff" },
-  { bg: "linear-gradient(135deg, #0891B2 0%, #06B6D4 100%)", text: "#fff" },
-];
 
 function getInitials(name) {
   if (!name || name === "-") return "?";
@@ -19,11 +11,6 @@ function getInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function getColor(name) {
-  const sum = (name || "").split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return COLORS[sum % COLORS.length];
-}
-
 function resolvePhotoUrl(photoUrl) {
   if (!photoUrl) return null;
   if (photoUrl.includes("/uploads/members")) return null;
@@ -31,41 +18,44 @@ function resolvePhotoUrl(photoUrl) {
   return `${API_BASE_URL}${photoUrl.startsWith("/") ? photoUrl : `/${photoUrl}`}`;
 }
 
-export default function Avatar({ name, photoUrl, size = "md", style = {} }) {
-  const resolved = resolvePhotoUrl(photoUrl);
+export default function Avatar({ name, photoUrl, size = "md", className = "", style = {} }) {
+  const [imgError, setImgError] = useState(false);
+  const resolved = !imgError ? resolvePhotoUrl(photoUrl) : null;
   const initials = getInitials(name);
-  const colorScheme = getColor(name);
 
-  const sizes = { sm: 32, md: 40, lg: 56, xl: 72 };
-  const fontSizes = { sm: 11, md: 13, lg: 16, xl: 20 };
-  const dim = sizes[size] || sizes.md;
-  const fs = fontSizes[size] || fontSizes.md;
-
-  const base = {
-    width: dim, height: dim, borderRadius: "50%",
-    flexShrink: 0, overflow: "hidden", ...style,
+  const sizes = {
+    xs: "size-6 text-[10px]",
+    sm: "size-8 text-xs",
+    md: "size-9 text-xs",
+    lg: "size-11 text-sm",
+    xl: "size-14 text-base",
   };
+
+  const sizeClass = sizes[size] || sizes.md;
 
   if (resolved) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={resolved}
-        alt={`Foto de ${name || "usuário"}`}
-        style={{ ...base, objectFit: "cover", display: "block" }}
-        onError={(e) => { e.currentTarget.style.display = "none"; }}
-      />
+      <div
+        className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-border/80 bg-muted shadow-sm ${sizeClass} ${className}`}
+        style={style}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={resolved}
+          alt={`Foto de ${name || "usuário"}`}
+          className="size-full object-cover"
+          onError={() => setImgError(true)}
+        />
+      </div>
     );
   }
 
   return (
-    <div style={{
-      ...base,
-      background: colorScheme.bg,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      fontWeight: 700, fontSize: fs, color: colorScheme.text,
-      letterSpacing: "0.5px",
-    }}>
+    <div
+      className={`inline-flex shrink-0 items-center justify-center rounded-full border border-border/80 bg-muted font-bold text-foreground shadow-sm ${sizeClass} ${className}`}
+      style={style}
+      title={name || "Usuário"}
+    >
       {initials}
     </div>
   );

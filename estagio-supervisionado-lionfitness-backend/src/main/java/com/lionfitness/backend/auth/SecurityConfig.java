@@ -39,18 +39,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of(
-                "*",
-                "http://localhost:3000",
-                "http://127.0.0.1:3000",
-                "http://localhost:3001",
-                "http://18.116.33.225:3000"
-        ));
         configuration.setAllowedOrigins(List.of(
+                "https://lionfitness-sa.duckdns.org",
                 "http://localhost:3000",
                 "http://127.0.0.1:3000",
-                "http://localhost:3001",
-                "http://18.116.33.225:3000"
+                "http://localhost:3001"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH", "HEAD"));
         configuration.setAllowedHeaders(List.of("*"));

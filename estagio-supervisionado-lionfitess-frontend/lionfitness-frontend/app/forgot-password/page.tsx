@@ -1,44 +1,43 @@
 "use client";
 
+import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { FormEvent, useState, type CSSProperties } from "react";
-import ProtectedRoute from "../../components/auth/ProtectedRoute";
-import { dashboardStyles } from "../../components/layout/DashboardLayout";
-import { forgotPassword } from "../../services/api";
+import { Mail, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 
-const BLACK = "#1a1a1a";
-const RED = "#C0392B";
-
-type ForgotPasswordStyles = {
-  root: CSSProperties;
-  card: CSSProperties;
-  pageHeader: CSSProperties;
-  pageTitle: CSSProperties;
-  pageDesc: CSSProperties;
-  fieldGroup: CSSProperties;
-  label: CSSProperties;
-  input: CSSProperties;
-  btn: CSSProperties;
-  btnOutline: CSSProperties;
-};
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { LionLogo } from "@/components/branding/LionLogo";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { forgotPassword } from "@/services/api";
+import { cn } from "@/lib/utils";
 
 export default function ForgotPasswordPage() {
-  const styles = dashboardStyles as unknown as ForgotPasswordStyles;
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [feedback, setFeedback] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setError(null);
+
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      setError("Informe seu e-mail.");
+      return;
+    }
 
     try {
-      setLoading(true);
-      setFeedback("");
-      setError("");
-
-      const response = await forgotPassword(email.trim());
-      setFeedback(response?.message || "Se o email estiver cadastrado, enviaremos instruções para redefinir sua senha.");
+      setIsLoading(true);
+      setError(null);
+      const response = await forgotPassword(cleanEmail);
+      setFeedback(
+        response?.message || "Enviamos as instruções para redefinir sua senha."
+      );
+      setIsSuccess(true);
     } catch (err) {
       setError(
         err instanceof Error && err.message
@@ -46,111 +45,138 @@ export default function ForgotPasswordPage() {
           : "Não foi possível solicitar a redefinição agora."
       );
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <ProtectedRoute guestOnly>
-      <div
-        style={{
-          ...styles.root,
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 24,
-        }}
-      >
-        <div style={{ width: "100%", maxWidth: 440 }}>
-          <div
-            style={{
-              background: BLACK,
-              color: "#FFFFFF",
-              borderRadius: "10px 10px 0 0",
-              padding: "24px 24px 18px",
-              borderBottom: `3px solid ${RED}`,
-            }}
-          >
-            <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: 1 }}>LION FITNESS</div>
-            <div style={{ color: RED, fontSize: 11, letterSpacing: 3, textTransform: "uppercase", marginTop: 4 }}>
-              Recuperacao de senha
-            </div>
+      <main className="relative flex min-h-screen items-center justify-center bg-background px-5 py-12 sm:px-8">
+        <div className="absolute top-5 right-5">
+          <ThemeToggle />
+        </div>
+        <div className="w-full max-w-md animate-fade-in">
+          {/* Logo */}
+          <div className="mb-8 flex flex-col items-center text-center">
+            <LionLogo variant="dark" size="lg" layout="vertical" />
           </div>
 
-          <div
-            style={{
-              ...styles.card,
-              marginBottom: 0,
-              borderRadius: "0 0 10px 10px",
-              borderTop: "none",
-            }}
-          >
-            <div style={styles.pageHeader}>
-              <h1 style={styles.pageTitle}>Esqueci minha senha</h1>
-              <p style={styles.pageDesc}>Informe seu e-mail para receber o link de redefinição.</p>
-            </div>
-
-            <form onSubmit={handleSubmit}>
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                <div style={styles.fieldGroup}>
-                  <label htmlFor="email" style={styles.label}>
-                    E-mail
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    style={styles.input}
-                    placeholder="seuemail@lionfitness.com"
-                    autoComplete="email"
-                    required
-                  />
+          {/* Card */}
+          <div className="rounded-3xl border border-border bg-card p-8 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] sm:p-10">
+            {!isSuccess ? (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                <div className="text-center">
+                  <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                    Recuperar senha
+                  </h1>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    Informe seu e-mail e enviaremos as instruções para redefinir sua senha.
+                  </p>
                 </div>
 
-                {feedback ? (
-                  <div
-                    style={{
-                      border: "1px solid #BBE7C8",
-                      background: "#EAF8EF",
-                      color: "#1A5C2A",
-                      borderRadius: 6,
-                      padding: "10px 12px",
-                      fontSize: 13,
-                    }}
-                  >
-                    {feedback}
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="email">E-mail</Label>
+                  <div className="relative">
+                    <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="seu@email.com"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (error) setError(null);
+                      }}
+                      disabled={isLoading}
+                      required
+                      className="h-12 w-full rounded-xl border-border bg-lion-slate-100 dark:bg-card pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground/60 transition-colors focus-visible:ring-2 focus-visible:ring-lion-red/20 focus-visible:border-lion-red disabled:cursor-not-allowed disabled:opacity-60"
+                    />
                   </div>
-                ) : null}
+                  {error && (
+                    <p className="text-sm text-destructive font-medium" role="alert">
+                      {error}
+                    </p>
+                  )}
+                </div>
 
-                {error ? (
-                  <div
-                    style={{
-                      border: "1px solid #F2C1BB",
-                      background: "#FDECEA",
-                      color: RED,
-                      borderRadius: 6,
-                      padding: "10px 12px",
-                      fontSize: 13,
-                    }}
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className={cn(
+                    "h-12 w-full items-center justify-center gap-2 rounded-xl bg-lion-red px-6 text-sm font-semibold text-white shadow-soft transition-all duration-200 hover:bg-lion-red-dark active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70",
+                    isLoading && "opacity-80"
+                  )}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    "Enviar instruções"
+                  )}
+                </Button>
+
+                <div className="text-center">
+                  <Link
+                    href="/login"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    {error}
-                  </div>
-                ) : null}
+                    <ArrowLeft className="size-4" />
+                    Voltar para o login
+                  </Link>
+                </div>
+              </form>
+            ) : (
+              <div className="flex flex-col items-center gap-6 text-center">
+                <div className="flex size-16 items-center justify-center rounded-full bg-emerald-500/12 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                  <CheckCircle2 className="size-8" />
+                </div>
 
-                <button type="submit" style={styles.btn} disabled={loading}>
-                  {loading ? "Enviando..." : "Enviar instruções"}
-                </button>
+                <div>
+                  <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                    Verifique seu e-mail
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    {feedback || "Enviamos as instruções para redefinir sua senha."}
+                  </p>
+                </div>
 
-                <Link href="/login" style={{ ...styles.btnOutline, display: "inline-flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>
-                  Voltar ao login
+                <div className="w-full rounded-xl border border-border bg-muted/40 p-4">
+                  <p className="text-sm text-muted-foreground">
+                    E-mail de destino:
+                  </p>
+                  <p className="mt-1 break-all text-sm font-medium text-foreground">
+                    {email}
+                  </p>
+                </div>
+
+                <Link
+                  href="/login"
+                  className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-lion-red px-6 text-sm font-semibold text-white shadow-soft transition-all duration-200 hover:bg-lion-red-dark active:scale-[0.99]"
+                >
+                  Voltar para o login
                 </Link>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSuccess(false);
+                    setEmail("");
+                    setError(null);
+                    setFeedback("");
+                  }}
+                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+                >
+                  Enviar para outro e-mail
+                </button>
               </div>
-            </form>
+            )}
           </div>
         </div>
-      </div>
+      </main>
     </ProtectedRoute>
   );
 }

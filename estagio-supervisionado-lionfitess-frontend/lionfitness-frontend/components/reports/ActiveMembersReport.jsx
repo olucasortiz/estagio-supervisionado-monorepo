@@ -67,12 +67,25 @@ export default function ActiveMembersReport({ styles, members = [], Badge }) {
     const filtersStr = {
       "Situação": filterLabels[filtro] || filtro
     };
-    const summaryData = [
+
+    const pctInativo = 100 - pctAtivo;
+
+    const kpiData = [
       { label: "Total de alunos", value: members.length },
       { label: "Alunos ativos", value: ativos.length },
       { label: "Inativos / Cancelados", value: inativos.length },
       { label: "Taxa de retenção", value: `${pctAtivo}%` }
     ];
+
+    const chartData = members.length > 0 ? {
+      type: "proportional_bar",
+      title: "Proporção geral da base (Ativos x Inativos)",
+      items: [
+        { label: "Alunos Ativos", count: ativos.length, percentage: pctAtivo, color: [21, 128, 61] },
+        { label: "Inativos / Cancelados", count: inativos.length, percentage: pctInativo, color: [148, 163, 184] },
+      ]
+    } : null;
+
     const exportColumns = [
       { title: "Nome", dataKey: "nome" },
       { title: "CPF", dataKey: "cpf" },
@@ -88,12 +101,14 @@ export default function ActiveMembersReport({ styles, members = [], Badge }) {
 
     const todayStr = new Date().toISOString().split("T")[0];
     await exportReportPdf({
-      title: "Relatório de Alunos Ativos e Inativos",
+      title: "Relatório de Ativos e Inativos",
+      subtitle: "Situação cadastral da base de alunos",
       user,
       filters: filtersStr,
       columns: exportColumns,
       rows: exportRows,
-      summary: summaryData,
+      kpis: kpiData,
+      chart: chartData,
       filename: `relatorio-ativos-inativos-${todayStr}.pdf`
     });
   }

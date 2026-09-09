@@ -1,11 +1,26 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../hooks/useAuth";
-import { getDefaultRouteByRole } from "../../services/auth";
-import { forgotPassword } from "../../services/api";
+import { AlertCircle, CreditCard, Dumbbell, Eye, EyeOff, Loader2, Users, ClipboardList } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LionLogo } from "@/components/branding/LionLogo";
+import { ForgotPasswordDialog } from "./ForgotPasswordDialog";
+import { useAuth } from "@/hooks/useAuth";
+import { getDefaultRouteByRole } from "@/services/auth";
+import { cn } from "@/lib/utils";
+
+const features = [
+  { icon: Users, label: "Alunos" },
+  { icon: Dumbbell, label: "Treinos" },
+  { icon: ClipboardList, label: "Planos" },
+  { icon: CreditCard, label: "Pagamentos" },
+];
 
 export default function LoginForm() {
   const router = useRouter();
@@ -15,16 +30,12 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
 
-  // Recovery modal states
-  const [isRecoveryModalOpen, setIsRecoveryModalOpen] = useState(false);
-  const [recoveryEmail, setRecoveryEmail] = useState("");
-  const [recoveryLoading, setRecoveryLoading] = useState(false);
-  const [recoverySuccess, setRecoverySuccess] = useState(false);
-  const [recoveryError, setRecoveryError] = useState("");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loading) return;
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
     try {
       setLoading(true);
       setError("");
@@ -35,422 +46,189 @@ export default function LoginForm() {
       setError(
         err instanceof Error && err.message
           ? err.message
-          : "Não foi possível entrar. Verifique seus dados e tente novamente."
+          : "Não foi possível realizar o login. Verifique suas credenciais."
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRecoverySubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!recoveryEmail.trim()) {
-      setRecoveryError("O e-mail é obrigatório.");
-      return;
-    }
-    try {
-      setRecoveryLoading(true);
-      setRecoveryError("");
-      await forgotPassword(recoveryEmail.trim());
-      setRecoverySuccess(true);
-    } catch (err) {
-      setRecoveryError(
-        err instanceof Error && err.message
-          ? err.message
-          : "Não foi possível solicitar a redefinição agora."
-      );
-    } finally {
-      setRecoveryLoading(false);
-    }
+  const handleInputChange = () => {
+    if (error) setError("");
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "#F8F9FB" }}>
-      {/* ── Coluna esquerda — Hero ── */}
-      <div style={{
-        flex: "0 0 55%", position: "relative", overflow: "hidden",
-        display: "flex", flexDirection: "column", justifyContent: "flex-end",
-        minHeight: "100vh",
-      }}
-        className="login-hero-col"
+    <main data-theme="light" className="flex min-h-screen w-full bg-background text-foreground">
+      {/* Left — institutional / branding (Desktop only: 45%) */}
+      <section
+        className="relative hidden w-[45%] flex-col justify-between overflow-hidden bg-lion-sidebar px-10 py-12 text-white lg:flex xl:px-16"
+        aria-label="Institucional"
       >
-        {/* Hero image */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/login-hero.png"
-          alt="Academia Lion Fitness — Performance e Resultados"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center" }}
-        />
+        {/* Soft ambient glow */}
+        <div className="pointer-events-none absolute -right-24 top-1/4 h-72 w-72 rounded-full bg-lion-red/20 blur-[100px]" />
+        <div className="pointer-events-none absolute -left-12 bottom-1/4 h-64 w-64 rounded-full bg-lion-red-light/10 blur-[90px]" />
 
-        {/* Gradient overlay */}
-        <div style={{
-          position: "absolute", inset: 0,
-          background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.15) 100%)",
-        }} />
+        <div className="relative z-10">
+          <LionLogo variant="light" size="lg" />
+        </div>
 
-        {/* Content */}
-        <div style={{ position: "relative", zIndex: 1, padding: "48px 56px" }}>
-          {/* Logo */}
-          <div style={{ marginBottom: 32 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-              <div style={{
-                width: 44, height: 44, borderRadius: 10,
-                background: "#C0392B",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 22,
-              }}>
-                🦁
-              </div>
-              <div>
-                <p style={{ fontSize: 22, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em", margin: 0, lineHeight: 1 }}>
-                  LION FITNESS
-                </p>
-                <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: "0.12em", textTransform: "uppercase", margin: 0, marginTop: 2 }}>
-                  Sistema de Gestão
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Slogan */}
-          <h2 style={{
-            fontSize: 38, fontWeight: 800, color: "#ffffff",
-            lineHeight: 1.15, letterSpacing: "-0.03em", margin: "0 0 12px",
-            maxWidth: 500,
-          }}>
-            Gestão inteligente para academias modernas.
-          </h2>
-          <p style={{ fontSize: 16, color: "rgba(255,255,255,0.65)", maxWidth: 440, lineHeight: 1.6, margin: 0 }}>
-            Controle total sobre alunos, planos, pagamentos e performance em um único lugar.
+        <div className="relative z-10 max-w-md">
+          <h1 className="text-3xl font-semibold leading-tight tracking-tight text-white xl:text-4xl">
+            Gestão inteligente
+            <br />
+            para academias
+          </h1>
+          <p className="mt-4 text-base text-white/60">
+            Tudo o que sua academia precisa em um só lugar: alunos, treinos, planos e pagamentos.
           </p>
 
-          {/* Social proof pills */}
-          <div style={{ display: "flex", gap: 12, marginTop: 28, flexWrap: "wrap" }}>
-            {["🏆 Gestão completa", "📊 Relatórios avançados", "💳 Controle financeiro"].map((tag) => (
-              <span key={tag} style={{
-                background: "rgba(255,255,255,0.12)", backdropFilter: "blur(8px)",
-                border: "1px solid rgba(255,255,255,0.2)",
-                borderRadius: 999, padding: "6px 14px",
-                fontSize: 12, color: "rgba(255,255,255,0.85)", fontWeight: 500,
-              }}>
-                {tag}
-              </span>
+          {/* Visual system modules */}
+          <div className="mt-10 grid grid-cols-2 gap-3">
+            {features.map((feature, index) => (
+              <div
+                key={feature.label}
+                className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm transition-colors hover:bg-white/10"
+                style={{ animationDelay: `${index * 80}ms` }}
+              >
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-lion-red/20 text-lion-red-light">
+                  <feature.icon className="h-4.5 w-4.5" strokeWidth={2} />
+                </div>
+                <span className="text-sm font-medium text-white/90">{feature.label}</span>
+              </div>
             ))}
           </div>
         </div>
-      </div>
 
-      {/* ── Coluna direita — Auth card ── */}
-      <div style={{
-        flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "32px 24px", minHeight: "100vh",
-      }}>
-        <div style={{ width: "100%", maxWidth: 420 }}>
-          {/* Card */}
-          <div style={{
-            background: "#ffffff",
-            borderRadius: 20,
-            border: "1px solid #E2E8F0",
-            padding: "40px 36px",
-            boxShadow: "0 4px 6px rgba(15,23,42,0.06), 0 20px 40px rgba(15,23,42,0.08)",
-          }}>
-            {/* Header */}
-            <div style={{ marginBottom: 32 }}>
-              <h1 style={{ fontSize: 26, fontWeight: 800, color: "#1E293B", margin: "0 0 6px", letterSpacing: "-0.02em" }}>
-                Bem-vindo de volta
-              </h1>
-              <p style={{ fontSize: 14, color: "#64748B", margin: 0 }}>
-                Acesse sua conta para continuar
-              </p>
+        <div className="relative z-10 text-sm text-white/40">
+          © {new Date().getFullYear()} Lion Fitness. Todos os direitos reservados.
+        </div>
+      </section>
+
+      {/* Right — login card (Mobile: full width, Desktop: 55%) */}
+      <section
+        className="flex w-full flex-col items-center justify-center px-4 py-8 sm:px-6 lg:w-[55%] lg:px-10 xl:px-20"
+        aria-label="Login"
+      >
+        {/* Mobile-only compact branding */}
+        <div className="mb-6 flex w-full max-w-sm flex-col items-center lg:hidden">
+          <LionLogo variant="dark" size="lg" />
+          <p className="mt-2 text-center text-sm text-muted-foreground">Gestão inteligente para academias</p>
+        </div>
+
+        <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] sm:p-8 lg:max-w-md">
+          {/* Card header */}
+          <div className="mb-6 flex flex-col items-center text-center sm:mb-8">
+            <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-lion-red/10 text-lion-red">
+              <svg viewBox="0 0 32 32" fill="none" className="h-7 w-7" aria-hidden="true">
+                <rect width="32" height="32" rx="8" fill="currentColor" />
+                <path
+                  d="M8 24c0-4.418 3.582-8 8-8s8 3.582 8 8M10 13c0-2.209 1.791-4 4-4s4 1.791 4 4"
+                  stroke="white"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+                <circle cx="22" cy="11" r="2.5" fill="white" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold tracking-tight text-card-foreground sm:text-2xl">Bem-vindo de volta</h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">Entre para acessar sua conta.</p>
+          </div>
+
+          {/* Error state */}
+          {error && (
+            <Alert variant="destructive" className="mb-5 border-lion-red-light/30 bg-lion-red-light/10 text-lion-red-dark">
+              <AlertCircle className="h-4 w-4 text-lion-red" />
+              <AlertDescription className="text-lion-red-dark font-medium">
+                {error}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  handleInputChange();
+                }}
+                disabled={loading}
+                required
+                autoComplete="email"
+                className="h-11 border-border bg-lion-slate-100 dark:bg-card px-4 text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-lion-red/30"
+              />
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-              {/* Email */}
-              <div className="form-field">
-                <label className="label" htmlFor="login-email">E-mail</label>
-                <input
-                  id="login-email"
-                  type="email"
-                  className="input"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seuemail@lionfitness.com"
-                  autoComplete="email"
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Senha</Label>
+                <button
+                  type="button"
+                  onClick={() => setForgotPasswordOpen(true)}
+                  className="text-xs font-medium text-lion-red transition-colors hover:text-lion-red-dark cursor-pointer"
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    handleInputChange();
+                  }}
+                  disabled={loading}
                   required
-                  style={{ height: 44 }}
+                  autoComplete="current-password"
+                  className="h-11 border-border bg-lion-slate-100 dark:bg-card px-4 pr-10 text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-lion-red/30"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
+            </div>
 
-              {/* Password */}
-              <div className="form-field">
-                <label className="label" htmlFor="login-password">Senha</label>
-                <div style={{ position: "relative" }}>
-                  <input
-                    id="login-password"
-                    type={showPassword ? "text" : "password"}
-                    className="input"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    required
-                    style={{ height: 44, paddingRight: 44 }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    style={{
-                      position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
-                      background: "none", border: "none", color: "#94A3B8", cursor: "pointer", padding: 4,
-                      display: "flex", alignItems: "center",
-                    }}
-                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                  >
-                    {showPassword ? (
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-                        <line x1="1" y1="1" x2="23" y2="23" />
-                      </svg>
-                    ) : (
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Error */}
-              {error && (
-                <div className="feedback-error" style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}>
-                    <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  {error}
-                </div>
+            <Button
+              id="login-submit-btn"
+              type="submit"
+              disabled={loading}
+              className={cn(
+                "h-12 w-full text-base font-semibold transition-all",
+                "bg-lion-red text-white hover:bg-lion-red-dark shadow-brand",
+                "focus-visible:ring-2 focus-visible:ring-lion-red/30",
+                loading && "cursor-not-allowed hover:bg-lion-red opacity-80",
               )}
-
-              {/* Submit */}
-              <button
-                id="login-submit-btn"
-                type="submit"
-                className="btn btn-primary btn-lg"
-                disabled={loading}
-                style={{ width: "100%", marginTop: 4, height: 46, fontSize: 15 }}
-              >
-                {loading ? (
-                  <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                      style={{ animation: "spin 0.8s linear infinite" }}>
-                      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                    </svg>
-                    Entrando...
-                  </span>
-                ) : "Entrar"}
-              </button>
-
-              {/* Forgot password */}
-              <Link
-                href="/forgot-password"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setIsRecoveryModalOpen(true);
-                }}
-                style={{
-                  textAlign: "center", color: "#C0392B", fontSize: 13,
-                  fontWeight: 600, textDecoration: "none",
-                  transition: "color 0.15s",
-                  cursor: "pointer",
-                }}
-              >
-                Esqueci minha senha
-              </Link>
-            </form>
-          </div>
-
-          {/* Footer */}
-          <p style={{ textAlign: "center", fontSize: 12, color: "#94A3B8", marginTop: 20 }}>
-            © {new Date().getFullYear()} Lion Fitness · Sistema de Gestão
-          </p>
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Entrando...
+                </>
+              ) : (
+                "Entrar"
+              )}
+            </Button>
+          </form>
         </div>
-      </div>
+      </section>
 
       {/* Modal de Recuperação de Senha */}
-      {isRecoveryModalOpen && (
-        <div 
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 100,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(15, 23, 42, 0.45)",
-            backdropFilter: "blur(6px)",
-            padding: "24px",
-            animation: "fadeIn 0.2s ease-out",
-          }}
-          onClick={() => {
-            setIsRecoveryModalOpen(false);
-            setRecoveryEmail("");
-            setRecoverySuccess(false);
-            setRecoveryError("");
-          }}
-        >
-          <div 
-            style={{
-              width: "100%",
-              maxWidth: "420px",
-              background: "#ffffff",
-              borderRadius: "20px",
-              border: "1px solid #E2E8F0",
-              padding: "40px 36px",
-              boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-              animation: "scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {!recoverySuccess ? (
-              <>
-                {/* Header */}
-                <div style={{ marginBottom: 28 }}>
-                  <h2 style={{ fontSize: 24, fontWeight: 800, color: "#1E293B", margin: "0 0 8px", letterSpacing: "-0.02em" }}>
-                    Recuperar senha
-                  </h2>
-                  <p style={{ fontSize: 13, color: "#64748B", margin: 0, lineHeight: 1.5 }}>
-                    Informe seu e-mail para receber o link de redefinição.
-                  </p>
-                </div>
-
-                {/* Form */}
-                <form onSubmit={handleRecoverySubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {/* Email */}
-                  <div className="form-field">
-                    <label className="label" htmlFor="recovery-email">E-mail</label>
-                    <input
-                      id="recovery-email"
-                      type="email"
-                      className="input"
-                      value={recoveryEmail}
-                      onChange={(e) => setRecoveryEmail(e.target.value)}
-                      placeholder="seuemail@lionfitness.com"
-                      autoComplete="email"
-                      required
-                      style={{ height: 44 }}
-                    />
-                  </div>
-
-                  {/* Error */}
-                  {recoveryError && (
-                    <div className="feedback-error" style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13 }}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: 1 }}>
-                        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                      </svg>
-                      {recoveryError}
-                    </div>
-                  )}
-
-                  {/* Buttons */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 8 }}>
-                    <button
-                      type="submit"
-                      className="btn btn-primary btn-lg"
-                      disabled={recoveryLoading}
-                      style={{ width: "100%", height: 46, fontSize: 15 }}
-                    >
-                      {recoveryLoading ? (
-                        <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                            style={{ animation: "spin 0.8s linear infinite" }}>
-                            <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-                          </svg>
-                          Enviando...
-                        </span>
-                      ) : "Enviar instruções"}
-                    </button>
-
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => {
-                        setIsRecoveryModalOpen(false);
-                        setRecoveryEmail("");
-                        setRecoverySuccess(false);
-                        setRecoveryError("");
-                      }}
-                      style={{ 
-                        width: "100%", 
-                        height: 46, 
-                        fontSize: 14, 
-                        background: "transparent", 
-                        border: "1px solid #E2E8F0", 
-                        color: "#64748B",
-                        cursor: "pointer",
-                        borderRadius: "12px",
-                        fontWeight: 600,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        transition: "all 0.15s ease",
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "#F8FAFC"; e.currentTarget.style.color = "#1E293B"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#64748B"; }}
-                    >
-                      Voltar ao login
-                    </button>
-                  </div>
-                </form>
-              </>
-            ) : (
-              <>
-                {/* Success View */}
-                <div style={{ textAlign: "center" }}>
-                  <div style={{
-                    width: 56, height: 56, borderRadius: "50%",
-                    background: "#EAF8EF", color: "#1A5C2A",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    margin: "0 auto 20px", fontSize: 24,
-                  }}>
-                    ✓
-                  </div>
-                  <h2 style={{ fontSize: 24, fontWeight: 800, color: "#1E293B", margin: "0 0 12px", letterSpacing: "-0.02em" }}>
-                    Verifique seu e-mail
-                  </h2>
-                  <p style={{ fontSize: 14, color: "#64748B", margin: "0 0 28px", lineHeight: 1.6 }}>
-                    Enviamos as instruções de recuperação para o endereço informado.
-                  </p>
-
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-lg"
-                    onClick={() => {
-                      setIsRecoveryModalOpen(false);
-                      setRecoveryEmail("");
-                      setRecoverySuccess(false);
-                      setRecoveryError("");
-                    }}
-                    style={{ width: "100%", height: 46, fontSize: 15 }}
-                  >
-                    Voltar ao login
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        @media (max-width: 768px) {
-          .login-hero-col { display: none !important; }
-        }
-      `}</style>
-    </div>
+      <ForgotPasswordDialog
+        open={forgotPasswordOpen}
+        onOpenChange={setForgotPasswordOpen}
+      />
+    </main>
   );
 }

@@ -1,4 +1,4 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://18.116.33.225:8080";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://lionfitness-sa.duckdns.org/api";
 export const AUTH_STORAGE_KEY = "lionfitness.auth";
 
 export function normalizeUserPhoto(user) {
