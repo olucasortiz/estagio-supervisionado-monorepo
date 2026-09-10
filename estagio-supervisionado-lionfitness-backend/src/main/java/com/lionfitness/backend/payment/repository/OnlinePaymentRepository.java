@@ -60,6 +60,33 @@ public class OnlinePaymentRepository {
         return transaction;
     }
 
+    public OnlinePaymentTransaction saveWithIdempotencyKey(
+            OnlinePaymentTransaction transaction,
+            String idempotencyKey) {
+        String sql = """
+                INSERT INTO online_payment_transactions
+                    (id, subscription_id, payment_id, transaction_identifier, amount, requested_at,
+                     confirmed_at, status, gateway_return, idempotency_key)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """;
+
+        jdbcTemplate.update(
+                sql,
+                transaction.id(),
+                transaction.subscriptionId(),
+                transaction.paymentId(),
+                transaction.transactionIdentifier(),
+                transaction.amount(),
+                transaction.requestedAt() != null ? Timestamp.valueOf(transaction.requestedAt()) : Timestamp.valueOf(LocalDateTime.now()),
+                transaction.confirmedAt() != null ? Timestamp.valueOf(transaction.confirmedAt()) : null,
+                transaction.status() != null ? transaction.status() : "PENDING",
+                transaction.gatewayReturn(),
+                idempotencyKey
+        );
+
+        return transaction;
+    }
+
     public Optional<OnlinePaymentTransaction> findById(UUID id) {
         String sql = "SELECT * FROM online_payment_transactions WHERE id = ?";
         List<OnlinePaymentTransaction> list = jdbcTemplate.query(sql, ROW_MAPPER, id);
@@ -69,6 +96,12 @@ public class OnlinePaymentRepository {
     public Optional<OnlinePaymentTransaction> findByTransactionIdentifier(String transactionIdentifier) {
         String sql = "SELECT * FROM online_payment_transactions WHERE transaction_identifier = ?";
         List<OnlinePaymentTransaction> list = jdbcTemplate.query(sql, ROW_MAPPER, transactionIdentifier);
+        return list.stream().findFirst();
+    }
+
+    public Optional<OnlinePaymentTransaction> findByIdempotencyKey(String idempotencyKey) {
+        String sql = "SELECT * FROM online_payment_transactions WHERE idempotency_key = ?";
+        List<OnlinePaymentTransaction> list = jdbcTemplate.query(sql, ROW_MAPPER, idempotencyKey);
         return list.stream().findFirst();
     }
 

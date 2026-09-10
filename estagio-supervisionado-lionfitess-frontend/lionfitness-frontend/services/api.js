@@ -463,11 +463,22 @@ export async function getPixTransactionStatus(transactionId) {
   );
 }
 
-export async function processCardPayment(payload) {
-  return createResource(
+export async function processCardPayment(payload, idempotencyKey) {
+  return requestResource(
     "/payments/card",
-    payload,
+    {
+      method: "POST",
+      headers: { "X-Idempotency-Key": idempotencyKey },
+      body: JSON.stringify(payload),
+    },
     "Falha ao processar pagamento com cartão"
+  );
+}
+
+export async function getCardPaymentStatus(transactionId) {
+  return getResource(
+    `/payments/card/${transactionId}/status`,
+    "Falha ao consultar status do pagamento com cartão"
   );
 }
 

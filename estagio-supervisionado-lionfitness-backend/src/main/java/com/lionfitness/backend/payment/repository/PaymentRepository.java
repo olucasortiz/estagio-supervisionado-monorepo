@@ -226,6 +226,25 @@ public class PaymentRepository {
                 return payments.stream().findFirst();
         }
 
+        public Optional<Payment> findPendingBySubscriptionIdAndMethod(
+                        UUID subscriptionId,
+                        PaymentMethod method) {
+                List<Payment> payments = jdbcTemplate.query(
+                                """
+                                                select id, subscription_id, amount, paid_at, method, status, created_at
+                                                from payments
+                                                where subscription_id = ?
+                                                  and status::text = 'PENDING'
+                                                  and method::text = ?
+                                                order by created_at desc
+                                                """,
+                                PAYMENT_ROW_MAPPER,
+                                subscriptionId,
+                                method.name());
+
+                return payments.stream().findFirst();
+        }
+
         public boolean markAsPaid(UUID paymentId, LocalDate paidAt) {
                 LocalDateTime paidAtDateTime = paidAt != null ? paidAt.atStartOfDay() : LocalDateTime.now();
                 int rows = jdbcTemplate.update(

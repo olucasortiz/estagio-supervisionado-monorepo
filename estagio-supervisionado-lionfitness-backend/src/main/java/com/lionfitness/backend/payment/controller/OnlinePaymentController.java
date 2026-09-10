@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.lionfitness.backend.payment.dto.CardPaymentRequest;
 import com.lionfitness.backend.payment.dto.CardPaymentResponse;
+import com.lionfitness.backend.payment.dto.CardPaymentStatusResponse;
 import com.lionfitness.backend.payment.dto.PixConfirmResponse;
 import com.lionfitness.backend.payment.dto.PixGenerateRequest;
 import com.lionfitness.backend.payment.dto.PixGenerateResponse;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -111,7 +113,7 @@ public class OnlinePaymentController {
     }
 
     /**
-     * Processa pagamento via cartão de crédito ou débito utilizando token seguro do Mercado Pago.
+     * Processa pagamento via cartão de crédito utilizando token seguro do Mercado Pago.
      *
      * <p><b>SEGURANÇA:</b> O endpoint recebe APENAS o token pré-gerado pelo frontend
      * diretamente nos servidores seguros do Mercado Pago. NENHUM número bruto ou CVV trafega aqui.
@@ -127,6 +129,7 @@ public class OnlinePaymentController {
     @PreAuthorize("hasAnyRole('OPERATIONAL', 'ALUNO', 'ADMIN')")
     public ResponseEntity<CardPaymentResponse> processCard(
             @Valid @RequestBody CardPaymentRequest request,
+            @RequestHeader("X-Idempotency-Key") String idempotencyKey,
             Authentication authentication
     ) {
         String requesterEmail = authentication.getName();
@@ -135,11 +138,29 @@ public class OnlinePaymentController {
 
         CardPaymentResponse response = cardPaymentService.processCardPayment(
                 request,
+                idempotencyKey,
                 requesterEmail,
                 isAdmin
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/card/{transactionId}/status")
+    @PreAuthorize("hasAnyRole('OPERATIONAL', 'ALUNO', 'ADMIN')")
+    public ResponseEntity<CardPaymentStatusResponse> getCardStatus(
+            @PathVariable UUID transactionId,
+            Authentication authentication
+    ) {
+        String requesterEmail = authentication.getName();
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        return ResponseEntity.ok(cardPaymentService.getCardPaymentStatus(
+                transactionId,
+                requesterEmail,
+                isAdmin
+        ));
     }
 
     /**

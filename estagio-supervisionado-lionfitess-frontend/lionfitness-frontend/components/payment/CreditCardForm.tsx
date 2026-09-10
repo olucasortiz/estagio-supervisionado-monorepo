@@ -7,9 +7,6 @@ type CreditCardFormProps = {
   expiration: string;
   cvv: string;
   cpf: string;
-  paymentType: "credit_card" | "debit_card";
-  installments?: number;
-  amount?: number | string | null | undefined;
   brand: CardBrand;
   disabled?: boolean;
   onCardNumberChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -17,8 +14,6 @@ type CreditCardFormProps = {
   onExpirationChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onCvvChange: (value: string) => void;
   onCpfChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onPaymentTypeChange: (value: "credit_card" | "debit_card") => void;
-  onInstallmentsChange?: (value: number) => void;
   onCvvFocus: () => void;
   onCvvBlur: () => void;
   onFrontFocus: () => void;
@@ -38,9 +33,6 @@ export function CreditCardForm({
   expiration,
   cvv,
   cpf,
-  paymentType,
-  installments,
-  amount,
   brand,
   disabled = false,
   onCardNumberChange,
@@ -48,8 +40,6 @@ export function CreditCardForm({
   onExpirationChange,
   onCvvChange,
   onCpfChange,
-  onPaymentTypeChange,
-  onInstallmentsChange,
   onCvvFocus,
   onCvvBlur,
   onFrontFocus,
@@ -58,32 +48,6 @@ export function CreditCardForm({
 
   return (
     <div className="grid gap-4">
-      <fieldset>
-        <legend className={labelClass}>Tipo de pagamento</legend>
-        <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={paymentType === "credit_card"}
-            disabled={disabled}
-            onClick={() => onPaymentTypeChange("credit_card")}
-            className={`h-9 rounded-lg text-sm font-semibold transition-all ${paymentType === "credit_card" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            Crédito
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={paymentType === "debit_card"}
-            disabled={disabled}
-            onClick={() => onPaymentTypeChange("debit_card")}
-            className={`h-9 rounded-lg text-sm font-semibold transition-all ${paymentType === "debit_card" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-          >
-            Débito
-          </button>
-        </div>
-      </fieldset>
-
       <div>
         <label htmlFor="payment-card-number" className={labelClass}>Número do cartão</label>
         <div className="relative">

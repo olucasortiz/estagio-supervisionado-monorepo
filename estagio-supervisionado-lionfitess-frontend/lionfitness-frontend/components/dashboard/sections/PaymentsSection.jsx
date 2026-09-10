@@ -115,8 +115,10 @@ export default function PaymentsSection({
 
   const resolveCardContext = (subscriptionId) => {
     const sub = data.subscriptions.find((s) => String(s.id ?? "") === String(subscriptionId ?? ""));
+    const plan = data.plans.find((p) => String(p.id ?? "") === String(sub?.planId ?? sub?.plan_id ?? ""));
     setCardModalMemberName(sub?.memberName || null);
     setCardModalPlanName(sub?.planName || null);
+    setCardModalAmount(plan?.price != null ? Number(plan.price) : null);
   };
 
   const handleOpen = (item = null) => {
@@ -150,7 +152,6 @@ export default function PaymentsSection({
         return;
       }
       setModalOpen(false);
-      setCardModalAmount(forms.payments.amount ? Number(forms.payments.amount) : null);
       setCardModalSubId(forms.payments.subscriptionId);
       resolveCardContext(forms.payments.subscriptionId);
       return;
@@ -230,7 +231,6 @@ export default function PaymentsSection({
                     className="btn btn-ghost btn-sm"
                     style={{ color: "#3B82F6", fontWeight: 700 }}
                     onClick={() => {
-                      setCardModalAmount(item.amount ? Number(item.amount) : null);
                       setCardModalSubId(item.subscriptionId);
                       resolveCardContext(item.subscriptionId);
                     }}

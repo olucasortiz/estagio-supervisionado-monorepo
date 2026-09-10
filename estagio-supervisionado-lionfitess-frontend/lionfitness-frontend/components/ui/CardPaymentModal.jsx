@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CreditCard, LoaderCircle, Lock } from "lucide-react";
-import { processCardPayment, getMercadoPagoPublicKey } from "../../services/api";
+import { getCardPaymentStatus, getMercadoPagoPublicKey, processCardPayment } from "../../services/api";
 import { CreditCardForm } from "../payment/CreditCardForm";
 import { CreditCardPreview } from "../payment/CreditCardPreview";
 import { PaymentStatus } from "../payment/PaymentStatus";
@@ -22,6 +22,18 @@ function detectBrand(number) {
   return "generic";
 }
 
+function createIdempotencyKey() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = character === "x" ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+}
+
 export default function CardPaymentModal({
   open,
   onClose,
@@ -32,7 +44,6 @@ export default function CardPaymentModal({
   memberName = null,
   planName = null,
 }) {
-  const [paymentType, setPaymentType] = useState("credit_card");
   const [cardNumber, setCardNumber] = useState("");
   const [cardholderName, setCardholderName] = useState("");
   const [expiration, setExpiration] = useState("");
@@ -43,11 +54,15 @@ export default function CardPaymentModal({
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [pendingMessage, setPendingMessage] = useState("");
+  const [pendingTransactionId, setPendingTransactionId] = useState(null);
   const successTimerRef = useRef(null);
+  const idempotencyKeyRef = useRef(createIdempotencyKey());
+  const paymentAttemptRef = useRef(null);
 
   // Limpa a interface e os dados sensíveis sempre que o modal muda de ciclo.
   useEffect(() => {
-    setPaymentType("credit_card");
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    successTimerRef.current = null;
     setCardNumber("");
     setCardholderName("");
     setExpiration("");
@@ -56,26 +71,82 @@ export default function CardPaymentModal({
     setError("");
     setSuccessMessage("");
     setPendingMessage("");
+    setPendingTransactionId(null);
     setLoading(false);
     setIsFlipped(false);
+    idempotencyKeyRef.current = createIdempotencyKey();
+    paymentAttemptRef.current = null;
 
     return () => {
       if (successTimerRef.current) clearTimeout(successTimerRef.current);
+      successTimerRef.current = null;
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open || !pendingTransactionId || successMessage) return undefined;
+
+    let active = true;
+
+    const checkStatus = async () => {
+      try {
+        const response = await getCardPaymentStatus(pendingTransactionId);
+        if (!active) return;
+
+        const responseStatus = (response?.status || "").toUpperCase();
+        if (responseStatus === "APPROVED") {
+          setPendingMessage("");
+          setPendingTransactionId(null);
+          setSuccessMessage(response?.message || "Pagamento aprovado com sucesso! Sua assinatura foi renovada.");
+          if (!successTimerRef.current) {
+            successTimerRef.current = setTimeout(() => {
+              successTimerRef.current = null;
+              onSuccess?.();
+              onClose?.();
+            }, 2200);
+          }
+        } else if (responseStatus === "REJECTED") {
+          setPendingMessage("");
+          setPendingTransactionId(null);
+          setError(response?.message || "Pagamento não autorizado pela emissora do cartão.");
+          idempotencyKeyRef.current = createIdempotencyKey();
+          paymentAttemptRef.current = null;
+        }
+      } catch {
+        // Falhas transitórias de polling não alteram o estado do pagamento exibido.
+      }
+    };
+
+    checkStatus();
+    const intervalId = setInterval(checkStatus, 3000);
+
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
+  }, [open, pendingTransactionId, successMessage, onSuccess, onClose]);
+
+  const resetPaymentAttemptAfterEdit = () => {
+    if (!paymentAttemptRef.current) return;
+    paymentAttemptRef.current = null;
+    idempotencyKeyRef.current = createIdempotencyKey();
+  };
+
   const handleCardNumberChange = (event) => {
+    resetPaymentAttemptAfterEdit();
     const raw = event.target.value.replace(/\D/g, "").slice(0, 16);
     setCardNumber(raw.replace(/(\d{4})(?=\d)/g, "$1 "));
   };
 
   const handleExpirationChange = (event) => {
+    resetPaymentAttemptAfterEdit();
     let raw = event.target.value.replace(/\D/g, "").slice(0, 4);
     if (raw.length > 2) raw = `${raw.slice(0, 2)}/${raw.slice(2)}`;
     setExpiration(raw);
   };
 
   const handleCpfChange = (event) => {
+    resetPaymentAttemptAfterEdit();
     let raw = event.target.value.replace(/\D/g, "").slice(0, 11);
     raw = raw
       .replace(/(\d{3})(\d)/, "$1.$2")
@@ -150,67 +221,89 @@ export default function CardPaymentModal({
     setLoading(true);
 
     try {
-      let publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY;
-      if (!publicKey) {
-        try {
-          const config = await getMercadoPagoPublicKey();
-          publicKey = config?.publicKey;
-        } catch {
-          // A mensagem específica de configuração é exibida abaixo se ambos falharem.
+      let paymentAttempt = paymentAttemptRef.current;
+      if (!paymentAttempt) {
+        let publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY;
+        if (!publicKey) {
+          try {
+            const config = await getMercadoPagoPublicKey();
+            publicKey = config?.publicKey;
+          } catch {
+            // A mensagem específica de configuração é exibida abaixo se ambos falharem.
+          }
         }
+
+        if (!publicKey) throw new Error("Chave de integração do Mercado Pago não configurada no ambiente.");
+
+        const MpConstructor = await loadMercadoPagoSdk();
+        if (!MpConstructor) throw new Error("Não foi possível inicializar o módulo de pagamento seguro.");
+
+        const mp = new MpConstructor(publicKey, { locale: "pt-BR" });
+        const bin = cleanCardNumber.slice(0, 8);
+        const paymentMethodsResult = await mp.getPaymentMethods({ bin });
+        const paymentMethods = Array.isArray(paymentMethodsResult)
+          ? paymentMethodsResult
+          : paymentMethodsResult?.results;
+        const paymentMethod = paymentMethods?.find(
+          (method) => method?.payment_type_id === "credit_card"
+        );
+
+        if (!paymentMethod?.id) {
+          throw new Error("Este cartão não possui uma modalidade de crédito disponível para pagamento.");
+        }
+
+        // Os dados brutos seguem diretamente do navegador ao Mercado Pago. Somente
+        // o token retornado é enviado à API Spring Boot.
+        const cardTokenResult = await mp.createCardToken({
+          cardNumber: cleanCardNumber,
+          cardholderName: cardholderName.trim(),
+          cardExpirationMonth: String(month).padStart(2, "0"),
+          cardExpirationYear: String(year),
+          securityCode: cleanCvv,
+          identificationType: "CPF",
+          identificationNumber: cleanCpf,
+        });
+
+        if (!cardTokenResult || !cardTokenResult.id) {
+          throw new Error("Não foi possível validar os dados do cartão junto ao emissor.");
+        }
+
+        paymentAttempt = {
+          token: cardTokenResult.id,
+          paymentMethodId: paymentMethod.id,
+        };
+        paymentAttemptRef.current = paymentAttempt;
       }
 
-      if (!publicKey) throw new Error("Chave de integração do Mercado Pago não configurada no ambiente.");
-
-      const MpConstructor = await loadMercadoPagoSdk();
-      if (!MpConstructor) throw new Error("Não foi possível inicializar o módulo de pagamento seguro.");
-
-      const mp = new MpConstructor(publicKey, { locale: "pt-BR" });
-
-      // Os dados brutos seguem diretamente do navegador ao Mercado Pago. Somente
-      // o token retornado é enviado à API Spring Boot.
-      const cardTokenResult = await mp.createCardToken({
-        cardNumber: cleanCardNumber,
-        cardholderName: cardholderName.trim(),
-        cardExpirationMonth: String(month).padStart(2, "0"),
-        cardExpirationYear: String(year),
-        securityCode: cleanCvv,
-        identificationType: "CPF",
-        identificationNumber: cleanCpf,
-      });
-
-      if (!cardTokenResult || !cardTokenResult.id) {
-        throw new Error("Não foi possível validar os dados do cartão junto ao emissor.");
-      }
-
-      const token = cardTokenResult.id;
-      const detectedBrand = detectBrand(cleanCardNumber);
-      const paymentMethodId = detectedBrand !== "generic" ? detectedBrand : "visa";
       const payload = {
         subscriptionId,
-        token,
-        paymentMethodId,
-        paymentTypeId: paymentType,
+        token: paymentAttempt.token,
+        paymentMethodId: paymentAttempt.paymentMethodId,
+        paymentTypeId: "credit_card",
         installments: 1,
         identificationType: "CPF",
         identificationNumber: cleanCpf,
       };
 
-      const response = await processCardPayment(payload);
+      const response = await processCardPayment(payload, idempotencyKeyRef.current);
       const responseStatus = (response?.status || "").toUpperCase();
 
       if (responseStatus === "APPROVED") {
         setSuccessMessage(response?.message || "Pagamento aprovado com sucesso! Sua assinatura foi renovada.");
         successTimerRef.current = setTimeout(() => {
+          successTimerRef.current = null;
           onSuccess?.();
           onClose?.();
         }, 2200);
       } else if (responseStatus === "REJECTED") {
         setError(response?.message || "Pagamento não autorizado pela emissora do cartão.");
+        idempotencyKeyRef.current = createIdempotencyKey();
+        paymentAttemptRef.current = null;
       } else {
         // Tokenização concluída não equivale a pagamento aprovado. O status real
         // do backend é apresentado sem disparar o callback de sucesso.
         setPendingMessage(response?.message || "Pagamento em análise pelo Mercado Pago.");
+        setPendingTransactionId(response?.transactionId || null);
       }
     } catch (err) {
       // Não registra o objeto de erro para evitar que respostas do SDK exponham
@@ -223,16 +316,17 @@ export default function CardPaymentModal({
   };
 
   const brand = detectBrand(cardNumber);
-  const methodLabel = paymentType === "credit_card" ? "Cartão de crédito" : "Cartão de débito";
+  const methodLabel = "Cartão de crédito";
   const viewState = successMessage ? "success" : pendingMessage ? "waiting" : error ? "error" : loading ? "processing" : "idle";
   const handleComplete = () => {
     if (successTimerRef.current) clearTimeout(successTimerRef.current);
+    successTimerRef.current = null;
     onSuccess?.();
     onClose?.();
   };
   const subtitle = isAdmin && memberName
     ? <><span className="font-medium text-foreground">{memberName}</span>{planName ? ` · ${planName}` : ""}</>
-    : "Crédito ou débito com tokenização segura";
+    : "Crédito com tokenização segura";
 
   return (
     <Modal
@@ -282,16 +376,19 @@ export default function CardPaymentModal({
               expiration={expiration}
               cvv={cvv}
               cpf={cpf}
-              paymentType={paymentType}
-              amount={amount}
               brand={brand}
               disabled={loading}
               onCardNumberChange={handleCardNumberChange}
-              onCardholderNameChange={setCardholderName}
+              onCardholderNameChange={(value) => {
+                resetPaymentAttemptAfterEdit();
+                setCardholderName(value);
+              }}
               onExpirationChange={handleExpirationChange}
-              onCvvChange={setCvv}
+              onCvvChange={(value) => {
+                resetPaymentAttemptAfterEdit();
+                setCvv(value);
+              }}
               onCpfChange={handleCpfChange}
-              onPaymentTypeChange={setPaymentType}
               onCvvFocus={() => setIsFlipped(true)}
               onCvvBlur={() => setIsFlipped(false)}
               onFrontFocus={() => setIsFlipped(false)}

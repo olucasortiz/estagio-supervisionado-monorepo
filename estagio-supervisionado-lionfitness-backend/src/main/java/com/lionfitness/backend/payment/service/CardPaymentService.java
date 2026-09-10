@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lionfitness.backend.payment.dto.CardPaymentRequest;
 import com.lionfitness.backend.payment.dto.CardPaymentResponse;
+import com.lionfitness.backend.payment.dto.CardPaymentStatusResponse;
 import com.lionfitness.backend.payment.exception.MercadoPagoGatewayException;
 import com.lionfitness.backend.payment.model.OnlinePaymentTransaction;
 import com.lionfitness.backend.payment.model.Payment;
@@ -30,7 +31,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 /**
- * Serviço responsável pelo processamento seguro de pagamentos com cartão (crédito e débito)
+ * Serviço responsável pelo processamento seguro de pagamentos com cartão de crédito
  * via API oficial do Mercado Pago.
  *
  * <p><b>SEGURANÇA ARQUITETURAL:</b>
@@ -80,9 +81,11 @@ public class CardPaymentService {
     @Transactional
     public CardPaymentResponse processCardPayment(
             CardPaymentRequest request,
+            String idempotencyKey,
             String requesterEmail,
             boolean isAdmin
     ) {
+        String effectiveIdempotencyKey = validateIdempotencyKey(idempotencyKey);
         UUID subscriptionId = request.subscriptionId();
         logger.info("Iniciando processamento de pagamento com cartão: subscriptionId={} requester={} isAdmin={}",
                 subscriptionId, requesterEmail, isAdmin);
@@ -100,6 +103,19 @@ public class CardPaymentService {
                     ));
         }
 
+        Optional<OnlinePaymentTransaction> existingAttempt = onlinePaymentRepository
+                .findByIdempotencyKey(effectiveIdempotencyKey);
+        if (existingAttempt.isPresent()) {
+            OnlinePaymentTransaction transaction = existingAttempt.get();
+            if (!subscriptionId.equals(transaction.subscriptionId())) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "A chave de idempotência já foi utilizada em outra assinatura."
+                );
+            }
+            return toExistingPaymentResponse(transaction, request);
+        }
+
         // 2. Preço oficial do plano no banco de dados (nunca confiamos em dados do frontend)
         SubscriptionRepository.PlanSubscriptionData planData = subscriptionRepository
                 .findActivePlanData(subscription.planId())
@@ -110,14 +126,12 @@ public class CardPaymentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O valor oficial do plano associado é inválido.");
         }
 
-        // 3. Determina se é débito ou crédito
-        boolean isDebit = "debit_card".equalsIgnoreCase(request.paymentTypeId())
-                || (request.paymentMethodId() != null && request.paymentMethodId().toLowerCase().contains("deb"));
-        PaymentMethod paymentMethod = isDebit ? PaymentMethod.DEBIT_CARD : PaymentMethod.CREDIT_CARD;
-        int installments = isDebit ? 1 : request.resolveInstallments();
+        // 3. O checkout atual aceita somente cartão de crédito.
+        PaymentMethod paymentMethod = PaymentMethod.CREDIT_CARD;
+        int installments = request.resolveInstallments();
 
         // 4. Cria ou reutiliza o Payment associado
-        Payment payment = paymentRepository.findPendingBySubscriptionId(subscriptionId)
+        Payment payment = paymentRepository.findPendingBySubscriptionIdAndMethod(subscriptionId, paymentMethod)
                 .orElseGet(() -> paymentRepository.save(
                         UUID.randomUUID(),
                         subscriptionId,
@@ -140,7 +154,8 @@ public class CardPaymentService {
                 effectivePayerEmail,
                 request.identificationType(),
                 request.identificationNumber(),
-                subscriptionId
+                subscriptionId,
+                effectiveIdempotencyKey
         );
 
         // 6. Interpreta o resultado do Mercado Pago
@@ -187,7 +202,7 @@ public class CardPaymentService {
                 normalizedStatus,
                 gatewayReturnJson
         );
-        onlinePaymentRepository.save(transaction);
+        onlinePaymentRepository.saveWithIdempotencyKey(transaction, effectiveIdempotencyKey);
 
         // 8. Se aprovado imediatamente, baixa o pagamento e renova a assinatura
         String userFriendlyMessage;
@@ -219,6 +234,28 @@ public class CardPaymentService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public CardPaymentStatusResponse getCardPaymentStatus(
+            UUID transactionId,
+            String requesterEmail,
+            boolean isAdmin
+    ) {
+        OnlinePaymentTransaction transaction = isAdmin
+                ? onlinePaymentRepository.findById(transactionId).orElse(null)
+                : onlinePaymentRepository.findByIdAndUserEmail(transactionId, requesterEmail).orElse(null);
+
+        if (transaction == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Transação de cartão não encontrada.");
+        }
+
+        return new CardPaymentStatusResponse(
+                transaction.id(),
+                transaction.status(),
+                messageForStatus(transaction.status(), null),
+                transaction.confirmedAt()
+        );
+    }
+
     /**
      * Executa a chamada HTTP para o Mercado Pago com headers de idempotência e token.
      */
@@ -231,10 +268,9 @@ public class CardPaymentService {
             String payerEmail,
             String identificationType,
             String identificationNumber,
-            UUID subscriptionId
+            UUID subscriptionId,
+            String idempotencyKey
     ) {
-        String idempotencyKey = UUID.randomUUID().toString();
-
         Map<String, Object> payload = new HashMap<>();
         payload.put("transaction_amount", amount);
         payload.put("token", token);
@@ -302,5 +338,53 @@ public class CardPaymentService {
             case "cc_rejected_max_attempts" -> "Limite de tentativas excedido. Tente novamente mais tarde ou use outro cartão.";
             default -> "Pagamento não aprovado pela operadora (" + statusDetail + "). Tente outro cartão.";
         };
+    }
+
+    private String validateIdempotencyKey(String idempotencyKey) {
+        if (idempotencyKey == null || idempotencyKey.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "X-Idempotency-Key é obrigatório.");
+        }
+
+        String normalized = idempotencyKey.trim();
+        if (normalized.length() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "X-Idempotency-Key é inválido.");
+        }
+        try {
+            UUID.fromString(normalized);
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "X-Idempotency-Key deve ser um UUID válido.");
+        }
+        return normalized;
+    }
+
+    private CardPaymentResponse toExistingPaymentResponse(
+            OnlinePaymentTransaction transaction,
+            CardPaymentRequest request
+    ) {
+        return new CardPaymentResponse(
+                transaction.id(),
+                transaction.subscriptionId(),
+                transaction.paymentId(),
+                transaction.transactionIdentifier(),
+                transaction.amount(),
+                transaction.status(),
+                "",
+                messageForStatus(transaction.status(), null),
+                request.paymentMethodId(),
+                request.resolveInstallments(),
+                transaction.requestedAt()
+        );
+    }
+
+    private String messageForStatus(String status, String statusDetail) {
+        if ("APPROVED".equalsIgnoreCase(status) || "CONFIRMED".equalsIgnoreCase(status)) {
+            return "Pagamento aprovado com sucesso! Sua assinatura foi renovada.";
+        }
+        if ("REJECTED".equalsIgnoreCase(status)) {
+            return statusDetail == null || statusDetail.isBlank()
+                    ? "Pagamento não aprovado pela emissora do cartão."
+                    : mapRejectionReason(statusDetail);
+        }
+        return "Pagamento em análise pelo Mercado Pago. A confirmação ocorrerá em instantes.";
     }
 }

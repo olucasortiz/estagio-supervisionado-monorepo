@@ -2,6 +2,7 @@ package com.lionfitness.backend.payment.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 import java.util.UUID;
 
@@ -22,7 +23,9 @@ public record CardPaymentRequest(
         @NotBlank(message = "paymentMethodId (ex: visa, master, elo) é obrigatório.")
         String paymentMethodId,
 
-        String paymentTypeId, // credit_card ou debit_card (opcional)
+        @NotBlank(message = "paymentTypeId é obrigatório.")
+        @Pattern(regexp = "(?i)credit_card", message = "Apenas cartão de crédito é aceito.")
+        String paymentTypeId,
 
         Integer installments, // Número de parcelas (padrão 1)
 
