@@ -92,6 +92,11 @@ public class PaymentAttemptReservationService {
         return new Reservation(transaction, false);
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean rejectUnconfirmedAttempt(UUID transactionId) {
+        return onlinePaymentRepository.markRejectedIfPendingLocal(transactionId);
+    }
+
     private OnlinePaymentTransaction newTransaction(UUID transactionId,
                                                     UUID subscriptionId,
                                                     UUID paymentId,

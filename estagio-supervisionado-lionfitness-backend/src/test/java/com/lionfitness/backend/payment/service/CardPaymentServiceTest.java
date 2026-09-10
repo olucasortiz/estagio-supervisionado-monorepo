@@ -3,6 +3,7 @@ package com.lionfitness.backend.payment.service;
 import com.lionfitness.backend.payment.dto.CardPaymentRequest;
 import com.lionfitness.backend.payment.dto.CardPaymentResponse;
 import com.lionfitness.backend.payment.dto.CardPaymentStatusResponse;
+import com.lionfitness.backend.payment.exception.MercadoPagoGatewayException;
 import com.lionfitness.backend.payment.mercadopago.MercadoPagoOrder;
 import com.lionfitness.backend.payment.mercadopago.MercadoPagoOrderClient;
 import com.lionfitness.backend.payment.model.OnlinePaymentTransaction;
@@ -98,6 +99,75 @@ class CardPaymentServiceTest {
     }
 
     @Test
+    void definitive400RejectsAttemptAndNextExplicitActionUsesNewKey() {
+        String nextKey = UUID.randomUUID().toString();
+        OnlinePaymentTransaction rejected = transaction("LOCAL-rejected", "PENDING", idempotencyKey);
+        OnlinePaymentTransaction next = transaction("LOCAL-next", "PENDING", nextKey);
+        when(reservationService.reserveCard(subscriptionId, studentEmail, false, idempotencyKey))
+                .thenReturn(new PaymentAttemptReservationService.Reservation(rejected, false));
+        when(reservationService.reserveCard(subscriptionId, studentEmail, false, nextKey))
+                .thenReturn(new PaymentAttemptReservationService.Reservation(next, false));
+        when(orderClient.createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+                eq(rejected.id().toString()), eq(idempotencyKey)))
+                .thenThrow(gatewayFailure(400, "invalid_email_for_sandbox"));
+        when(orderClient.createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+                eq(next.id().toString()), eq(nextKey)))
+                .thenReturn(approvedOrder(next.id().toString()));
+        when(settlementService.synchronize(eq(next.id()), any())).thenReturn(
+                new PaymentSettlementService.SettlementResult("APPROVED", "accredited", true, "{}"));
+
+        assertThatThrownBy(() -> service.processCardPayment(request(), idempotencyKey, studentEmail, false))
+                .isInstanceOf(MercadoPagoGatewayException.class);
+        CardPaymentResponse response = service.processCardPayment(request(), nextKey, studentEmail, false);
+
+        assertThat(response.status()).isEqualTo("APPROVED");
+        verify(reservationService).rejectUnconfirmedAttempt(rejected.id());
+        verify(orderClient).createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+                eq(next.id().toString()), eq(nextKey));
+    }
+
+    @Test
+    void serverFailureKeepsSameKeyForRetry() {
+        OnlinePaymentTransaction reserved = transaction("LOCAL-reserved", "PENDING", idempotencyKey);
+        when(reservationService.reserveCard(subscriptionId, studentEmail, false, idempotencyKey))
+                .thenReturn(new PaymentAttemptReservationService.Reservation(reserved, false),
+                        new PaymentAttemptReservationService.Reservation(reserved, true));
+        when(orderClient.createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+                eq(reserved.id().toString()), eq(idempotencyKey)))
+                .thenThrow(gatewayFailure(503, "service_unavailable"))
+                .thenReturn(approvedOrder(reserved.id().toString()));
+        when(settlementService.synchronize(eq(reserved.id()), any())).thenReturn(
+                new PaymentSettlementService.SettlementResult("APPROVED", "accredited", true, "{}"));
+
+        assertThatThrownBy(() -> service.processCardPayment(request(), idempotencyKey, studentEmail, false))
+                .isInstanceOf(MercadoPagoGatewayException.class);
+        service.processCardPayment(request(), idempotencyKey, studentEmail, false);
+
+        verify(reservationService, never()).rejectUnconfirmedAttempt(any());
+        verify(orderClient, times(2)).createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+                eq(reserved.id().toString()), eq(idempotencyKey));
+    }
+
+    @Test
+    void idempotencyConflictRejectsAttemptWithoutAutomaticRetry() {
+        OnlinePaymentTransaction reserved = transaction("LOCAL-reserved", "PENDING", idempotencyKey);
+        when(reservationService.reserveCard(subscriptionId, studentEmail, false, idempotencyKey))
+                .thenReturn(new PaymentAttemptReservationService.Reservation(reserved, true));
+        when(orderClient.createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+                eq(reserved.id().toString()), eq(idempotencyKey)))
+                .thenThrow(gatewayFailure(409, "idempotency_key_already_used"));
+
+        assertThatThrownBy(() -> service.processCardPayment(request(), idempotencyKey, studentEmail, false))
+                .isInstanceOfSatisfying(MercadoPagoGatewayException.class,
+                        exception -> assertThat(exception.isIdempotencyKeyAlreadyUsed()).isTrue());
+
+        verify(reservationService).rejectUnconfirmedAttempt(reserved.id());
+        verify(orderClient, times(1)).createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+                eq(reserved.id().toString()), eq(idempotencyKey));
+        verifyNoInteractions(settlementService);
+    }
+
+    @Test
     void blocksPaymentForAnotherStudentBeforeCallingMercadoPago() {
         when(reservationService.reserveCard(subscriptionId, studentEmail, false, idempotencyKey))
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN));
@@ -156,5 +226,9 @@ class CardPaymentServiceTest {
                 "PAY-card", price, price, "processed", "accredited", null, null, method);
         return new MercadoPagoOrder("ORD-card", "online", "automatic", externalReference,
                 price, "processed", "accredited", new MercadoPagoOrder.Transactions(List.of(payment)));
+    }
+
+    private MercadoPagoGatewayException gatewayFailure(int status, String code) {
+        return new MercadoPagoGatewayException("Order rejected", status, code, null);
     }
 }

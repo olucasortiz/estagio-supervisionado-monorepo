@@ -3,6 +3,7 @@ package com.lionfitness.backend.payment.service;
 import com.lionfitness.backend.payment.dto.CardPaymentRequest;
 import com.lionfitness.backend.payment.dto.CardPaymentResponse;
 import com.lionfitness.backend.payment.dto.CardPaymentStatusResponse;
+import com.lionfitness.backend.payment.exception.MercadoPagoGatewayException;
 import com.lionfitness.backend.payment.mercadopago.MercadoPagoOrder;
 import com.lionfitness.backend.payment.mercadopago.MercadoPagoOrderClient;
 import com.lionfitness.backend.payment.model.OnlinePaymentTransaction;
@@ -70,17 +71,23 @@ public class CardPaymentService {
                                                       String idempotencyKey) {
         logger.info("Criando Order de cartão: transactionId={} subscriptionId={} installments={} method={}",
                 transaction.id(), transaction.subscriptionId(), installments, request.paymentMethodId());
-        MercadoPagoOrder order = orderClient.createCardOrder(
-                amount,
-                request.token(),
-                request.paymentMethodId(),
-                installments,
-                payerEmail,
-                request.identificationType(),
-                request.identificationNumber(),
-                transaction.id().toString(),
-                idempotencyKey
-        );
+        MercadoPagoOrder order;
+        try {
+            order = orderClient.createCardOrder(
+                    amount,
+                    request.token(),
+                    request.paymentMethodId(),
+                    installments,
+                    payerEmail,
+                    request.identificationType(),
+                    request.identificationNumber(),
+                    transaction.id().toString(),
+                    idempotencyKey
+            );
+        } catch (MercadoPagoGatewayException exception) {
+            rejectAttemptIfDefinitive(transaction, exception);
+            throw exception;
+        }
         PaymentSettlementService.SettlementResult result = settlementService.synchronize(transaction.id(), order);
         String message = messageForStatus(result.status(), result.statusDetail());
         return new CardPaymentResponse(
@@ -88,6 +95,13 @@ public class CardPaymentService {
                 result.status(), result.statusDetail(), message, request.paymentMethodId(), installments,
                 LocalDateTime.now()
         );
+    }
+
+    private void rejectAttemptIfDefinitive(OnlinePaymentTransaction transaction,
+                                           MercadoPagoGatewayException exception) {
+        if (exception.isIdempotencyKeyAlreadyUsed() || exception.isDefinitiveClientRejection()) {
+            reservationService.rejectUnconfirmedAttempt(transaction.id());
+        }
     }
 
     public CardPaymentStatusResponse getCardPaymentStatus(UUID transactionId,

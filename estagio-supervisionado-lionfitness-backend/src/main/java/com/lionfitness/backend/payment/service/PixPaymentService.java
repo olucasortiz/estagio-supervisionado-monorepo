@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lionfitness.backend.payment.dto.PixConfirmResponse;
 import com.lionfitness.backend.payment.dto.PixGenerateResponse;
 import com.lionfitness.backend.payment.dto.PixStatusResponse;
+import com.lionfitness.backend.payment.exception.MercadoPagoGatewayException;
 import com.lionfitness.backend.payment.mercadopago.MercadoPagoOrder;
 import com.lionfitness.backend.payment.mercadopago.MercadoPagoOrderClient;
 import com.lionfitness.backend.payment.model.OnlinePaymentTransaction;
@@ -84,17 +85,27 @@ public class PixPaymentService {
             if (pending.transactionIdentifier() != null
                     && pending.transactionIdentifier().startsWith(LOCAL_IDENTIFIER_PREFIX)
                     && pending.idempotencyKey() != null) {
-                MercadoPagoOrder order = orderClient.createPixOrder(
-                        pending.amount(), payerEmail, pending.id().toString(), pending.idempotencyKey());
+                MercadoPagoOrder order = createPixOrder(pending, payerEmail);
                 return synchronizeAndRespond(pending, order);
             }
             throw new IllegalStateException("A reserva Pix pendente não pode ser reconciliada.");
         }
         logger.info("Criando Order Pix: transactionId={} subscriptionId={}",
                 transaction.id(), transaction.subscriptionId());
-        MercadoPagoOrder order = orderClient.createPixOrder(
-                transaction.amount(), payerEmail, transaction.id().toString(), transaction.idempotencyKey());
+        MercadoPagoOrder order = createPixOrder(transaction, payerEmail);
         return synchronizeAndRespond(transaction, order);
+    }
+
+    private MercadoPagoOrder createPixOrder(OnlinePaymentTransaction transaction, String payerEmail) {
+        try {
+            return orderClient.createPixOrder(
+                    transaction.amount(), payerEmail, transaction.id().toString(), transaction.idempotencyKey());
+        } catch (MercadoPagoGatewayException exception) {
+            if (exception.isIdempotencyKeyAlreadyUsed() || exception.isDefinitiveClientRejection()) {
+                reservationService.rejectUnconfirmedAttempt(transaction.id());
+            }
+            throw exception;
+        }
     }
 
     private PixGenerateResponse synchronizeAndRespond(OnlinePaymentTransaction transaction, MercadoPagoOrder order) {

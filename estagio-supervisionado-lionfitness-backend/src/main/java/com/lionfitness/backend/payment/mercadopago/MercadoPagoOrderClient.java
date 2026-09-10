@@ -1,5 +1,6 @@
 package com.lionfitness.backend.payment.mercadopago;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lionfitness.backend.payment.exception.MercadoPagoGatewayException;
 import org.slf4j.Logger;
@@ -151,6 +152,7 @@ public class MercadoPagoOrderClient {
             throw new MercadoPagoGatewayException(
                     "Falha ao criar a Order no Mercado Pago.",
                     exception.getStatusCode().value(),
+                    parseGatewayErrorCode(exception),
                     exception
             );
         } catch (RestClientException exception) {
@@ -178,6 +180,29 @@ public class MercadoPagoOrderClient {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    private String parseGatewayErrorCode(RestClientResponseException exception) {
+        try {
+            JsonNode root = objectMapper.readTree(exception.getResponseBodyAsByteArray());
+            String code = nonBlankText(root.path("code"));
+            if (code == null) {
+                code = nonBlankText(root.path("error"));
+            }
+            if (code == null && root.path("errors").isArray() && !root.path("errors").isEmpty()) {
+                code = nonBlankText(root.path("errors").get(0).path("code"));
+            }
+            if (code == null && root.path("cause").isArray() && !root.path("cause").isEmpty()) {
+                code = nonBlankText(root.path("cause").get(0).path("code"));
+            }
+            return code;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private String nonBlankText(JsonNode node) {
+        return node.isValueNode() && !node.asText().isBlank() ? node.asText() : null;
     }
 
     private MercadoPagoOrder requireValidOrder(MercadoPagoOrder order) {

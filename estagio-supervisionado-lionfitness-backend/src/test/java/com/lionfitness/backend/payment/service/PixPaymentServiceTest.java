@@ -3,6 +3,7 @@ package com.lionfitness.backend.payment.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lionfitness.backend.payment.dto.PixGenerateResponse;
 import com.lionfitness.backend.payment.dto.PixStatusResponse;
+import com.lionfitness.backend.payment.exception.MercadoPagoGatewayException;
 import com.lionfitness.backend.payment.mercadopago.MercadoPagoOrder;
 import com.lionfitness.backend.payment.mercadopago.MercadoPagoOrderClient;
 import com.lionfitness.backend.payment.model.OnlinePaymentTransaction;
@@ -109,6 +110,71 @@ class PixPaymentServiceTest {
     }
 
     @Test
+    void definitive400RejectsPixAttemptAndNextActionUsesNewKey() {
+        OnlinePaymentTransaction rejected = reservedTransaction();
+        OnlinePaymentTransaction next = reservedTransaction();
+        when(reservationService.reservePix(subscriptionId, studentEmail, false))
+                .thenReturn(new PaymentAttemptReservationService.Reservation(rejected, false),
+                        new PaymentAttemptReservationService.Reservation(next, false));
+        when(orderClient.createPixOrder(price, studentEmail, rejected.id().toString(),
+                rejected.idempotencyKey())).thenThrow(gatewayFailure(400, "invalid_email_for_sandbox"));
+        when(orderClient.createPixOrder(price, studentEmail, next.id().toString(), next.idempotencyKey()))
+                .thenReturn(pixOrder(next.id().toString()));
+        when(settlementService.synchronize(eq(next.id()), any())).thenReturn(
+                new PaymentSettlementService.SettlementResult("PENDING", "waiting_transfer", false, "{}"));
+
+        assertThatThrownBy(() -> service.generatePixTransaction(subscriptionId, null, studentEmail, false))
+                .isInstanceOf(MercadoPagoGatewayException.class);
+        PixGenerateResponse response = service.generatePixTransaction(subscriptionId, null, studentEmail, false);
+
+        assertThat(response.transactionId()).isEqualTo(next.id());
+        assertThat(next.idempotencyKey()).isNotEqualTo(rejected.idempotencyKey());
+        verify(reservationService).rejectUnconfirmedAttempt(rejected.id());
+        verify(orderClient).createPixOrder(price, studentEmail, next.id().toString(), next.idempotencyKey());
+    }
+
+    @Test
+    void timeoutKeepsSamePixKeyForRetry() {
+        OnlinePaymentTransaction reserved = reservedTransaction();
+        when(reservationService.reservePix(subscriptionId, studentEmail, false))
+                .thenReturn(new PaymentAttemptReservationService.Reservation(reserved, false),
+                        new PaymentAttemptReservationService.Reservation(reserved, true));
+        when(orderClient.createPixOrder(price, studentEmail, reserved.id().toString(),
+                reserved.idempotencyKey()))
+                .thenThrow(new MercadoPagoGatewayException("timeout", new RuntimeException("timeout")))
+                .thenReturn(pixOrder(reserved.id().toString()));
+        when(settlementService.synchronize(eq(reserved.id()), any())).thenReturn(
+                new PaymentSettlementService.SettlementResult("PENDING", "waiting_transfer", false, "{}"));
+
+        assertThatThrownBy(() -> service.generatePixTransaction(subscriptionId, null, studentEmail, false))
+                .isInstanceOf(MercadoPagoGatewayException.class);
+        service.generatePixTransaction(subscriptionId, null, studentEmail, false);
+
+        verify(reservationService, never()).rejectUnconfirmedAttempt(any());
+        verify(orderClient, times(2)).createPixOrder(
+                price, studentEmail, reserved.id().toString(), reserved.idempotencyKey());
+    }
+
+    @Test
+    void idempotencyConflictRejectsPixAttemptWithoutAutomaticRetry() {
+        OnlinePaymentTransaction reserved = reservedTransaction();
+        when(reservationService.reservePix(subscriptionId, studentEmail, false))
+                .thenReturn(new PaymentAttemptReservationService.Reservation(reserved, true));
+        when(orderClient.createPixOrder(price, studentEmail, reserved.id().toString(),
+                reserved.idempotencyKey()))
+                .thenThrow(gatewayFailure(409, "idempotency_key_already_used"));
+
+        assertThatThrownBy(() -> service.generatePixTransaction(subscriptionId, null, studentEmail, false))
+                .isInstanceOfSatisfying(MercadoPagoGatewayException.class,
+                        exception -> assertThat(exception.isIdempotencyKeyAlreadyUsed()).isTrue());
+
+        verify(reservationService).rejectUnconfirmedAttempt(reserved.id());
+        verify(orderClient, times(1)).createPixOrder(
+                price, studentEmail, reserved.id().toString(), reserved.idempotencyKey());
+        verifyNoInteractions(settlementService);
+    }
+
+    @Test
     void blocksPixForAnotherStudentBeforeCallingMercadoPago() {
         when(reservationService.reservePix(subscriptionId, studentEmail, false))
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN));
@@ -181,5 +247,9 @@ class PixPaymentServiceTest {
                 "PAY-pix", price, price, "processed", "accredited", null, null, method);
         return new MercadoPagoOrder("ORD-approved", "online", "automatic", externalReference,
                 price, "processed", "accredited", new MercadoPagoOrder.Transactions(List.of(payment)));
+    }
+
+    private MercadoPagoGatewayException gatewayFailure(int status, String code) {
+        return new MercadoPagoGatewayException("Order rejected", status, code, null);
     }
 }

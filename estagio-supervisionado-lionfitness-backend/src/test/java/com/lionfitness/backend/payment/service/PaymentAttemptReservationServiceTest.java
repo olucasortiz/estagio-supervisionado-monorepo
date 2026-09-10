@@ -52,10 +52,14 @@ class PaymentAttemptReservationServiceTest {
                 "reserveCard", UUID.class, String.class, boolean.class, String.class);
         Method pix = PaymentAttemptReservationService.class.getMethod(
                 "reservePix", UUID.class, String.class, boolean.class);
+        Method reject = PaymentAttemptReservationService.class.getMethod(
+                "rejectUnconfirmedAttempt", UUID.class);
 
         assertThat(card.getAnnotation(Transactional.class).propagation())
                 .isEqualTo(Propagation.REQUIRES_NEW);
         assertThat(pix.getAnnotation(Transactional.class).propagation())
+                .isEqualTo(Propagation.REQUIRES_NEW);
+        assertThat(reject.getAnnotation(Transactional.class).propagation())
                 .isEqualTo(Propagation.REQUIRES_NEW);
     }
 
@@ -93,6 +97,16 @@ class PaymentAttemptReservationServiceTest {
         assertThat(transaction.idempotencyKey()).isEqualTo(transaction.id().toString());
         verify(onlinePaymentRepository)
                 .saveWithIdempotencyKey(transaction, transaction.id().toString());
+    }
+
+    @Test
+    void rejectsOnlyTheUnconfirmedLocalAttemptThroughRepository() {
+        UUID transactionId = UUID.randomUUID();
+        when(onlinePaymentRepository.markRejectedIfPendingLocal(transactionId)).thenReturn(true);
+
+        assertThat(service.rejectUnconfirmedAttempt(transactionId)).isTrue();
+
+        verify(onlinePaymentRepository).markRejectedIfPendingLocal(transactionId);
     }
 
     private void stubSubscription() {

@@ -129,6 +129,19 @@ public class OnlinePaymentRepository {
         return rows > 0;
     }
 
+    public boolean markRejectedIfPendingLocal(UUID id) {
+        int rows = jdbcTemplate.update(
+                """
+                UPDATE online_payment_transactions
+                SET status = 'REJECTED'
+                WHERE id = ?
+                  AND upper(status) = 'PENDING'
+                  AND transaction_identifier LIKE 'LOCAL-%'
+                """,
+                id);
+        return rows > 0;
+    }
+
     public boolean updateOrderStateIfNotApproved(UUID id, String orderId, String status,
                                                   LocalDateTime confirmedAt, String gatewayReturn) {
         int rows = jdbcTemplate.update(

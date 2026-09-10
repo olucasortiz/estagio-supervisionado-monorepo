@@ -1,8 +1,10 @@
 package com.lionfitness.backend.payment.mercadopago;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lionfitness.backend.payment.exception.MercadoPagoGatewayException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -10,9 +12,11 @@ import org.springframework.web.client.RestClient;
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.ExpectedCount.once;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.*;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 class MercadoPagoOrderClientTest {
     private RestClient.Builder builder;
@@ -96,6 +100,38 @@ class MercadoPagoOrderClientTest {
                 .andRespond(withSuccess(responseJson("bank_transfer"), MediaType.APPLICATION_JSON));
 
         assertThat(client.getOrder("ORD-123").id()).isEqualTo("ORD-123");
+        server.verify();
+    }
+
+    @Test
+    void classifiesBadRequestWithoutOrderAsDefinitiveRejection() {
+        server.expect(once(), requestTo("https://api.mercadopago.com/v1/orders"))
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"code\":\"invalid_email_for_sandbox\",\"message\":\"invalid payer\"}"));
+
+        assertThatThrownBy(() -> client.createPixOrder(new BigDecimal("89.90"),
+                "student@lionfitness.com.br", "external-ref", "idem-pix"))
+                .isInstanceOfSatisfying(MercadoPagoGatewayException.class, exception -> {
+                    assertThat(exception.isDefinitiveClientRejection()).isTrue();
+                    assertThat(exception.getGatewayCode()).isEqualTo("invalid_email_for_sandbox");
+                });
+        server.verify();
+    }
+
+    @Test
+    void recognizesIdempotencyKeyAlreadyUsedConflict() {
+        server.expect(once(), requestTo("https://api.mercadopago.com/v1/orders"))
+                .andRespond(withStatus(HttpStatus.CONFLICT)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"errors\":[{\"code\":\"idempotency_key_already_used\"}]}"));
+
+        assertThatThrownBy(() -> client.createPixOrder(new BigDecimal("89.90"),
+                "student@lionfitness.com.br", "external-ref", "idem-pix"))
+                .isInstanceOfSatisfying(MercadoPagoGatewayException.class, exception -> {
+                    assertThat(exception.isIdempotencyKeyAlreadyUsed()).isTrue();
+                    assertThat(exception.isDefinitiveClientRejection()).isTrue();
+                });
         server.verify();
     }
 
