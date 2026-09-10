@@ -1,6 +1,7 @@
 package com.lionfitness.backend.payment.mercadopago;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Mac;
@@ -23,6 +24,7 @@ public class MercadoPagoWebhookSignatureValidator {
     private final Clock clock;
     private final Map<String, RequestReservation> requestReservations = new ConcurrentHashMap<>();
 
+    @Autowired
     public MercadoPagoWebhookSignatureValidator(
             @Value("${mercado.pago.webhook-secret}") String secret
     ) {
