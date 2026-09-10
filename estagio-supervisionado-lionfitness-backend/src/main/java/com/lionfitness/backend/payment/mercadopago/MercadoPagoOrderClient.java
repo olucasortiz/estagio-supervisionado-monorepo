@@ -23,9 +23,11 @@ public class MercadoPagoOrderClient {
 
     private static final Logger logger = LoggerFactory.getLogger(MercadoPagoOrderClient.class);
     private static final String ORDERS_URL = "https://api.mercadopago.com/v1/orders";
+    private static final String SANDBOX_PAYER_EMAIL = "lionfitness@testuser.com";
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
     private final String accessToken;
+    private final boolean sandboxCredential;
 
     @Autowired
     public MercadoPagoOrderClient(
@@ -40,6 +42,7 @@ public class MercadoPagoOrderClient {
         this.restClient = restClient;
         this.objectMapper = objectMapper;
         this.accessToken = accessToken;
+        this.sandboxCredential = accessToken != null && accessToken.startsWith("TEST-");
     }
 
     private static RestClient buildRestClient(RestClient.Builder restClientBuilder) {
@@ -157,7 +160,8 @@ public class MercadoPagoOrderClient {
 
     private Map<String, Object> payer(String email, String identificationType, String identificationNumber) {
         Map<String, Object> payer = new LinkedHashMap<>();
-        payer.put("email", email != null && !email.isBlank() ? email : "aluno@lionfitness.com.br");
+        String effectiveEmail = email != null && !email.isBlank() ? email : "aluno@lionfitness.com.br";
+        payer.put("email", sandboxCredential ? SANDBOX_PAYER_EMAIL : effectiveEmail);
         if (identificationNumber != null && !identificationNumber.isBlank()) {
             payer.put("identification", Map.of(
                     "type", identificationType != null && !identificationType.isBlank() ? identificationType : "CPF",
