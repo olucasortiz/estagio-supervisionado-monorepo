@@ -54,12 +54,13 @@ public class WorkoutExerciseRepository {
         return result != null && result > 0;
     }
 
-    public Optional<UUID> findWorkoutSheetOwner(UUID workoutSheetId) {
+    public Optional<UUID> findWorkoutSheetAssignedPersonalTrainerId(UUID workoutSheetId) {
         List<UUID> ownerIds = jdbcTemplate.query(
                 """
-                select personal_trainer_id
-                from workout_sheets
-                where id = ?
+                select m.personal_trainer_id
+                from workout_sheets ws
+                join members m on m.id = ws.member_id
+                where ws.id = ?
                 """,
                 (resultSet, rowNum) -> resultSet.getObject("personal_trainer_id", UUID.class),
                 workoutSheetId

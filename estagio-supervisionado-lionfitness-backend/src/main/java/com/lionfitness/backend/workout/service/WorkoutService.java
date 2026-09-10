@@ -118,6 +118,19 @@ public class WorkoutService {
         return workoutRepository.findByMemberId(memberId);
     }
 
+    public void deactivateWorkoutSheet(String authenticatedEmail, UUID workoutSheetId) {
+        AccessContext accessContext = resolveAccessContext(authenticatedEmail);
+
+        UUID memberId = workoutRepository.findMemberIdByWorkoutSheetId(workoutSheetId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ficha de treino nao encontrada."));
+
+        validateMemberAccess(memberId, accessContext);
+
+        if (!workoutRepository.deactivateWorkoutSheet(workoutSheetId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ficha de treino nao encontrada.");
+        }
+    }
+
     private void validateMemberAccess(UUID memberId, AccessContext accessContext) {
         if (accessContext.admin()) {
             return;

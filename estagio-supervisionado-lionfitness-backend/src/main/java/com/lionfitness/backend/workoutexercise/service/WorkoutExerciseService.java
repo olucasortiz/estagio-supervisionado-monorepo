@@ -113,7 +113,7 @@ public class WorkoutExerciseService {
             return;
         }
 
-        UUID ownerId = workoutExerciseRepository.findWorkoutSheetOwner(workoutSheetId)
+        UUID ownerId = workoutExerciseRepository.findWorkoutSheetAssignedPersonalTrainerId(workoutSheetId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Ficha de treino sem personal responsavel."));
 
         if (!Objects.equals(ownerId, accessContext.personalTrainerId())) {

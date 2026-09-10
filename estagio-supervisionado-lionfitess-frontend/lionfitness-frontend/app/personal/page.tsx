@@ -10,6 +10,7 @@ import {
   createExerciseCatalog,
   createWorkoutExercise,
   createWorkoutSheet,
+  deleteWorkoutSheet,
   getMyStudents,
   getWorkoutExercisesBySheet,
   getWorkoutSheetsByMember,
@@ -63,6 +64,7 @@ export default function PersonalPage() {
   const [sheetsError, setSheetsError] = useState("");
   const [sheetSuccess, setSheetSuccess] = useState("");
   const [creatingSheet, setCreatingSheet] = useState(false);
+  const [deletingSheet, setDeletingSheet] = useState(false);
 
   // ── Exercícios da Ficha ────────────────────────────────────────────────────
   const [sheetExercises, setSheetExercises] = useState<any[]>([]);
@@ -248,6 +250,30 @@ export default function PersonalPage() {
       return false;
     } finally {
       setCreatingSheet(false);
+    }
+  };
+
+  const handleDeleteSheet = async (sheet: WorkoutSheetViewModel) => {
+    try {
+      setDeletingSheet(true);
+      setSheetsError("");
+      setSheetSuccess("");
+
+      await deleteWorkoutSheet(sheet.id);
+
+      const remainingSheets = workoutSheets.filter((current) => String(current.id) !== sheet.id);
+      const nextSheet = remainingSheets.find((current) => current.active) || remainingSheets[0];
+
+      setWorkoutSheets(remainingSheets);
+      setSelectedSheetId(nextSheet?.id ? String(nextSheet.id) : "");
+      setSheetExercises([]);
+      setSheetSuccess(`Ficha "${sheet.title}" inativada com sucesso!`);
+      return true;
+    } catch (err: unknown) {
+      setSheetsError(err instanceof Error ? err.message : "NÃ£o foi possÃ­vel inativar a ficha de treino.");
+      return false;
+    } finally {
+      setDeletingSheet(false);
     }
   };
 
@@ -448,10 +474,12 @@ export default function PersonalPage() {
                 exercises={exerciseViewModels}
                 loading={sheetsLoading}
                 creatingSheet={creatingSheet}
+                deletingSheet={deletingSheet}
                 error={sheetsError}
                 successMessage={sheetSuccess}
                 onSelectSheet={handleSelectSheet}
                 onCreateSheet={handleCreateSheet}
+                onDeleteSheet={handleDeleteSheet}
                 onGoToBuilder={() => setActiveTab("montar")}
                 onExportPdf={handleExportPdf}
                 pdfLoading={pdfLoading}

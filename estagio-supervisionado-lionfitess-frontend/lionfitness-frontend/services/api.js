@@ -108,6 +108,10 @@ export async function createWorkoutSheet(payload) {
   return createResource("/workout-sheets", payload, "Failed to create workout sheet");
 }
 
+export async function deleteWorkoutSheet(id) {
+  return deleteResource("/workout-sheets", id, "Failed to delete workout sheet");
+}
+
 export async function getWorkoutExercisesBySheet(workoutSheetId) {
   return getResource(`/workout-exercises/sheet/${workoutSheetId}`, "Failed to fetch workout exercises");
 }

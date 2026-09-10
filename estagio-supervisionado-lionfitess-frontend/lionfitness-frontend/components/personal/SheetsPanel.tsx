@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, Download, CalendarDays, FileText, Dumbbell, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
+import { Plus, Download, CalendarDays, FileText, Dumbbell, ArrowRight, Loader2, CheckCircle2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -32,10 +32,12 @@ interface SheetsPanelProps {
   exercises?: WorkoutExerciseViewModel[];
   loading: boolean;
   creatingSheet: boolean;
+  deletingSheet: boolean;
   error?: string;
   successMessage?: string;
   onSelectSheet: (sheetId: string) => void;
   onCreateSheet: (data: NewSheetFormData) => Promise<boolean>;
+  onDeleteSheet: (sheet: WorkoutSheetViewModel) => Promise<boolean>;
   onGoToBuilder: () => void;
   onExportPdf: () => void;
   pdfLoading?: boolean;
@@ -58,15 +60,18 @@ export function SheetsPanel({
   exercises = [],
   loading,
   creatingSheet,
+  deletingSheet,
   error,
   successMessage,
   onSelectSheet,
   onCreateSheet,
+  onDeleteSheet,
   onGoToBuilder,
   onExportPdf,
   pdfLoading = false,
 }: SheetsPanelProps) {
   const [openModal, setOpenModal] = useState(false);
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [sheetTitle, setSheetTitle] = useState("Treino A");
   const [sheetWeekDay, setSheetWeekDay] = useState("MONDAY");
 
@@ -92,6 +97,13 @@ export function SheetsPanel({
     setOpenModal(false);
     setSheetTitle("Treino A");
     setSheetWeekDay("MONDAY");
+  };
+
+  const handleDeleteSheet = async () => {
+    if (!currentSheet || deletingSheet) return;
+
+    const deleted = await onDeleteSheet(currentSheet);
+    if (deleted) setDeleteConfirmationOpen(false);
   };
 
   return (
@@ -251,6 +263,16 @@ export function SheetsPanel({
                     Montar / Editar Exercícios desta Ficha
                     <ArrowRight className="size-4 ml-1" />
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setDeleteConfirmationOpen(true)}
+                    disabled={deletingSheet}
+                    className="mt-2 w-full h-10 rounded-lg border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive text-xs font-semibold"
+                  >
+                    {deletingSheet ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                    Excluir ficha
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -384,6 +406,38 @@ export function SheetsPanel({
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteConfirmationOpen} onOpenChange={setDeleteConfirmationOpen}>
+        <DialogContent className="max-w-sm animate-rise" overlay="subtle" preventClose={deletingSheet}>
+          <DialogHeader>
+            <DialogTitle className="pr-7">Excluir ficha?</DialogTitle>
+            <DialogDescription className="leading-relaxed">
+              A ficha &quot;{currentSheet?.title}&quot; será inativada e deixará de aparecer para uso. Os exercícios permanecerão preservados no histórico.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDeleteConfirmationOpen(false)}
+              disabled={deletingSheet}
+              className="h-9 rounded-lg text-xs"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleDeleteSheet}
+              disabled={deletingSheet || !currentSheet}
+              className="h-9 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs shadow-sm"
+            >
+              {deletingSheet ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              Excluir ficha
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </section>

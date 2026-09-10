@@ -181,6 +181,20 @@ public class WorkoutRepository {
         return personalTrainerIds.stream().findFirst();
     }
 
+    public Optional<UUID> findMemberIdByWorkoutSheetId(UUID workoutSheetId) {
+        List<UUID> memberIds = jdbcTemplate.query(
+                """
+                select member_id
+                from workout_sheets
+                where id = ?
+                """,
+                (resultSet, rowNum) -> resultSet.getObject("member_id", UUID.class),
+                workoutSheetId
+        );
+
+        return memberIds.stream().findFirst();
+    }
+
     public WorkoutSheetResponse createWorkoutSheet(UUID memberId, UUID personalTrainerId, String title) {
         return createWorkoutSheet(memberId, personalTrainerId, title, null);
     }
@@ -231,6 +245,7 @@ public class WorkoutRepository {
                     created_at
                 from workout_sheets
                 where member_id = ?
+                  and is_active = true
                 order by
                   case week_day
                     when 'MONDAY' then 1
@@ -248,6 +263,17 @@ public class WorkoutRepository {
                 WORKOUT_SHEET_RESPONSE_ROW_MAPPER,
                 memberId
         );
+    }
+
+    public boolean deactivateWorkoutSheet(UUID workoutSheetId) {
+        return jdbcTemplate.update(
+                """
+                update workout_sheets
+                set is_active = false
+                where id = ?
+                """,
+                workoutSheetId
+        ) > 0;
     }
 
     @Transactional
