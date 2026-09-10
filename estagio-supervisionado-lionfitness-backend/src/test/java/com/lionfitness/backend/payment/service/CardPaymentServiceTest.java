@@ -1,302 +1,160 @@
 package com.lionfitness.backend.payment.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lionfitness.backend.payment.dto.CardPaymentRequest;
 import com.lionfitness.backend.payment.dto.CardPaymentResponse;
 import com.lionfitness.backend.payment.dto.CardPaymentStatusResponse;
+import com.lionfitness.backend.payment.mercadopago.MercadoPagoOrder;
+import com.lionfitness.backend.payment.mercadopago.MercadoPagoOrderClient;
 import com.lionfitness.backend.payment.model.OnlinePaymentTransaction;
-import com.lionfitness.backend.payment.model.Payment;
-import com.lionfitness.backend.payment.model.PaymentMethod;
-import com.lionfitness.backend.payment.model.PaymentStatus;
 import com.lionfitness.backend.payment.repository.OnlinePaymentRepository;
-import com.lionfitness.backend.payment.repository.PaymentRepository;
-import com.lionfitness.backend.subscription.model.Subscription;
-import com.lionfitness.backend.subscription.model.SubscriptionStatus;
-import com.lionfitness.backend.subscription.repository.SubscriptionRepository;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
-import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CardPaymentServiceTest {
+    @Mock OnlinePaymentRepository onlinePaymentRepository;
+    @Mock MercadoPagoOrderClient orderClient;
+    @Mock PaymentSettlementService settlementService;
+    @Mock PaymentAttemptReservationService reservationService;
 
-    @Mock
-    private SubscriptionRepository subscriptionRepository;
-
-    @Mock
-    private PaymentRepository paymentRepository;
-
-    @Mock
-    private OnlinePaymentRepository onlinePaymentRepository;
-
-    private CardPaymentService cardPaymentService;
-
+    private CardPaymentService service;
     private final UUID subscriptionId = UUID.randomUUID();
-    private final UUID memberId = UUID.randomUUID();
-    private final UUID planId = UUID.randomUUID();
     private final String studentEmail = "aluno@lionfitness.com.br";
     private final String idempotencyKey = UUID.randomUUID().toString();
-    private final BigDecimal officialPlanPrice = new BigDecimal("89.90");
-
-    private final AtomicInteger mpApiCallCount = new AtomicInteger(0);
-    private Map<String, Object> simulatedMpResponse;
+    private final BigDecimal price = new BigDecimal("89.90");
 
     @BeforeEach
     void setUp() {
-        simulatedMpResponse = new HashMap<>();
-        simulatedMpResponse.put("id", 1234567890L);
-        simulatedMpResponse.put("status", "approved");
-        simulatedMpResponse.put("status_detail", "accredited");
-        simulatedMpResponse.put("card", Map.of("last_four_digits", "1234"));
-
-        cardPaymentService = new CardPaymentService(
-                subscriptionRepository,
-                paymentRepository,
-                onlinePaymentRepository,
-                RestClient.builder(),
-                new ObjectMapper()
-        ) {
-            @Override
-            protected Map<String, Object> callMercadoPagoCardApi(
-                    BigDecimal amount,
-                    String token,
-                    String paymentMethodId,
-                    int installments,
-                    String payerEmail,
-                    String identificationType,
-                    String identificationNumber,
-                    UUID subId,
-                    String requestIdempotencyKey
-            ) {
-                mpApiCallCount.incrementAndGet();
-                return simulatedMpResponse;
-            }
-        };
-
-        ReflectionTestUtils.setField(cardPaymentService, "accessToken", "APP_USR-test-token");
-        ReflectionTestUtils.setField(cardPaymentService, "notificationUrl", "https://lionfitness-sa.duckdns.org/api/payments/webhook");
-    }
-
-    private Subscription createDummySubscription() {
-        return new Subscription(
-                subscriptionId,
-                memberId,
-                planId,
-                LocalDate.now().minusMonths(1),
-                LocalDate.now().plusDays(1),
-                "ACTIVE",
-                LocalDateTime.now().minusMonths(1)
-        );
+        service = new CardPaymentService(
+                onlinePaymentRepository, orderClient, settlementService, reservationService);
     }
 
     @Test
-    @DisplayName("Teste 1: Pagamento de cartão APROVADO renova assinatura e baixa pagamento com preço oficial")
-    void test1_cardPaymentApprovedRenewsSubscription() {
-        Subscription dummySub = createDummySubscription();
-        when(subscriptionRepository.findActiveByIdAndUserEmailForUpdate(subscriptionId, studentEmail))
-                .thenReturn(Optional.of(dummySub));
-        when(subscriptionRepository.findActivePlanData(planId))
-                .thenReturn(Optional.of(new SubscriptionRepository.PlanSubscriptionData("MONTHLY", 30, officialPlanPrice)));
-        when(onlinePaymentRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
+    void commitsReservationBeanBeforeCallingMercadoPago() {
+        OnlinePaymentTransaction reserved = transaction("LOCAL-reserved", "PENDING", idempotencyKey);
+        when(reservationService.reserveCard(subscriptionId, studentEmail, false, idempotencyKey))
+                .thenReturn(new PaymentAttemptReservationService.Reservation(reserved, false));
+        when(orderClient.createCardOrder(eq(price), eq("token"), eq("visa"), eq(1),
+                eq(studentEmail), eq("CPF"), eq("12345678909"), eq(reserved.id().toString()),
+                eq(idempotencyKey))).thenReturn(approvedOrder(reserved.id().toString()));
+        when(settlementService.synchronize(eq(reserved.id()), any())).thenReturn(
+                new PaymentSettlementService.SettlementResult("APPROVED", "accredited", true, "{}"));
 
-        UUID paymentId = UUID.randomUUID();
-        when(paymentRepository.findPendingBySubscriptionIdAndMethod(subscriptionId, PaymentMethod.CREDIT_CARD))
-                .thenReturn(Optional.empty());
-        when(paymentRepository.save(any(), eq(subscriptionId), any(), any(), eq(PaymentMethod.CREDIT_CARD), eq(PaymentStatus.PENDING)))
-                .thenReturn(new Payment(paymentId, subscriptionId, officialPlanPrice, null, PaymentMethod.CREDIT_CARD, PaymentStatus.PENDING, LocalDateTime.now()));
+        CardPaymentResponse response = service.processCardPayment(
+                request(), idempotencyKey, studentEmail, false);
 
-        CardPaymentRequest request = new CardPaymentRequest(
-                subscriptionId,
-                "card_token_12345",
-                "visa",
-                "credit_card",
-                1,
-                studentEmail,
-                "CPF",
-                "12345678909"
-        );
-
-        CardPaymentResponse response = cardPaymentService.processCardPayment(request, idempotencyKey, studentEmail, false);
-
-        assertThat(response).isNotNull();
-        assertThat(response.status()).isEqualTo("APPROVED");
-        assertThat(response.amount()).isEqualTo(officialPlanPrice);
-        assertThat(response.transactionIdentifier()).isEqualTo("1234567890");
-
-        // Verifica que o pagamento foi baixado e a assinatura foi renovada
-        verify(paymentRepository, times(1)).markAsPaid(eq(paymentId), any(LocalDate.class));
-        verify(subscriptionRepository, times(1)).renewSubscription(eq(subscriptionId));
-        verify(onlinePaymentRepository, times(1))
-                .saveWithIdempotencyKey(any(OnlinePaymentTransaction.class), eq(idempotencyKey));
-        assertThat(mpApiCallCount.get()).isEqualTo(1);
+        assertThat(response.transactionIdentifier()).isEqualTo("ORD-card");
+        InOrder order = inOrder(reservationService, orderClient);
+        order.verify(reservationService).reserveCard(subscriptionId, studentEmail, false, idempotencyKey);
+        order.verify(orderClient).createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+                eq(reserved.id().toString()), eq(idempotencyKey));
     }
 
     @Test
-    @DisplayName("Teste 2: Pagamento de cartão RECUSADO não renova assinatura")
-    void test2_cardPaymentRejectedDoesNotRenewSubscription() {
-        simulatedMpResponse.put("status", "rejected");
-        simulatedMpResponse.put("status_detail", "cc_rejected_insufficient_amount");
+    void retryWithPersistedOrderDoesNotCreateAnotherOrder() {
+        OnlinePaymentTransaction existing = transaction("ORD-existing", "APPROVED", idempotencyKey);
+        when(reservationService.reserveCard(subscriptionId, studentEmail, false, idempotencyKey))
+                .thenReturn(new PaymentAttemptReservationService.Reservation(existing, true));
 
-        Subscription dummySub = createDummySubscription();
-        when(subscriptionRepository.findActiveByIdAndUserEmailForUpdate(subscriptionId, studentEmail))
-                .thenReturn(Optional.of(dummySub));
-        when(subscriptionRepository.findActivePlanData(planId))
-                .thenReturn(Optional.of(new SubscriptionRepository.PlanSubscriptionData("MONTHLY", 30, officialPlanPrice)));
-        when(onlinePaymentRepository.findByIdempotencyKey(idempotencyKey)).thenReturn(Optional.empty());
+        CardPaymentResponse response = service.processCardPayment(
+                request(), idempotencyKey, studentEmail, false);
 
-        UUID paymentId = UUID.randomUUID();
-        when(paymentRepository.findPendingBySubscriptionIdAndMethod(subscriptionId, PaymentMethod.CREDIT_CARD))
-                .thenReturn(Optional.of(new Payment(paymentId, subscriptionId, officialPlanPrice, null, PaymentMethod.CREDIT_CARD, PaymentStatus.PENDING, LocalDateTime.now())));
-
-        CardPaymentRequest request = new CardPaymentRequest(
-                subscriptionId,
-                "card_token_rejected",
-                "master",
-                "credit_card",
-                2,
-                studentEmail,
-                "CPF",
-                "12345678909"
-        );
-
-        CardPaymentResponse response = cardPaymentService.processCardPayment(request, idempotencyKey, studentEmail, false);
-
-        assertThat(response).isNotNull();
-        assertThat(response.status()).isEqualTo("REJECTED");
-        assertThat(response.message()).contains("insuficiente");
-
-        // Assinatura e payment NÃO devem ser renovados nem baixados
-        verify(paymentRepository, never()).markAsPaid(any(), any());
-        verify(subscriptionRepository, never()).renewSubscription(any());
-        verify(onlinePaymentRepository, times(1))
-                .saveWithIdempotencyKey(any(OnlinePaymentTransaction.class), eq(idempotencyKey));
+        assertThat(response.transactionIdentifier()).isEqualTo("ORD-existing");
+        verifyNoInteractions(orderClient, settlementService);
     }
 
     @Test
-    @DisplayName("Teste 3: Aluno tentando pagar assinatura de outro aluno é bloqueado com 403 FORBIDDEN")
-    void test3_studentTryingOtherStudentSubscriptionBlocked() {
-        when(subscriptionRepository.findActiveByIdAndUserEmailForUpdate(subscriptionId, studentEmail))
-                .thenReturn(Optional.empty());
+    void retryOfLocalReservationReusesSameIdempotencyKey() {
+        OnlinePaymentTransaction reserved = transaction("LOCAL-reserved", "PENDING", idempotencyKey);
+        when(reservationService.reserveCard(subscriptionId, studentEmail, false, idempotencyKey))
+                .thenReturn(new PaymentAttemptReservationService.Reservation(reserved, true));
+        when(orderClient.createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+                eq(reserved.id().toString()), eq(idempotencyKey)))
+                .thenReturn(approvedOrder(reserved.id().toString()));
+        when(settlementService.synchronize(eq(reserved.id()), any())).thenReturn(
+                new PaymentSettlementService.SettlementResult("APPROVED", "accredited", true, "{}"));
 
-        CardPaymentRequest request = new CardPaymentRequest(
-                subscriptionId,
-                "token_qualquer",
-                "visa",
-                "credit_card",
-                1,
-                studentEmail,
-                "CPF",
-                "12345678909"
-        );
+        service.processCardPayment(request(), idempotencyKey, studentEmail, false);
 
-        assertThatThrownBy(() -> cardPaymentService.processCardPayment(request, idempotencyKey, studentEmail, false))
+        verify(orderClient).createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+                eq(reserved.id().toString()), eq(idempotencyKey));
+    }
+
+    @Test
+    void blocksPaymentForAnotherStudentBeforeCallingMercadoPago() {
+        when(reservationService.reserveCard(subscriptionId, studentEmail, false, idempotencyKey))
+                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN));
+
+        assertThatThrownBy(() -> service.processCardPayment(request(), idempotencyKey, studentEmail, false))
                 .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> {
-                    ResponseStatusException rse = (ResponseStatusException) ex;
-                    assertThat(rse.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-                });
-
-        assertThat(mpApiCallCount.get()).isEqualTo(0);
-        verify(onlinePaymentRepository, never()).save(any());
-        verify(onlinePaymentRepository, never())
-                .saveWithIdempotencyKey(any(OnlinePaymentTransaction.class), anyString());
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.FORBIDDEN));
+        verifyNoInteractions(orderClient);
     }
 
     @Test
-    @DisplayName("Retry com a mesma chave de idempotência reutiliza a transação sem nova cobrança")
-    void retryWithSameIdempotencyKeyReusesTransaction() {
-        Subscription dummySub = createDummySubscription();
-        when(subscriptionRepository.findActiveByIdAndUserEmailForUpdate(subscriptionId, studentEmail))
-                .thenReturn(Optional.of(dummySub));
+    void pollingPendingOrderFetchesAndSettlesCurrentOrder() {
+        OnlinePaymentTransaction pending = transaction("ORD-pending", "PENDING", idempotencyKey);
+        MercadoPagoOrder approved = approvedOrder(pending.id().toString());
+        when(onlinePaymentRepository.findByIdAndUserEmail(pending.id(), studentEmail))
+                .thenReturn(Optional.of(pending));
+        when(orderClient.getOrder("ORD-pending")).thenReturn(approved);
+        when(settlementService.synchronize(pending.id(), approved)).thenReturn(
+                new PaymentSettlementService.SettlementResult("APPROVED", "accredited", true, "{}"));
 
-        UUID transactionId = UUID.randomUUID();
-        UUID paymentId = UUID.randomUUID();
-        OnlinePaymentTransaction existingTransaction = new OnlinePaymentTransaction(
-                transactionId,
-                subscriptionId,
-                paymentId,
-                "1234567890",
-                officialPlanPrice,
-                LocalDateTime.now(),
-                LocalDateTime.now(),
-                "APPROVED",
-                "{}"
-        );
-        when(onlinePaymentRepository.findByIdempotencyKey(idempotencyKey))
-                .thenReturn(Optional.of(existingTransaction));
-
-        CardPaymentRequest request = new CardPaymentRequest(
-                subscriptionId,
-                "new_token_that_must_not_be_used",
-                "visa",
-                "credit_card",
-                1,
-                studentEmail,
-                "CPF",
-                "12345678909"
-        );
-
-        CardPaymentResponse response = cardPaymentService.processCardPayment(
-                request,
-                idempotencyKey,
-                studentEmail,
-                false
-        );
+        CardPaymentStatusResponse response = service.getCardPaymentStatus(pending.id(), studentEmail, false);
 
         assertThat(response.status()).isEqualTo("APPROVED");
-        assertThat(response.transactionId()).isEqualTo(transactionId);
-        assertThat(mpApiCallCount.get()).isZero();
-        verify(paymentRepository, never()).save(any(), any(), any(), any(), any(), any());
-        verify(onlinePaymentRepository, never())
-                .saveWithIdempotencyKey(any(OnlinePaymentTransaction.class), anyString());
-        verify(subscriptionRepository, never()).renewSubscription(any());
+        verify(orderClient).getOrder("ORD-pending");
+        verify(settlementService).synchronize(pending.id(), approved);
     }
 
     @Test
-    @DisplayName("Consulta de status reflete aprovação posterior registrada pelo webhook")
-    void cardStatusReflectsWebhookApproval() {
-        UUID transactionId = UUID.randomUUID();
-        OnlinePaymentTransaction approvedTransaction = new OnlinePaymentTransaction(
-                transactionId,
-                subscriptionId,
-                UUID.randomUUID(),
-                "1234567890",
-                officialPlanPrice,
-                LocalDateTime.now().minusMinutes(1),
-                LocalDateTime.now(),
-                "APPROVED",
-                "{}"
-        );
-        when(onlinePaymentRepository.findByIdAndUserEmail(transactionId, studentEmail))
-                .thenReturn(Optional.of(approvedTransaction));
+    void pollingTerminalStateDoesNotCallMercadoPago() {
+        OnlinePaymentTransaction approved = transaction("ORD-approved", "APPROVED", idempotencyKey);
+        when(onlinePaymentRepository.findById(approved.id())).thenReturn(Optional.of(approved));
 
-        CardPaymentStatusResponse response = cardPaymentService.getCardPaymentStatus(
-                transactionId,
-                studentEmail,
-                false
-        );
+        CardPaymentStatusResponse response = service.getCardPaymentStatus(approved.id(), studentEmail, true);
 
         assertThat(response.status()).isEqualTo("APPROVED");
-        assertThat(response.message()).contains("aprovado");
-        assertThat(response.confirmedAt()).isNotNull();
+        verifyNoInteractions(orderClient, settlementService);
+    }
+
+    private CardPaymentRequest request() {
+        return new CardPaymentRequest(subscriptionId, "token", "visa", "credit_card", 1,
+                studentEmail, "CPF", "12345678909");
+    }
+
+    private OnlinePaymentTransaction transaction(String identifier, String status, String key) {
+        return new OnlinePaymentTransaction(
+                UUID.randomUUID(), subscriptionId, UUID.randomUUID(), identifier, price,
+                LocalDateTime.now(), "APPROVED".equals(status) ? LocalDateTime.now() : null,
+                status, "{}", key);
+    }
+
+    private MercadoPagoOrder approvedOrder(String externalReference) {
+        MercadoPagoOrder.OrderPaymentMethod method = new MercadoPagoOrder.OrderPaymentMethod(
+                "visa", "credit_card", 1, null, null, null, null);
+        MercadoPagoOrder.OrderPayment payment = new MercadoPagoOrder.OrderPayment(
+                "PAY-card", price, price, "processed", "accredited", null, null, method);
+        return new MercadoPagoOrder("ORD-card", "online", "automatic", externalReference,
+                price, "processed", "accredited", new MercadoPagoOrder.Transactions(List.of(payment)));
     }
 }

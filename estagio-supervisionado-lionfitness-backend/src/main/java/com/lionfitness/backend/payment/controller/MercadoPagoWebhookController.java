@@ -1,90 +1,94 @@
 package com.lionfitness.backend.payment.controller;
 
 import com.lionfitness.backend.payment.dto.MercadoPagoWebhookRequest;
+import com.lionfitness.backend.payment.exception.MercadoPagoGatewayException;
+import com.lionfitness.backend.payment.exception.WebhookProcessingException;
+import com.lionfitness.backend.payment.mercadopago.MercadoPagoWebhookSignatureValidator;
 import com.lionfitness.backend.payment.service.MercadoPagoWebhookService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-/**
- * Controller que recebe as notificações de pagamento (webhooks / IPN) do Mercado Pago.
- *
- * <p><b>Segurança:</b> o endpoint é público (sem JWT) porque as requisições partem
- * dos servidores do Mercado Pago, não do browser do usuário. A rota está liberada via
- * {@code /payments/webhook} em {@code SecurityConfig}. A validação de autenticidade
- * é feita internamente ao re-consultar a API do MP (nunca confiamos apenas no payload).
- *
- * <p><b>Idempotência:</b> o Mercado Pago pode reenviar a mesma notificação múltiplas
- * vezes. O serviço verifica o status atual da transação antes de aplicar qualquer
- * alteração, retornando sempre HTTP 200 para evitar reenvios.
- *
- * <p><b>Endpoint:</b> {@code POST /payments/webhook}
- */
 @RestController
 @RequestMapping("/payments/webhook")
 public class MercadoPagoWebhookController {
 
     private static final Logger logger = LoggerFactory.getLogger(MercadoPagoWebhookController.class);
-
     private final MercadoPagoWebhookService webhookService;
+    private final MercadoPagoWebhookSignatureValidator signatureValidator;
 
-    public MercadoPagoWebhookController(MercadoPagoWebhookService webhookService) {
+    public MercadoPagoWebhookController(MercadoPagoWebhookService webhookService,
+                                        MercadoPagoWebhookSignatureValidator signatureValidator) {
         this.webhookService = webhookService;
+        this.signatureValidator = signatureValidator;
     }
 
-    /**
-     * Recebe a notificação do Mercado Pago.
-     *
-     * <p>O MP pode enviar o ID tanto via query param {@code ?id=xxx&topic=payment}
-     * (formato v1 / IPN) quanto via body JSON {@code {"action":"payment.updated","data":{"id":"xxx"}}}
-     * (formato v2). Este endpoint trata os dois cenários.
-     *
-     * @param idParam  Query param {@code id} (formato IPN v1)
-     * @param topic    Query param {@code topic} (formato IPN v1) — "payment"
-     * @param body     Corpo JSON (formato Webhook v2), pode ser nulo
-     * @return HTTP 200 sempre (para o MP não reenviar indefinidamente)
-     */
     @PostMapping
     public ResponseEntity<Void> handleWebhook(
-            @RequestParam(name = "id",    required = false) String idParam,
-            @RequestParam(name = "topic", required = false) String topic,
+            @RequestParam(name = "data.id", required = false) String queryOrderId,
+            @RequestParam(name = "type", required = false) String queryType,
+            @RequestHeader(name = "x-signature", required = false) String xSignature,
+            @RequestHeader(name = "x-request-id", required = false) String xRequestId,
             @RequestBody(required = false) MercadoPagoWebhookRequest body
     ) {
-        // Determina o ID do pagamento priorizando o body JSON (v2) sobre query param (v1)
-        String externalPaymentId = null;
+        String bodyOrderId = body != null ? body.resolveOrderId() : null;
+        String orderId = firstNonBlank(queryOrderId, bodyOrderId);
+        String eventType = firstNonBlank(queryType, body != null ? body.type() : null);
 
-        if (body != null) {
-            externalPaymentId = body.resolvePaymentId();
+        if (!"order".equalsIgnoreCase(eventType)
+                || (!isBlank(queryType) && !"order".equalsIgnoreCase(queryType))
+                || (body != null && !isBlank(body.type()) && !"order".equalsIgnoreCase(body.type()))) {
+            return ResponseEntity.badRequest().build();
         }
-
-        // Fallback: IPN v1 via query params (topic=payment)
-        if (externalPaymentId == null && "payment".equalsIgnoreCase(topic) && idParam != null && !idParam.isBlank()) {
-            externalPaymentId = idParam;
+        if (isBlank(orderId) || (!isBlank(queryOrderId) && !isBlank(bodyOrderId)
+                && !queryOrderId.equals(bodyOrderId))) {
+            return ResponseEntity.badRequest().build();
         }
-
-        // Fallback: id direto na query sem topic
-        if (externalPaymentId == null && idParam != null && !idParam.isBlank()) {
-            externalPaymentId = idParam;
+        MercadoPagoWebhookSignatureValidator.ReservationResult reservation =
+                signatureValidator.validateAndReserve(xSignature, xRequestId, orderId);
+        if (reservation == MercadoPagoWebhookSignatureValidator.ReservationResult.INVALID) {
+            logger.warn("Webhook do Mercado Pago rejeitado por assinatura inválida.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-
-        if (externalPaymentId == null || externalPaymentId.isBlank()) {
-            logger.warn("[Webhook MP] Notificação recebida sem ID de pagamento identificável. "
-                    + "topic={} idParam={} body={}", topic, idParam, body);
-            // Retorna 200 para evitar que o MP re-enfileire a notificação
+        if (reservation == MercadoPagoWebhookSignatureValidator.ReservationResult.COMPLETED) {
             return ResponseEntity.ok().build();
         }
-
-        logger.info("[Webhook MP] Processando notificação: externalPaymentId={} topic={}", externalPaymentId, topic);
-
-        try {
-            webhookService.processPaymentNotification(externalPaymentId);
-        } catch (Exception e) {
-            // Captura exceções não tratadas para sempre retornar 200 ao MP
-            logger.error("[Webhook MP] Erro inesperado ao processar notificação para externalId={}: {}",
-                    externalPaymentId, e.getMessage(), e);
+        if (reservation == MercadoPagoWebhookSignatureValidator.ReservationResult.PROCESSING) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
 
-        return ResponseEntity.ok().build();
+        try {
+            webhookService.processOrderNotification(orderId);
+            signatureValidator.markCompleted(xRequestId);
+            return ResponseEntity.ok().build();
+        } catch (MercadoPagoGatewayException | WebhookProcessingException exception) {
+            signatureValidator.release(xRequestId);
+            logger.error("Falha transitória ao processar webhook de Order: orderId={}", orderId, exception);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        } catch (IllegalArgumentException exception) {
+            signatureValidator.release(xRequestId);
+            logger.warn("Webhook de Order rejeitado após validação de conteúdo: orderId={} reason={}",
+                    orderId, exception.getMessage());
+            return ResponseEntity.unprocessableEntity().build();
+        } catch (Exception exception) {
+            signatureValidator.release(xRequestId);
+            logger.error("Falha inesperada ao processar webhook de Order: orderId={}", orderId, exception);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    private String firstNonBlank(String preferred, String fallback) {
+        return !isBlank(preferred) ? preferred : fallback;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

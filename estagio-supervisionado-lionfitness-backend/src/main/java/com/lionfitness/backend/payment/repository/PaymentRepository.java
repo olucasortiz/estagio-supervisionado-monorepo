@@ -251,7 +251,7 @@ public class PaymentRepository {
                                 """
                                                 update payments
                                                 set status = cast('PAID' as payment_status_enum), paid_at = ?
-                                                where id = ? and status::text <> 'CANCELED'
+                                                where id = ? and status::text = 'PENDING'
                                                 """,
                                 Timestamp.valueOf(paidAtDateTime),
                                 paymentId);

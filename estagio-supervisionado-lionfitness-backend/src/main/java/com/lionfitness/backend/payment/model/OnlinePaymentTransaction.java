@@ -13,6 +13,21 @@ public record OnlinePaymentTransaction(
         LocalDateTime requestedAt,
         LocalDateTime confirmedAt,
         String status,
-        String gatewayReturn
+        String gatewayReturn,
+        String idempotencyKey
 ) {
+    public OnlinePaymentTransaction(
+            UUID id,
+            UUID subscriptionId,
+            UUID paymentId,
+            String transactionIdentifier,
+            BigDecimal amount,
+            LocalDateTime requestedAt,
+            LocalDateTime confirmedAt,
+            String status,
+            String gatewayReturn
+    ) {
+        this(id, subscriptionId, paymentId, transactionIdentifier, amount, requestedAt,
+                confirmedAt, status, gatewayReturn, null);
+    }
 }

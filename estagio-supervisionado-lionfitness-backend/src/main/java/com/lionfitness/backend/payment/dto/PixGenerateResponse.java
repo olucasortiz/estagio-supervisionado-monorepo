@@ -13,7 +13,8 @@ public record PixGenerateResponse(
         String status,
         String qrCodePayload,
         String qrCodeBase64,
-        Long externalTransactionId,
+        String ticketUrl,
+        String externalTransactionId,
         LocalDateTime requestedAt
 ) {
 }

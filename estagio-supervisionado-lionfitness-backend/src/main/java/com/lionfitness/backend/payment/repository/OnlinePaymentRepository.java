@@ -1,23 +1,28 @@
 package com.lionfitness.backend.payment.repository;
 
+import com.lionfitness.backend.payment.model.OnlinePaymentTransaction;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
+
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.lionfitness.backend.payment.model.OnlinePaymentTransaction;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.stereotype.Repository;
-
 @Repository
 public class OnlinePaymentRepository {
+
+    private static final String COLUMNS = """
+            opt.id, opt.subscription_id, opt.payment_id, opt.transaction_identifier,
+            opt.amount, opt.requested_at, opt.confirmed_at, opt.status, opt.gateway_return,
+            opt.idempotency_key
+            """;
 
     private static final RowMapper<OnlinePaymentTransaction> ROW_MAPPER = (rs, rowNum) -> {
         Timestamp requestedAt = rs.getTimestamp("requested_at");
         Timestamp confirmedAt = rs.getTimestamp("confirmed_at");
-
         return new OnlinePaymentTransaction(
                 rs.getObject("id", UUID.class),
                 rs.getObject("subscription_id", UUID.class),
@@ -27,7 +32,8 @@ public class OnlinePaymentRepository {
                 requestedAt != null ? requestedAt.toLocalDateTime() : null,
                 confirmedAt != null ? confirmedAt.toLocalDateTime() : null,
                 rs.getString("status"),
-                rs.getString("gateway_return")
+                rs.getString("gateway_return"),
+                rs.getString("idempotency_key")
         );
     };
 
@@ -38,77 +44,49 @@ public class OnlinePaymentRepository {
     }
 
     public OnlinePaymentTransaction save(OnlinePaymentTransaction transaction) {
-        String sql = """
-                INSERT INTO online_payment_transactions
-                    (id, subscription_id, payment_id, transaction_identifier, amount, requested_at, confirmed_at, status, gateway_return)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """;
-
-        jdbcTemplate.update(
-                sql,
-                transaction.id(),
-                transaction.subscriptionId(),
-                transaction.paymentId(),
-                transaction.transactionIdentifier(),
-                transaction.amount(),
-                transaction.requestedAt() != null ? Timestamp.valueOf(transaction.requestedAt()) : Timestamp.valueOf(LocalDateTime.now()),
-                transaction.confirmedAt() != null ? Timestamp.valueOf(transaction.confirmedAt()) : null,
-                transaction.status() != null ? transaction.status() : "PENDING",
-                transaction.gatewayReturn()
-        );
-
-        return transaction;
+        return saveWithIdempotencyKey(transaction, transaction.idempotencyKey());
     }
 
     public OnlinePaymentTransaction saveWithIdempotencyKey(
             OnlinePaymentTransaction transaction,
-            String idempotencyKey) {
-        String sql = """
+            String idempotencyKey
+    ) {
+        jdbcTemplate.update(
+                """
                 INSERT INTO online_payment_transactions
                     (id, subscription_id, payment_id, transaction_identifier, amount, requested_at,
                      confirmed_at, status, gateway_return, idempotency_key)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """;
-
-        jdbcTemplate.update(
-                sql,
-                transaction.id(),
-                transaction.subscriptionId(),
-                transaction.paymentId(),
-                transaction.transactionIdentifier(),
-                transaction.amount(),
+                """,
+                transaction.id(), transaction.subscriptionId(), transaction.paymentId(),
+                transaction.transactionIdentifier(), transaction.amount(),
                 transaction.requestedAt() != null ? Timestamp.valueOf(transaction.requestedAt()) : Timestamp.valueOf(LocalDateTime.now()),
                 transaction.confirmedAt() != null ? Timestamp.valueOf(transaction.confirmedAt()) : null,
                 transaction.status() != null ? transaction.status() : "PENDING",
-                transaction.gatewayReturn(),
-                idempotencyKey
+                transaction.gatewayReturn(), idempotencyKey
         );
-
         return transaction;
     }
 
     public Optional<OnlinePaymentTransaction> findById(UUID id) {
-        String sql = "SELECT * FROM online_payment_transactions WHERE id = ?";
-        List<OnlinePaymentTransaction> list = jdbcTemplate.query(sql, ROW_MAPPER, id);
-        return list.stream().findFirst();
+        return first("SELECT " + COLUMNS + " FROM online_payment_transactions opt WHERE opt.id = ?", id);
+    }
+
+    public Optional<OnlinePaymentTransaction> findByIdForUpdate(UUID id) {
+        return first("SELECT " + COLUMNS + " FROM online_payment_transactions opt WHERE opt.id = ? FOR UPDATE", id);
     }
 
     public Optional<OnlinePaymentTransaction> findByTransactionIdentifier(String transactionIdentifier) {
-        String sql = "SELECT * FROM online_payment_transactions WHERE transaction_identifier = ?";
-        List<OnlinePaymentTransaction> list = jdbcTemplate.query(sql, ROW_MAPPER, transactionIdentifier);
-        return list.stream().findFirst();
+        return first("SELECT " + COLUMNS + " FROM online_payment_transactions opt WHERE opt.transaction_identifier = ?", transactionIdentifier);
     }
 
     public Optional<OnlinePaymentTransaction> findByIdempotencyKey(String idempotencyKey) {
-        String sql = "SELECT * FROM online_payment_transactions WHERE idempotency_key = ?";
-        List<OnlinePaymentTransaction> list = jdbcTemplate.query(sql, ROW_MAPPER, idempotencyKey);
-        return list.stream().findFirst();
+        return first("SELECT " + COLUMNS + " FROM online_payment_transactions opt WHERE opt.idempotency_key = ?", idempotencyKey);
     }
 
     public Optional<OnlinePaymentTransaction> findByIdAndUserEmail(UUID id, String userEmail) {
         String sql = """
-                SELECT opt.id, opt.subscription_id, opt.payment_id, opt.transaction_identifier,
-                       opt.amount, opt.requested_at, opt.confirmed_at, opt.status, opt.gateway_return
+                SELECT %s
                 FROM online_payment_transactions opt
                 INNER JOIN subscriptions s ON s.id = opt.subscription_id
                 INNER JOIN members m ON m.id = s.member_id
@@ -117,40 +95,61 @@ public class OnlinePaymentRepository {
                   AND lower(u.email) = lower(?)
                   AND m.is_active = true
                   AND s.status::text <> 'CANCELED'
-                """;
-        List<OnlinePaymentTransaction> list = jdbcTemplate.query(sql, ROW_MAPPER, id, userEmail);
-        return list.stream().findFirst();
+                """.formatted(COLUMNS);
+        return jdbcTemplate.query(sql, ROW_MAPPER, id, userEmail).stream().findFirst();
     }
 
     public Optional<OnlinePaymentTransaction> findPendingBySubscriptionId(UUID subscriptionId) {
         String sql = """
-                SELECT opt.id, opt.subscription_id, opt.payment_id, opt.transaction_identifier,
-                       opt.amount, opt.requested_at, opt.confirmed_at, opt.status, opt.gateway_return
+                SELECT %s
                 FROM online_payment_transactions opt
+                WHERE opt.subscription_id = ? AND opt.status = 'PENDING'
+                ORDER BY opt.requested_at DESC LIMIT 1
+                """.formatted(COLUMNS);
+        return first(sql, subscriptionId);
+    }
+
+    public Optional<OnlinePaymentTransaction> findPendingBySubscriptionIdAndMethod(UUID subscriptionId, String paymentMethod) {
+        String sql = """
+                SELECT %s
+                FROM online_payment_transactions opt
+                INNER JOIN payments p ON p.id = opt.payment_id
                 WHERE opt.subscription_id = ?
                   AND opt.status = 'PENDING'
-                ORDER BY opt.requested_at DESC
-                LIMIT 1
-                """;
-        List<OnlinePaymentTransaction> list = jdbcTemplate.query(sql, ROW_MAPPER, subscriptionId);
-        return list.stream().findFirst();
+                  AND p.method::text = ?
+                ORDER BY opt.requested_at DESC LIMIT 1
+                """.formatted(COLUMNS);
+        return jdbcTemplate.query(sql, ROW_MAPPER, subscriptionId, paymentMethod).stream().findFirst();
     }
 
     public boolean updateStatus(UUID id, String status, LocalDateTime confirmedAt, String gatewayReturn) {
-        String sql = """
-                UPDATE online_payment_transactions
-                SET status = ?, confirmed_at = ?, gateway_return = ?
-                WHERE id = ?
-                """;
-
         int rows = jdbcTemplate.update(
-                sql,
-                status,
-                confirmedAt != null ? Timestamp.valueOf(confirmedAt) : null,
-                gatewayReturn,
-                id
-        );
-
+                "UPDATE online_payment_transactions SET status = ?, confirmed_at = ?, gateway_return = ? WHERE id = ?",
+                status, confirmedAt != null ? Timestamp.valueOf(confirmedAt) : null, gatewayReturn, id);
         return rows > 0;
+    }
+
+    public boolean updateOrderStateIfNotApproved(UUID id, String orderId, String status,
+                                                  LocalDateTime confirmedAt, String gatewayReturn) {
+        int rows = jdbcTemplate.update(
+                """
+                UPDATE online_payment_transactions
+                SET transaction_identifier = ?, status = ?, confirmed_at = ?, gateway_return = ?
+                WHERE id = ? AND upper(status) NOT IN ('APPROVED', 'CONFIRMED')
+                """,
+                orderId, status, confirmedAt != null ? Timestamp.valueOf(confirmedAt) : null, gatewayReturn, id);
+        return rows > 0;
+    }
+
+    public boolean updateApprovedOrderMetadata(UUID id, String orderId, String gatewayReturn) {
+        int rows = jdbcTemplate.update(
+                "UPDATE online_payment_transactions SET transaction_identifier = ?, gateway_return = ? WHERE id = ?",
+                orderId, gatewayReturn, id);
+        return rows > 0;
+    }
+
+    private Optional<OnlinePaymentTransaction> first(String sql, Object... args) {
+        List<OnlinePaymentTransaction> list = jdbcTemplate.query(sql, ROW_MAPPER, args);
+        return list.stream().findFirst();
     }
 }

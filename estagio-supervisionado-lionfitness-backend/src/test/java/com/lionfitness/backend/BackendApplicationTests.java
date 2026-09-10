@@ -7,6 +7,7 @@ import org.springframework.test.context.TestPropertySource;
 @SpringBootTest
 @TestPropertySource(properties = {
         "MP_ACCESS_TOKEN=APP_USR-test-dummy",
+        "MP_WEBHOOK_SECRET=test-webhook-secret",
         "mercadopago.access-token=APP_USR-test-dummy"
 })
 class BackendApplicationTests {
