@@ -27,22 +27,23 @@ public class MercadoPagoOrderClient {
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
     private final String accessToken;
-    private final boolean sandboxCredential;
+    private final boolean sandbox;
 
     @Autowired
     public MercadoPagoOrderClient(
             RestClient.Builder restClientBuilder,
             ObjectMapper objectMapper,
-            @Value("${mercado.pago.access-token}") String accessToken
+            @Value("${mercado.pago.access-token}") String accessToken,
+            @Value("${mercado.pago.sandbox:false}") boolean sandbox
     ) {
-        this(buildRestClient(restClientBuilder), objectMapper, accessToken);
+        this(buildRestClient(restClientBuilder), objectMapper, accessToken, sandbox);
     }
 
-    MercadoPagoOrderClient(RestClient restClient, ObjectMapper objectMapper, String accessToken) {
+    MercadoPagoOrderClient(RestClient restClient, ObjectMapper objectMapper, String accessToken, boolean sandbox) {
         this.restClient = restClient;
         this.objectMapper = objectMapper;
         this.accessToken = accessToken;
-        this.sandboxCredential = accessToken != null && accessToken.startsWith("TEST-");
+        this.sandbox = sandbox;
     }
 
     private static RestClient buildRestClient(RestClient.Builder restClientBuilder) {
@@ -161,7 +162,7 @@ public class MercadoPagoOrderClient {
     private Map<String, Object> payer(String email, String identificationType, String identificationNumber) {
         Map<String, Object> payer = new LinkedHashMap<>();
         String effectiveEmail = email != null && !email.isBlank() ? email : "aluno@lionfitness.com.br";
-        payer.put("email", sandboxCredential ? SANDBOX_PAYER_EMAIL : effectiveEmail);
+        payer.put("email", sandbox ? SANDBOX_PAYER_EMAIL : effectiveEmail);
         if (identificationNumber != null && !identificationNumber.isBlank()) {
             payer.put("identification", Map.of(
                     "type", identificationType != null && !identificationType.isBlank() ? identificationType : "CPF",

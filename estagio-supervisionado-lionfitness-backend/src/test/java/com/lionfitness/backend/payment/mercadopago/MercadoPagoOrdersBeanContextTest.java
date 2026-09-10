@@ -20,7 +20,8 @@ class MercadoPagoOrdersBeanContextTest {
                     "mercado-pago-test",
                     Map.of(
                             "mercado.pago.access-token", "test-access-token",
-                            "mercado.pago.webhook-secret", "test-webhook-secret"
+                            "mercado.pago.webhook-secret", "test-webhook-secret",
+                            "mercado.pago.sandbox", "true"
                     )
             ));
             context.registerBean(

@@ -23,13 +23,13 @@ class MercadoPagoOrderClientTest {
     void setUp() {
         builder = RestClient.builder();
         server = MockRestServiceServer.bindTo(builder).build();
-        client = clientWithAccessToken("TEST-access-token");
+        client = clientWithSandbox(true);
     }
 
     @Test
     void postsCardUsingOrdersContractAndParsesOrdAndPayIds() {
         server.expect(once(), requestTo("https://api.mercadopago.com/v1/orders"))
-                .andExpect(header("Authorization", "Bearer TEST-access-token"))
+                .andExpect(header("Authorization", "Bearer APP_USR-access-token"))
                 .andExpect(header("X-Idempotency-Key", "idem-1"))
                 .andExpect(jsonPath("$.type").value("online"))
                 .andExpect(jsonPath("$.processing_mode").value("automatic"))
@@ -49,7 +49,7 @@ class MercadoPagoOrderClientTest {
     @Test
     void postsPixWithSandboxPayerEmail() {
         server.expect(once(), requestTo("https://api.mercadopago.com/v1/orders"))
-                .andExpect(header("Authorization", "Bearer TEST-access-token"))
+                .andExpect(header("Authorization", "Bearer APP_USR-access-token"))
                 .andExpect(jsonPath("$.payer.email").value("lionfitness@testuser.com"))
                 .andExpect(jsonPath("$.transactions.payments[0].payment_method.id").value("pix"))
                 .andExpect(jsonPath("$.transactions.payments[0].payment_method.type").value("bank_transfer"))
@@ -63,9 +63,9 @@ class MercadoPagoOrderClientTest {
 
     @Test
     void keepsRealPayerEmailForCardInProduction() {
-        client = clientWithAccessToken("APP_USR-production-access-token");
+        client = clientWithSandbox(false);
         server.expect(once(), requestTo("https://api.mercadopago.com/v1/orders"))
-                .andExpect(header("Authorization", "Bearer APP_USR-production-access-token"))
+                .andExpect(header("Authorization", "Bearer APP_USR-access-token"))
                 .andExpect(jsonPath("$.payer.email").value("student@lionfitness.com.br"))
                 .andRespond(withSuccess(responseJson("credit_card"), MediaType.APPLICATION_JSON));
 
@@ -77,9 +77,9 @@ class MercadoPagoOrderClientTest {
 
     @Test
     void keepsRealPayerEmailForPixInProduction() {
-        client = clientWithAccessToken("APP_USR-production-access-token");
+        client = clientWithSandbox(false);
         server.expect(once(), requestTo("https://api.mercadopago.com/v1/orders"))
-                .andExpect(header("Authorization", "Bearer APP_USR-production-access-token"))
+                .andExpect(header("Authorization", "Bearer APP_USR-access-token"))
                 .andExpect(jsonPath("$.payer.email").value("student@lionfitness.com.br"))
                 .andRespond(withSuccess(responseJson("bank_transfer"), MediaType.APPLICATION_JSON));
 
@@ -92,15 +92,15 @@ class MercadoPagoOrderClientTest {
     @Test
     void getsOrderByOrdId() {
         server.expect(requestTo("https://api.mercadopago.com/v1/orders/ORD-123"))
-                .andExpect(header("Authorization", "Bearer TEST-access-token"))
+                .andExpect(header("Authorization", "Bearer APP_USR-access-token"))
                 .andRespond(withSuccess(responseJson("bank_transfer"), MediaType.APPLICATION_JSON));
 
         assertThat(client.getOrder("ORD-123").id()).isEqualTo("ORD-123");
         server.verify();
     }
 
-    private MercadoPagoOrderClient clientWithAccessToken(String accessToken) {
-        return new MercadoPagoOrderClient(builder.build(), new ObjectMapper(), accessToken);
+    private MercadoPagoOrderClient clientWithSandbox(boolean sandbox) {
+        return new MercadoPagoOrderClient(builder.build(), new ObjectMapper(), "APP_USR-access-token", sandbox);
     }
 
     private String responseJson(String methodType) {
