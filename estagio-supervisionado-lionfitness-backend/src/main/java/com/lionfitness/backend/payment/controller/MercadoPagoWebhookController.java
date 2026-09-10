@@ -39,7 +39,7 @@ public class MercadoPagoWebhookController {
             @RequestBody(required = false) MercadoPagoWebhookRequest body
     ) {
         String bodyOrderId = body != null ? body.resolveOrderId() : null;
-        String orderId = firstNonBlank(queryOrderId, bodyOrderId);
+        String orderId = queryOrderId;
         String eventType = firstNonBlank(queryType, body != null ? body.type() : null);
 
         if (!"order".equalsIgnoreCase(eventType)
@@ -47,8 +47,7 @@ public class MercadoPagoWebhookController {
                 || (body != null && !isBlank(body.type()) && !"order".equalsIgnoreCase(body.type()))) {
             return ResponseEntity.badRequest().build();
         }
-        if (isBlank(orderId) || (!isBlank(queryOrderId) && !isBlank(bodyOrderId)
-                && !queryOrderId.equals(bodyOrderId))) {
+        if (isBlank(orderId) || (!isBlank(bodyOrderId) && !queryOrderId.equals(bodyOrderId))) {
             return ResponseEntity.badRequest().build();
         }
         MercadoPagoWebhookSignatureValidator.ReservationResult reservation =

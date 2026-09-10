@@ -41,13 +41,36 @@ class MercadoPagoWebhookSignatureValidatorTest {
     }
 
     @Test
-    void rejectsInvalidAndStaleSignatures() throws Exception {
-        String stale = String.valueOf(NOW.minusSeconds(600).toEpochMilli());
-        String hash = sign("id:ord-1;request-id:req;ts:" + stale + ";");
-        assertThat(validator.validateAndReserve("ts=" + stale + ",v1=" + hash, "req", "ORD-1"))
+    void rejectsMalformedTimestampAndInvalidSignature() throws Exception {
+        String malformedTimestamp = "not-a-timestamp";
+        String hash = sign("id:ord01invalid;request-id:req;ts:" + malformedTimestamp + ";");
+        assertThat(validator.validateAndReserve(
+                "ts=" + malformedTimestamp + ",v1=" + hash, "req", "ORD01INVALID"))
                 .isEqualTo(MercadoPagoWebhookSignatureValidator.ReservationResult.INVALID);
         assertThat(validator.validateAndReserve(
-                "ts=" + NOW.toEpochMilli() + ",v1=bad", "req", "ORD-1"))
+                "ts=" + NOW.toEpochMilli() + ",v1=bad", "req", "ORD01INVALID"))
+                .isEqualTo(MercadoPagoWebhookSignatureValidator.ReservationResult.INVALID);
+    }
+
+    @Test
+    void acceptsAuthenticSignatureAfterStandardRetryDelay() throws Exception {
+        String timestamp = String.valueOf(NOW.minusSeconds(900).toEpochMilli());
+        String requestId = "request-delayed";
+        String hash = sign("id:ord01delayed;request-id:" + requestId + ";ts:" + timestamp + ";");
+
+        assertThat(validator.validateAndReserve(
+                "ts=" + timestamp + ",v1=" + hash, requestId, "ORD01DELAYED"))
+                .isEqualTo(MercadoPagoWebhookSignatureValidator.ReservationResult.RESERVED);
+    }
+
+    @Test
+    void rejectsAuthenticSignatureOutsideReplayWindow() throws Exception {
+        String timestamp = String.valueOf(NOW.minusSeconds(1_801).toEpochMilli());
+        String requestId = "request-too-old";
+        String hash = sign("id:ord01tooold;request-id:" + requestId + ";ts:" + timestamp + ";");
+
+        assertThat(validator.validateAndReserve(
+                "ts=" + timestamp + ",v1=" + hash, requestId, "ORD01TOOOLD"))
                 .isEqualTo(MercadoPagoWebhookSignatureValidator.ReservationResult.INVALID);
     }
 
@@ -56,12 +79,12 @@ class MercadoPagoWebhookSignatureValidatorTest {
         String requestId = "request-retry";
         String timestamp = String.valueOf(NOW.toEpochMilli());
         String signature = "ts=" + timestamp + ",v1="
-                + sign("id:ord-retry;request-id:" + requestId + ";ts:" + timestamp + ";");
+                + sign("id:ord01retry;request-id:" + requestId + ";ts:" + timestamp + ";");
 
-        assertThat(validator.validateAndReserve(signature, requestId, "ORD-RETRY"))
+        assertThat(validator.validateAndReserve(signature, requestId, "ORD01RETRY"))
                 .isEqualTo(MercadoPagoWebhookSignatureValidator.ReservationResult.RESERVED);
         validator.release(requestId);
-        assertThat(validator.validateAndReserve(signature, requestId, "ORD-RETRY"))
+        assertThat(validator.validateAndReserve(signature, requestId, "ORD01RETRY"))
                 .isEqualTo(MercadoPagoWebhookSignatureValidator.ReservationResult.RESERVED);
     }
 
@@ -70,17 +93,17 @@ class MercadoPagoWebhookSignatureValidatorTest {
         String requestId = "request-concurrent";
         String timestamp = String.valueOf(NOW.toEpochMilli());
         String signature = "ts=" + timestamp + ",v1="
-                + sign("id:ord-concurrent;request-id:" + requestId + ";ts:" + timestamp + ";");
+                + sign("id:ord01concurrent;request-id:" + requestId + ";ts:" + timestamp + ";");
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             Future<MercadoPagoWebhookSignatureValidator.ReservationResult> first = executor.submit(() -> {
                 start.await();
-                return validator.validateAndReserve(signature, requestId, "ORD-CONCURRENT");
+                return validator.validateAndReserve(signature, requestId, "ORD01CONCURRENT");
             });
             Future<MercadoPagoWebhookSignatureValidator.ReservationResult> second = executor.submit(() -> {
                 start.await();
-                return validator.validateAndReserve(signature, requestId, "ORD-CONCURRENT");
+                return validator.validateAndReserve(signature, requestId, "ORD01CONCURRENT");
             });
             start.countDown();
 
