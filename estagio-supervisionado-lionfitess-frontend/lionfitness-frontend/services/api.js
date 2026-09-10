@@ -145,9 +145,10 @@ function buildMultipartRequestHeaders(customHeaders = {}) {
 
 async function requestResource(path, options, errorMessage) {
   const isMultipart = options?.body instanceof FormData;
+  const { headers: customHeaders, ...requestOptions } = options || {};
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: isMultipart ? buildMultipartRequestHeaders(options?.headers) : buildRequestHeaders(options?.headers),
-    ...options,
+    ...requestOptions,
+    headers: isMultipart ? buildMultipartRequestHeaders(customHeaders) : buildRequestHeaders(customHeaders),
   });
 
   if (!response.ok) {
