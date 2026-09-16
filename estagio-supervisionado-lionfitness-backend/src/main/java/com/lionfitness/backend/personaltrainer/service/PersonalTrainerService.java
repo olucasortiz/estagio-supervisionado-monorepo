@@ -81,15 +81,6 @@ public class PersonalTrainerService {
 
         return memberService.findByPersonalTrainerId(personalTrainer.id());
     }
-    public List<MemberResponse> findMyMembers(UUID loggedUserId) {
-
-        PersonalTrainer personalTrainer = personalTrainerRepository
-                .findActiveByUserId(loggedUserId)
-                .orElseThrow(() ->
-                        new RuntimeException("Personal trainer not found for logged user"));
-
-        return memberService.findByPersonalTrainerId(personalTrainer.id());
-    }
     public List<PersonalTrainerResponse> findAll() {
         return personalTrainerRepository.findAllActive()
                 .stream()

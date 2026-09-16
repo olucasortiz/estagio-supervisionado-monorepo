@@ -1,6 +1,5 @@
 package com.lionfitness.backend.member.repository;
 
-import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -99,43 +98,6 @@ public class MemberRepository {
         return members.stream().findFirst();
     }
 
-    public void cancel(UUID memberId, String reason) {
-        // 1. Desativa o membro na tabela 'members'
-        String sqlUpdateMember = "UPDATE members SET is_active = false WHERE id = ?";
-        jdbcTemplate.update(sqlUpdateMember, memberId);
-
-        // 2. Insere o log na tabela 'cancellation_records'
-        // Como sua tabela tem 'reason' como NOT NULL, tratamos o valor vazio aqui
-        String finalReason = (reason == null || reason.isBlank()) ? "Cancelamento solicitado pelo administrador" : reason;
-
-        String sqlInsertRecord = """
-        INSERT INTO cancellation_records (id, member_id, cancellation_date, reason)
-        VALUES (?, ?, ?, ?)
-        """;
-
-        jdbcTemplate.update(
-                sqlInsertRecord,
-                UUID.randomUUID(),                         // id
-                memberId,                                  // member_id
-                Timestamp.valueOf(LocalDateTime.now()),    // cancellation_date
-                finalReason                                // reason (obrigatório no seu banco)
-        );
-    }
-    public List<Member> findByPersonalTrainerId(UUID personalId) {
-        return jdbcTemplate.query(
-                """
-                select
-                """ + MEMBER_SELECT_COLUMNS + """
-                from members m
-                left join users u on u.id = m.user_id
-                where m.personal_trainer_id = ?
-                  and m.is_active = true
-                order by m.name asc
-                """,
-                MEMBER_ROW_MAPPER,
-                personalId
-        );
-    }
     public List<Member> findActiveByPersonalTrainerId(UUID personalTrainerId) {
         return jdbcTemplate.query(
                 """

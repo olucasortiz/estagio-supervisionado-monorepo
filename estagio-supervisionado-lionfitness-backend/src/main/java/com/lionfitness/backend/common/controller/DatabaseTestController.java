@@ -4,6 +4,7 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -17,6 +18,7 @@ public class DatabaseTestController {
     }
 
     @GetMapping("/db-test")
+    @PreAuthorize("hasRole('ADMIN')")
     public Map<String, Object> testConnection() {
         OffsetDateTime databaseTime = jdbcTemplate.queryForObject(
                 "select now()",

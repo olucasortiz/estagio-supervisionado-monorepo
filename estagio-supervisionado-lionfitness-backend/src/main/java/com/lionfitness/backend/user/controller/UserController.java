@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.Validator;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/users")
+@PreAuthorize("hasRole('ADMIN')")
 public class UserController {
 
     private final UserService userService;
@@ -83,6 +85,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}/photo")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<byte[]> getPhoto(@PathVariable UUID id) {
         return userService.findPhotoByUserId(id)
                 .map(photo -> ResponseEntity.ok()

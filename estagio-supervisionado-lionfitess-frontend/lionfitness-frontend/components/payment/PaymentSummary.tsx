@@ -7,6 +7,7 @@ type PaymentSummaryProps = {
   memberName?: string | null;
   transactionIdentifier?: string | null;
   installments?: number | null;
+  installmentDescription?: string | null;
   compact?: boolean;
 };
 
@@ -23,6 +24,7 @@ export function PaymentSummary({
   memberName,
   transactionIdentifier,
   installments,
+  installmentDescription,
   compact = false,
 }: PaymentSummaryProps) {
   const MethodIcon = method === "Pix" ? QrCode : CreditCard;
@@ -48,7 +50,7 @@ export function PaymentSummary({
 
       {!compact && installments && installments > 1 ? (
         <p className="mt-3 border-t border-border pt-3 text-right text-xs text-muted-foreground">
-          {installments}x de {formatBRL(Number(amount) / installments)} sem juros
+          {installmentDescription || `${installments}x conforme condições do Mercado Pago`}
         </p>
       ) : !compact && method !== "Pix" ? (
         <p className="mt-3 border-t border-border pt-3 text-right text-xs text-muted-foreground">

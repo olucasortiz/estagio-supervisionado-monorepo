@@ -26,7 +26,6 @@ public class ExerciseCatalogController {
 
     /**
      * Busca exercícios do catálogo interno com filtros opcionais.
-     * Substitui o endpoint anterior /exercise-catalog/search que consultava a API Ninjas.
      */
     @GetMapping
     @PreAuthorize("hasAnyRole('PERSONAL_TRAINER', 'ADMIN')")

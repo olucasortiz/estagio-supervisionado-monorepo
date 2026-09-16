@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/subscriptions")
+@PreAuthorize("hasRole('ADMIN')")
 public class SubscriptionController {
 
     private final SubscriptionService subscriptionService;
@@ -46,7 +47,7 @@ public class SubscriptionController {
     }
 
     @GetMapping("/me")
-    @PreAuthorize("hasAnyRole('OPERATIONAL', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OPERATIONAL', 'USER', 'ADMIN')")
     public ResponseEntity<?> findMine(Authentication authentication) {
         java.util.Optional<MySubscriptionResponse> subscription = subscriptionService.findMine(authentication.getName());
         if (subscription.isPresent()) {

@@ -9,8 +9,8 @@ function readString(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
-export function mapStudent(entry: any, index = 0): StudentViewModel {
-  const member = entry && typeof entry === "object" ? entry : {};
+export function mapStudent(entry: unknown, index = 0): StudentViewModel {
+  const member: Record<string, unknown> = entry && typeof entry === "object" ? entry as Record<string, unknown> : {};
   const name = readString(member.name, readString(member.nome, `Aluno ${index + 1}`));
   const rawCpf = readString(member.cpf, "—");
 
@@ -40,8 +40,8 @@ export function mapStudent(entry: any, index = 0): StudentViewModel {
   };
 }
 
-export function mapWorkoutSheet(entry: any, index = 0): WorkoutSheetViewModel {
-  const sheet = entry && typeof entry === "object" ? entry : {};
+export function mapWorkoutSheet(entry: unknown, index = 0): WorkoutSheetViewModel {
+  const sheet: Record<string, unknown> = entry && typeof entry === "object" ? entry as Record<string, unknown> : {};
   const rawDate = readString(sheet.createdAt, readString(sheet.created_at, ""));
 
   let formattedDate = "—";
@@ -81,8 +81,8 @@ export function mapWorkoutSheet(entry: any, index = 0): WorkoutSheetViewModel {
   };
 }
 
-export function mapWorkoutExercise(entry: any, index = 0): WorkoutExerciseViewModel {
-  const exercise = entry && typeof entry === "object" ? entry : {};
+export function mapWorkoutExercise(entry: unknown, index = 0): WorkoutExerciseViewModel {
+  const exercise: Record<string, unknown> = entry && typeof entry === "object" ? entry as Record<string, unknown> : {};
 
   return {
     id: String(exercise.id ?? `exercise-${index}`),
@@ -100,8 +100,8 @@ export function mapWorkoutExercise(entry: any, index = 0): WorkoutExerciseViewMo
   };
 }
 
-export function mapCatalogExercise(entry: any, index = 0): CatalogExerciseViewModel {
-  const exercise = entry && typeof entry === "object" ? entry : {};
+export function mapCatalogExercise(entry: unknown, index = 0): CatalogExerciseViewModel {
+  const exercise: Record<string, unknown> = entry && typeof entry === "object" ? entry as Record<string, unknown> : {};
 
   return {
     id: String(exercise.id ?? `cat-${index}`),

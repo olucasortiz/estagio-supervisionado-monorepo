@@ -51,7 +51,7 @@ public class OnlinePaymentController {
      * Personal Trainer não possui acesso a nenhum endpoint financeiro.
      */
     @PostMapping("/pix/generate")
-    @PreAuthorize("hasAnyRole('OPERATIONAL', 'ALUNO', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OPERATIONAL', 'USER', 'ADMIN')")
     public ResponseEntity<PixGenerateResponse> generatePix(
             @Valid @RequestBody PixGenerateRequest request,
             Authentication authentication
@@ -80,7 +80,7 @@ public class OnlinePaymentController {
      * </ul>
      */
     @GetMapping("/pix/{transactionId}/status")
-    @PreAuthorize("hasAnyRole('OPERATIONAL', 'ALUNO', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OPERATIONAL', 'USER', 'ADMIN')")
     public ResponseEntity<PixStatusResponse> getPixStatus(
             @PathVariable UUID transactionId,
             Authentication authentication
@@ -126,7 +126,7 @@ public class OnlinePaymentController {
      * </ul>
      */
     @PostMapping("/card")
-    @PreAuthorize("hasAnyRole('OPERATIONAL', 'ALUNO', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OPERATIONAL', 'USER', 'ADMIN')")
     public ResponseEntity<CardPaymentResponse> processCard(
             @Valid @RequestBody CardPaymentRequest request,
             @RequestHeader("X-Idempotency-Key") String idempotencyKey,
@@ -147,7 +147,7 @@ public class OnlinePaymentController {
     }
 
     @GetMapping("/card/{transactionId}/status")
-    @PreAuthorize("hasAnyRole('OPERATIONAL', 'ALUNO', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OPERATIONAL', 'USER', 'ADMIN')")
     public ResponseEntity<CardPaymentStatusResponse> getCardStatus(
             @PathVariable UUID transactionId,
             Authentication authentication

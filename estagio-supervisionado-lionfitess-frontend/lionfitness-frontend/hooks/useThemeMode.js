@@ -60,13 +60,7 @@ function applyThemeToDOM(theme, isLoginPage) {
 }
 
 export function useThemeMode() {
-  let pathname = null;
-  try {
-    pathname = usePathname();
-  } catch {
-    pathname = null;
-  }
-
+  const pathname = usePathname();
   const isLoginPage = typeof pathname === "string" && pathname.startsWith("/login");
   const [theme, setTheme] = useState(getInitialTheme);
 

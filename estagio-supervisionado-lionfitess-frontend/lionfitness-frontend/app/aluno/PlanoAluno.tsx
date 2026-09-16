@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   ArrowLeft,
   ArrowRight,
   Check,
-  ChevronRight,
   Clock3,
   CreditCard,
   Dumbbell,
@@ -14,8 +13,6 @@ import {
   QrCode,
   ShieldCheck,
   Sparkles,
-  Timer,
-  User as UserIcon,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";

@@ -46,6 +46,7 @@ public class WorkoutExerciseRepository {
                 select count(*)
                 from workout_sheets
                 where id = ?
+                  and is_active = true
                 """,
                 Integer.class,
                 workoutSheetId
@@ -61,6 +62,7 @@ public class WorkoutExerciseRepository {
                 from workout_sheets ws
                 join members m on m.id = ws.member_id
                 where ws.id = ?
+                  and m.is_active = true
                 """,
                 (resultSet, rowNum) -> resultSet.getObject("personal_trainer_id", UUID.class),
                 workoutSheetId

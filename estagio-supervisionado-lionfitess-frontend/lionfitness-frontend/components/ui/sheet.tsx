@@ -19,16 +19,16 @@ export function Sheet({ children }: { children: ReactNode }) {
   );
 }
 
-export function SheetTrigger({ children, asChild }: { children: React.ReactElement<any>; asChild?: boolean }) {
+export function SheetTrigger({ children }: { children: React.ReactElement<{ onClick?: React.MouseEventHandler<HTMLElement> }>; asChild?: boolean }) {
   const context = useContext(SheetContext);
   if (!context) return children;
 
   return React.cloneElement(children, {
-    onClick: (e: React.MouseEvent) => {
+    onClick: (e: React.MouseEvent<HTMLElement>) => {
       children.props?.onClick?.(e);
       context.setOpen(true);
     },
-  } as any);
+  });
 }
 
 export function SheetContent({

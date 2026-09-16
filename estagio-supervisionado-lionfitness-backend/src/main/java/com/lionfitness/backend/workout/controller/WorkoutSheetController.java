@@ -2,6 +2,7 @@ package com.lionfitness.backend.workout.controller;
 
 import com.lionfitness.backend.workout.dto.WorkoutSheetCreateRequest;
 import com.lionfitness.backend.workout.dto.WorkoutSheetResponse;
+import com.lionfitness.backend.workout.dto.WorkoutSheetHistoryResponse;
 import com.lionfitness.backend.workout.service.WorkoutService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -58,5 +59,14 @@ public class WorkoutSheetController {
     ) {
         workoutService.deactivateWorkoutSheet(authentication.getName(), workoutSheetId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{workoutSheetId}/history")
+    @PreAuthorize("hasAnyRole('PERSONAL_TRAINER', 'ADMIN')")
+    public ResponseEntity<List<WorkoutSheetHistoryResponse>> history(
+            Authentication authentication,
+            @PathVariable UUID workoutSheetId
+    ) {
+        return ResponseEntity.ok(workoutService.findWorkoutSheetHistory(authentication.getName(), workoutSheetId));
     }
 }

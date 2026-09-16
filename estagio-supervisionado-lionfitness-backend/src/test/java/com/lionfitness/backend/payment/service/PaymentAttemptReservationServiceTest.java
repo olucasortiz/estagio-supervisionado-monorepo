@@ -15,6 +15,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
@@ -24,8 +26,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -78,6 +82,35 @@ class PaymentAttemptReservationServiceTest {
         assertThat(reservation.transaction().transactionIdentifier()).startsWith("LOCAL-");
         assertThat(reservation.transaction().idempotencyKey()).isEqualTo(key);
         verify(onlinePaymentRepository).saveWithIdempotencyKey(reservation.transaction(), key);
+    }
+
+    @Test
+    void cardReservationRejectsAnotherStudentsSubscriptionBeforeGatewayAttempt() {
+        when(subscriptionRepository.findActiveByIdAndUserEmailForUpdate(subscriptionId, email))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.reserveCard(subscriptionId, email, false, UUID.randomUUID().toString()))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+
+        verifyNoInteractions(paymentRepository, onlinePaymentRepository);
+    }
+
+    @Test
+    void adminReservationKeepsExistingAccessToSelectedSubscription() {
+        Subscription subscription = new Subscription(subscriptionId, UUID.randomUUID(), planId,
+                LocalDate.now(), LocalDate.now().plusDays(30), "ACTIVE", LocalDateTime.now());
+        when(subscriptionRepository.findActiveByIdForUpdate(subscriptionId)).thenReturn(Optional.of(subscription));
+        when(subscriptionRepository.findActivePlanData(planId))
+                .thenReturn(Optional.of(new SubscriptionRepository.PlanSubscriptionData("MONTHLY", 30, price)));
+        String key = UUID.randomUUID().toString();
+        when(onlinePaymentRepository.findByIdempotencyKey(key)).thenReturn(Optional.empty());
+        when(paymentRepository.findPendingBySubscriptionIdAndMethod(subscriptionId, PaymentMethod.CREDIT_CARD))
+                .thenReturn(Optional.of(payment(PaymentMethod.CREDIT_CARD)));
+
+        assertThat(service.reserveCard(subscriptionId, "admin@lionfitness.com.br", true, key).transaction())
+                .isNotNull();
+        verify(subscriptionRepository).findActiveByIdForUpdate(subscriptionId);
     }
 
     @Test

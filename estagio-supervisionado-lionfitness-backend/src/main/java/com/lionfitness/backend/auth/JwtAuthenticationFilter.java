@@ -72,8 +72,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         String path = request.getServletPath();
         String uri = request.getRequestURI();
-        return (path != null && (path.startsWith("/auth") || path.startsWith("/health") || path.startsWith("/db-test") || path.startsWith("/payments/webhook")))
-                || (uri != null && (uri.startsWith("/auth") || uri.startsWith("/health") || uri.startsWith("/db-test") || uri.startsWith("/payments/webhook")));
+        return (path != null && (path.startsWith("/auth") || path.startsWith("/health") || path.startsWith("/payments/webhook")))
+                || (uri != null && (uri.startsWith("/auth") || uri.startsWith("/health") || uri.startsWith("/payments/webhook")));
     }
 
     private void authenticate(HttpServletRequest request, User user) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CreditCard, LoaderCircle, Lock } from "lucide-react";
 import { getCardPaymentStatus, getMercadoPagoPublicKey, processCardPayment } from "../../services/api";
 import { CreditCardForm } from "../payment/CreditCardForm";
@@ -50,6 +50,9 @@ export default function CardPaymentModal({
   const [cvv, setCvv] = useState("");
   const [cpf, setCpf] = useState("");
   const [paymentType, setPaymentType] = useState("credit_card");
+  const [installments, setInstallments] = useState(1);
+  const [installmentOptions, setInstallmentOptions] = useState([1]);
+  const [installmentLabels, setInstallmentLabels] = useState({});
   const [isFlipped, setIsFlipped] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -70,6 +73,9 @@ export default function CardPaymentModal({
     setCvv("");
     setCpf("");
     setPaymentType("credit_card");
+    setInstallments(1);
+    setInstallmentOptions([1]);
+    setInstallmentLabels({});
     setError("");
     setSuccessMessage("");
     setPendingMessage("");
@@ -136,6 +142,9 @@ export default function CardPaymentModal({
 
   const handleCardNumberChange = (event) => {
     resetPaymentAttemptAfterEdit();
+    setInstallments(1);
+    setInstallmentOptions([1]);
+    setInstallmentLabels({});
     const raw = event.target.value.replace(/\D/g, "").slice(0, 16);
     setCardNumber(raw.replace(/(\d{4})(?=\d)/g, "$1 "));
   };
@@ -158,7 +167,7 @@ export default function CardPaymentModal({
   };
 
   // Carregamento dinâmico do SDK Mercado Pago JavaScript v2 já usado pelo fluxo real.
-  const loadMercadoPagoSdk = () => {
+  const loadMercadoPagoSdk = useCallback(() => {
     return new Promise((resolve, reject) => {
       if (typeof window !== "undefined" && window.MercadoPago) {
         resolve(window.MercadoPago);
@@ -180,7 +189,53 @@ export default function CardPaymentModal({
       script.onerror = () => reject(new Error("Falha ao carregar SDK seguro do Mercado Pago."));
       document.body.appendChild(script);
     });
-  };
+  }, []);
+
+  const resolvePublicKey = useCallback(async () => {
+    if (process.env.NEXT_PUBLIC_MP_PUBLIC_KEY) return process.env.NEXT_PUBLIC_MP_PUBLIC_KEY;
+    try {
+      const config = await getMercadoPagoPublicKey();
+      return config?.publicKey;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const cardBin = cardNumber.replace(/\D/g, "").slice(0, 8);
+  useEffect(() => {
+    if (!open || paymentType !== "credit_card" || cardBin.length !== 8 || !(Number(amount) > 0)) {
+      return undefined;
+    }
+
+    let active = true;
+    const loadInstallments = async () => {
+      try {
+        const publicKey = await resolvePublicKey();
+        if (!publicKey) return;
+        const MpConstructor = await loadMercadoPagoSdk();
+        if (!MpConstructor || !active) return;
+        const mp = new MpConstructor(publicKey, { locale: "pt-BR" });
+        const result = await mp.getInstallments({ amount: String(amount), bin: cardBin, paymentTypeId: "credit_card" });
+        const costs = (Array.isArray(result) ? result : [])
+          .flatMap((item) => item?.payer_costs || [])
+          .filter(Boolean);
+        const available = costs
+          .map((cost) => Number(cost.installments))
+          .filter((count) => Number.isInteger(count) && count >= 1);
+        if (active) {
+          const options = [...new Set([1, ...available])].sort((a, b) => a - b);
+          setInstallmentLabels(Object.fromEntries(costs.map((cost) =>
+            [Number(cost.installments), cost.recommended_message || `${cost.installments}x`])));
+          setInstallmentOptions(options);
+          setInstallments((current) => options.includes(current) ? current : 1);
+        }
+      } catch {
+        // Sem opções confirmadas pelo SDK, permanece o pagamento à vista.
+      }
+    };
+    loadInstallments();
+    return () => { active = false; };
+  }, [open, paymentType, cardBin, amount, loadMercadoPagoSdk, resolvePublicKey]);
 
   const handlePayment = async (event) => {
     event.preventDefault();
@@ -225,15 +280,7 @@ export default function CardPaymentModal({
     try {
       let paymentAttempt = paymentAttemptRef.current;
       if (!paymentAttempt) {
-        let publicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY;
-        if (!publicKey) {
-          try {
-            const config = await getMercadoPagoPublicKey();
-            publicKey = config?.publicKey;
-          } catch {
-            // A mensagem específica de configuração é exibida abaixo se ambos falharem.
-          }
-        }
+        const publicKey = await resolvePublicKey();
 
         if (!publicKey) throw new Error("Chave de integração do Mercado Pago não configurada no ambiente.");
 
@@ -282,7 +329,7 @@ export default function CardPaymentModal({
         token: paymentAttempt.token,
         paymentMethodId: paymentAttempt.paymentMethodId,
         paymentTypeId: paymentType,
-        installments: 1,
+        installments: paymentType === "debit_card" ? 1 : installments,
         identificationType: "CPF",
         identificationNumber: cleanCpf,
       };
@@ -360,7 +407,8 @@ export default function CardPaymentModal({
             method={methodLabel}
             planName={planName}
             memberName={isAdmin ? memberName : null}
-            installments={1}
+            installments={paymentType === "debit_card" ? 1 : installments}
+            installmentDescription={installments > 1 ? installmentLabels[installments] : null}
           />
         </div>
 
@@ -389,6 +437,9 @@ export default function CardPaymentModal({
                         onChange={() => {
                           resetPaymentAttemptAfterEdit();
                           setPaymentType(value);
+                          setInstallments(1);
+                          setInstallmentOptions([1]);
+                          setInstallmentLabels({});
                           setError("");
                         }}
                         className="accent-primary"
@@ -399,6 +450,24 @@ export default function CardPaymentModal({
                 </div>
                 {paymentType === "debit_card" ? <p className="text-xs text-muted-foreground">Débito à vista, em 1 parcela.</p> : null}
               </fieldset>
+              {paymentType === "credit_card" && installmentOptions.length > 1 ? (
+                <label className="grid gap-1.5 text-sm font-medium text-foreground">
+                  Parcelas
+                  <select
+                    value={installments}
+                    disabled={loading}
+                    onChange={(event) => {
+                      resetPaymentAttemptAfterEdit();
+                      setInstallments(Number(event.target.value));
+                    }}
+                    className="h-11 rounded-xl border border-input bg-card px-3.5 text-sm text-foreground"
+                  >
+                    {installmentOptions.map((count) => (
+                      <option key={count} value={count}>{installmentLabels[count] || `${count}x`}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
               <CreditCardForm
                 cardNumber={cardNumber}
                 cardholderName={cardholderName}

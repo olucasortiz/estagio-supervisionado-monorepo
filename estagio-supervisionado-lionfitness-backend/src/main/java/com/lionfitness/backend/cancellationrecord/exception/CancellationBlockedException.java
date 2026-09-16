@@ -5,6 +5,6 @@ import java.util.UUID;
 public class CancellationBlockedException extends RuntimeException {
 
     public CancellationBlockedException(UUID memberId) {
-        super("Member cannot be canceled because there are pending or overdue payments: " + memberId);
+        super("Não é possível cancelar o aluno enquanto existirem pagamentos pendentes ou atrasados.");
     }
 }

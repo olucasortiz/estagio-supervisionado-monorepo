@@ -5,19 +5,19 @@ import com.lionfitness.backend.personaltrainer.model.PersonalTrainer;
 import com.lionfitness.backend.personaltrainer.repository.PersonalTrainerRepository;
 import com.lionfitness.backend.workout.dto.WorkoutSheetCreateRequest;
 import com.lionfitness.backend.workout.dto.WorkoutSheetResponse;
+import com.lionfitness.backend.workout.dto.WorkoutSheetHistoryResponse;
 import com.lionfitness.backend.user.model.User;
 import com.lionfitness.backend.user.repository.UserRepository;
-import com.lionfitness.backend.workout.dto.WorkoutRequestDTO;
 import com.lionfitness.backend.workout.dto.WorkoutResponse;
 import com.lionfitness.backend.workout.exception.WorkoutNotFoundException;
-import com.lionfitness.backend.workout.model.WorkoutExercise;
-import com.lionfitness.backend.workout.model.WorkoutSheet;
 import com.lionfitness.backend.workout.model.WorkoutWeekDay;
 import com.lionfitness.backend.workout.repository.WorkoutRepository;
+import com.lionfitness.backend.workout.repository.WorkoutSheetHistoryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -29,17 +29,20 @@ public class WorkoutService {
     private static final Logger logger = LoggerFactory.getLogger(WorkoutService.class);
 
     private final WorkoutRepository workoutRepository;
+    private final WorkoutSheetHistoryRepository historyRepository;
     private final UserRepository userRepository;
     private final MemberRepository memberRepository;
     private final PersonalTrainerRepository personalTrainerRepository;
 
     public WorkoutService(
             WorkoutRepository workoutRepository,
+            WorkoutSheetHistoryRepository historyRepository,
             UserRepository userRepository,
             MemberRepository memberRepository,
             PersonalTrainerRepository personalTrainerRepository
     ) {
         this.workoutRepository = workoutRepository;
+        this.historyRepository = historyRepository;
         this.userRepository = userRepository;
         this.memberRepository = memberRepository;
         this.personalTrainerRepository = personalTrainerRepository;
@@ -56,39 +59,6 @@ public class WorkoutService {
 
         return workoutRepository.findActiveWorkoutsByUserId(user.id());
     }
-    public void createNewWorkout(WorkoutRequestDTO request) {
-        // Cria o objeto da ficha
-        WorkoutSheet newSheet = new WorkoutSheet(
-                UUID.randomUUID(),
-                request.memberId(),
-                request.personalTrainerId(),
-                request.goal(),
-                null,
-                true
-        );
-
-        // Converte os DTOs de exercícios para o Model
-        List<WorkoutExercise> exercises = request.exercises().stream()
-                .map(e -> new WorkoutExercise(
-                        null,
-                        null,
-                        e.exerciseName(),
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        e.sets(),
-                        e.reps(),
-                        null,
-                        e.notes(),
-                        null
-                ))
-                .toList();
-
-        workoutRepository.saveFullWorkout(newSheet, exercises, request.changeReason());
-    }
-
     public WorkoutSheetResponse createWorkoutSheet(String authenticatedEmail, WorkoutSheetCreateRequest request) {
         AccessContext accessContext = resolveAccessContext(authenticatedEmail);
 
@@ -118,6 +88,7 @@ public class WorkoutService {
         return workoutRepository.findByMemberId(memberId);
     }
 
+    @Transactional
     public void deactivateWorkoutSheet(String authenticatedEmail, UUID workoutSheetId) {
         AccessContext accessContext = resolveAccessContext(authenticatedEmail);
 
@@ -129,6 +100,15 @@ public class WorkoutService {
         if (!workoutRepository.deactivateWorkoutSheet(workoutSheetId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ficha de treino nao encontrada.");
         }
+        historyRepository.recordChange(workoutSheetId, "Ficha inativada.");
+    }
+
+    public List<WorkoutSheetHistoryResponse> findWorkoutSheetHistory(String authenticatedEmail, UUID workoutSheetId) {
+        AccessContext accessContext = resolveAccessContext(authenticatedEmail);
+        UUID memberId = workoutRepository.findMemberIdByWorkoutSheetId(workoutSheetId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ficha de treino nao encontrada."));
+        validateMemberAccess(memberId, accessContext);
+        return historyRepository.findByWorkoutSheetId(workoutSheetId);
     }
 
     private void validateMemberAccess(UUID memberId, AccessContext accessContext) {

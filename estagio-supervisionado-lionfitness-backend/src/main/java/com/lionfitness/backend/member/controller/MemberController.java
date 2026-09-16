@@ -12,7 +12,6 @@ import com.lionfitness.backend.member.dto.MemberResponse;
 import com.lionfitness.backend.member.dto.MemberUpdateRequest;
 import com.lionfitness.backend.member.dto.OverdueMemberResponse;
 import com.lionfitness.backend.member.model.Member;
-import com.lionfitness.backend.member.service.MemberPhotoStorageService;
 import com.lionfitness.backend.member.service.MemberService;
 import com.lionfitness.backend.user.model.User;
 import com.lionfitness.backend.user.repository.UserRepository;
@@ -34,21 +33,19 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/members")
+@PreAuthorize("hasRole('ADMIN')")
 public class MemberController {
 
     private final MemberService memberService;
-    private final MemberPhotoStorageService photoStorageService;
     private final UserRepository userRepository;
     private final jakarta.validation.Validator validator;
 
     public MemberController(
             MemberService memberService,
-            MemberPhotoStorageService photoStorageService,
             UserRepository userRepository,
             jakarta.validation.Validator validator
     ) {
         this.memberService = memberService;
-        this.photoStorageService = photoStorageService;
         this.userRepository = userRepository;
         this.validator = validator;
     }
@@ -145,6 +142,7 @@ public class MemberController {
     }
 
     @GetMapping("/me")
+    @PreAuthorize("hasAnyRole('OPERATIONAL', 'USER', 'ADMIN')")
     public ResponseEntity<Member> getMyProfile(Authentication authentication) {
         String email = authentication.getName();
         User user = userRepository.findByEmail(email)
@@ -154,10 +152,4 @@ public class MemberController {
         return ResponseEntity.ok(member);
     }
 
-    @GetMapping("/my-students")
-    @PreAuthorize("hasRole('PERSONAL_TRAINER')")
-    public ResponseEntity<List<MemberResponse>> getMyStudents(Authentication authentication) {
-        UUID personalId = memberService.findPersonalIdByEmail(authentication.getName());
-        return ResponseEntity.ok(memberService.findByPersonalTrainerId(personalId));
-    }
 }

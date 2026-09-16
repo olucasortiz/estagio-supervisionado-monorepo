@@ -170,12 +170,7 @@ public class PaymentRepository {
                                                 from payments p
                                                 inner join subscriptions s on s.id = p.subscription_id
                                                 where s.member_id = ?
-                                                  and s.status::text <> 'CANCELED'
-                                                  and p.status::text <> 'CANCELED'
-                                                  and (
-                                                        p.status::text = 'OVERDUE'
-                                                        or (p.status::text = 'PENDING' and s.end_date < current_date)
-                                                      )
+                                                  and p.status::text in ('PENDING', 'OVERDUE')
                                                 """,
                                 Integer.class,
                                 memberId);

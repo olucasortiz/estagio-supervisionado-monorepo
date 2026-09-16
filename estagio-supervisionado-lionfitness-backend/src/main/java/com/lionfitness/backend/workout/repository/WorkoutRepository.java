@@ -17,7 +17,6 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class WorkoutRepository {
@@ -195,10 +194,6 @@ public class WorkoutRepository {
         return memberIds.stream().findFirst();
     }
 
-    public WorkoutSheetResponse createWorkoutSheet(UUID memberId, UUID personalTrainerId, String title) {
-        return createWorkoutSheet(memberId, personalTrainerId, title, null);
-    }
-
     public WorkoutSheetResponse createWorkoutSheet(UUID memberId, UUID personalTrainerId, String title, String weekDay) {
         ensureWeekDayColumn();
 
@@ -270,50 +265,12 @@ public class WorkoutRepository {
                 """
                 update workout_sheets
                 set is_active = false
-                where id = ?
+                where id = ? and is_active = true
                 """,
                 workoutSheetId
         ) > 0;
     }
 
-    @Transactional
-    public void saveFullWorkout(WorkoutSheet newSheet, List<WorkoutExercise> exercises, String changeReason) {
-        // 1. Desativar ficha anterior e salvar no histórico se existir
-        String findActiveSql = "SELECT id FROM workout_sheets WHERE member_id = ? AND is_active = true";
-        List<UUID> activeSheetIds = jdbcTemplate.query(findActiveSql, (rs, rowNum) -> rs.getObject("id", UUID.class), newSheet.memberId());
-
-        for (UUID oldSheetId : activeSheetIds) {
-            // Registrar no histórico
-            jdbcTemplate.update(
-                    "INSERT INTO workout_sheet_history (id, workout_sheet_id, change_reason) VALUES (?, ?, ?)",
-                    UUID.randomUUID(), oldSheetId, changeReason
-            );
-            // Desativar
-            jdbcTemplate.update("UPDATE workout_sheets SET is_active = false WHERE id = ?", oldSheetId);
-        }
-
-        // 2. Inserir nova ficha
-        jdbcTemplate.update(
-                "INSERT INTO workout_sheets (id, member_id, personal_trainer_id, goal, is_active) VALUES (?, ?, ?, ?, ?)",
-                newSheet.id(), newSheet.memberId(), newSheet.personalTrainerId(), newSheet.goal(), true
-        );
-
-        // 3. Inserir exercícios em lote (Batch Update)
-        String exerciseSql = """
-        INSERT INTO workout_exercises (id, workout_sheet_id, exercise_name, sets, reps, notes, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        """;
-
-        jdbcTemplate.batchUpdate(exerciseSql, exercises, exercises.size(), (ps, exercise) -> {
-            ps.setObject(1, UUID.randomUUID());
-            ps.setObject(2, newSheet.id());
-            ps.setString(3, exercise.exerciseName());
-            ps.setInt(4, exercise.sets());
-            ps.setInt(5, exercise.reps());
-            ps.setString(6, exercise.notes());
-            ps.setTimestamp(7, Timestamp.valueOf(LocalDateTime.now()));
-        });
-    }
     private List<WorkoutExercise> findExercisesByWorkoutSheetId(UUID workoutSheetId) {
         logger.info("Loading workout exercises for sheetId {}", workoutSheetId);
 

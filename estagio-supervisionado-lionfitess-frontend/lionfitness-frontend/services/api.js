@@ -104,6 +104,10 @@ export async function getWorkoutSheetsByMember(memberId) {
   return getResource(`/workout-sheets/member/${memberId}`, "Failed to fetch workout sheets");
 }
 
+export async function getWorkoutSheetHistory(workoutSheetId) {
+  return getResource(`/workout-sheets/${workoutSheetId}/history`, "Não foi possível carregar o histórico de alterações.");
+}
+
 export async function createWorkoutSheet(payload) {
   return createResource("/workout-sheets", payload, "Failed to create workout sheet");
 }

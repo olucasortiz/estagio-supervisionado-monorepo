@@ -4,7 +4,7 @@ export type ClassValue =
   | boolean
   | undefined
   | null
-  | { [key: string]: any }
+  | Record<string, unknown>
   | ClassValue[];
 
 export function cn(...inputs: ClassValue[]): string {

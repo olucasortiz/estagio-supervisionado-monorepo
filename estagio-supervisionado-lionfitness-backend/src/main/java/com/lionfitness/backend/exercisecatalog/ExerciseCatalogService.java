@@ -15,7 +15,6 @@ import java.util.UUID;
 
 /**
  * Serviço do catálogo interno de exercícios.
- * Substitui o ExerciseCatalogService anterior que consultava a API Ninjas externa.
  * Todos os exercícios agora são servidos do banco de dados, em português.
  */
 @Service

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, Download, CalendarDays, FileText, Dumbbell, ArrowRight, Loader2, CheckCircle2, Trash2 } from "lucide-react";
+import { Plus, Download, CalendarDays, FileText, Dumbbell, ArrowRight, Loader2, CheckCircle2, Trash2, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -24,6 +24,14 @@ import {
 import { StudentViewModel, WorkoutSheetViewModel, WorkoutExerciseViewModel, NewSheetFormData } from "./types";
 import { formatCpf } from "./formatters";
 import { cn } from "@/lib/utils";
+import { getWorkoutSheetHistory } from "@/services/api";
+
+type SheetHistoryEntry = {
+  id: string;
+  workoutSheetId: string;
+  changeReason: string;
+  createdAt: string;
+};
 
 interface SheetsPanelProps {
   student: StudentViewModel;
@@ -74,6 +82,11 @@ export function SheetsPanel({
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [sheetTitle, setSheetTitle] = useState("Treino A");
   const [sheetWeekDay, setSheetWeekDay] = useState("MONDAY");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+  const [historyEntries, setHistoryEntries] = useState<SheetHistoryEntry[]>([]);
+  const [historySheetTitle, setHistorySheetTitle] = useState("");
 
   // Identificar ficha atualmente selecionada ou ativa
   const currentSheet = React.useMemo(() => {
@@ -104,6 +117,23 @@ export function SheetsPanel({
 
     const deleted = await onDeleteSheet(currentSheet);
     if (deleted) setDeleteConfirmationOpen(false);
+  };
+
+  const openHistory = async () => {
+    if (!currentSheet) return;
+    setHistorySheetTitle(currentSheet.title);
+    setHistoryEntries([]);
+    setHistoryError("");
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    try {
+      const result = await getWorkoutSheetHistory(currentSheet.id);
+      setHistoryEntries(Array.isArray(result) ? result : []);
+    } catch (error) {
+      setHistoryError(error instanceof Error ? error.message : "Não foi possível carregar o histórico.");
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
   return (
@@ -256,6 +286,14 @@ export function SheetsPanel({
                 {/* Direct Action to Builder */}
                 <div className="pt-2">
                   <Button
+                    type="button"
+                    variant="outline"
+                    onClick={openHistory}
+                    className="mb-2 w-full h-10 rounded-lg border-border text-foreground text-xs font-semibold gap-2"
+                  >
+                    <History className="size-4" /> Histórico de alterações
+                  </Button>
+                  <Button
                     onClick={onGoToBuilder}
                     className="w-full h-11 rounded-lg bg-primary hover:bg-primary-strong text-primary-foreground font-semibold text-xs shadow-brand flex items-center justify-center gap-2"
                   >
@@ -286,11 +324,11 @@ export function SheetsPanel({
             )}
           </div>
 
-          {/* Right Card: Sheets History */}
+          {/* Right Card: Current sheets */}
           <div className="surface-card animate-rise p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Histórico de fichas
+                Fichas do aluno
               </p>
               <span className="text-xs text-muted-foreground font-medium">({sheets.length})</span>
             </div>
@@ -335,7 +373,7 @@ export function SheetsPanel({
               </div>
             ) : (
               <div className="py-10 text-center text-xs text-muted-foreground">
-                Histórico vazio para este aluno.
+                Nenhuma ficha cadastrada para este aluno.
               </div>
             )}
           </div>
@@ -343,6 +381,33 @@ export function SheetsPanel({
       )}
 
       {/* Modal: Nova Ficha */}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Histórico de alterações</DialogTitle>
+            <DialogDescription>{historySheetTitle} — registros de alterações, sem versões completas da ficha.</DialogDescription>
+          </DialogHeader>
+          {historyLoading ? (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Carregando...</p>
+          ) : historyError ? (
+            <p role="alert" className="text-sm text-destructive">{historyError}</p>
+          ) : historyEntries.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma alteração registrada para esta ficha.</p>
+          ) : (
+            <ol className="max-h-80 space-y-3 overflow-y-auto">
+              {historyEntries.map((entry) => (
+                <li key={entry.id} className="rounded-lg border border-border p-3">
+                  <p className="text-sm font-medium text-foreground">{entry.changeReason}</p>
+                  <time className="text-xs text-muted-foreground" dateTime={entry.createdAt}>
+                    {new Date(entry.createdAt).toLocaleString("pt-BR")}
+                  </time>
+                </li>
+              ))}
+            </ol>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={openModal} onOpenChange={setOpenModal}>
         <DialogContent className="sm:max-w-md" preventClose={creatingSheet}>
           <form onSubmit={handleFormSubmit}>

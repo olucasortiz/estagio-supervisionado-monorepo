@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.lionfitness.backend.cancellationrecord.dto.CancellationRecordResponse;
 import com.lionfitness.backend.cancellationrecord.dto.CancellationRequest;
+import com.lionfitness.backend.cancellationrecord.exception.CancellationBlockedException;
 import com.lionfitness.backend.cancellationrecord.model.CancellationRecord;
 import com.lionfitness.backend.cancellationrecord.repository.CancellationRecordRepository;
 import com.lionfitness.backend.member.dto.MemberCreateRequest;
@@ -21,7 +22,6 @@ import com.lionfitness.backend.user.dto.UserCreateRequest;
 import com.lionfitness.backend.user.exception.DuplicateEmailException;
 import com.lionfitness.backend.user.repository.UserRepository;
 import com.lionfitness.backend.workout.repository.WorkoutRepository;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -194,7 +194,9 @@ public class MemberService {
         ));
     }
 
+    @Transactional
     public void delete(UUID id) {
+        lockAndAssertNoDebt(id);
         if (!memberRepository.softDelete(id)) {
             throw new MemberNotFoundException(id);
         }
@@ -212,28 +214,9 @@ public class MemberService {
                 .orElseThrow(() -> new RuntimeException("Perfil de aluno nao encontrado para este usuario."));
     }
 
-    public UUID findPersonalIdByEmail(String email) {
-        String sql = """
-            SELECT pt.id FROM personal_trainers pt
-            JOIN users u ON pt.user_id = u.id
-            WHERE u.email = ? AND pt.is_active = true
-            """;
-        try {
-            return jdbcTemplate.queryForObject(sql, UUID.class, email);
-        } catch (EmptyResultDataAccessException e) {
-            throw new RuntimeException("Personal Trainer nao encontrado para este usuario.");
-        }
-    }
-
+    @Transactional
     public CancellationRecordResponse cancel(UUID id, CancellationRequest request) {
-        String sqlCheck = "SELECT is_active FROM members WHERE id = ?";
-        List<Boolean> activeStates = jdbcTemplate.query(sqlCheck, (rs, rowNum) -> rs.getBoolean("is_active"), id);
-        if (activeStates.isEmpty()) {
-            throw new MemberNotFoundException(id);
-        }
-        if (!activeStates.get(0)) {
-            throw new IllegalArgumentException("Este aluno já está cancelado/inativo.");
-        }
+        lockAndAssertNoDebt(id);
 
         CancellationRecord cancellationRecord = cancellationRecordRepository.save(
                 UUID.randomUUID(),
@@ -242,8 +225,28 @@ public class MemberService {
                 request.reason()
         );
 
-        memberRepository.softDelete(id);
+        if (!memberRepository.softDelete(id)) {
+            throw new MemberNotFoundException(id);
+        }
         return toCancellationRecordResponse(cancellationRecord);
+    }
+
+    private void lockAndAssertNoDebt(UUID id) {
+        String sqlCheck = "SELECT is_active FROM members WHERE id = ? FOR UPDATE";
+        List<Boolean> activeStates = jdbcTemplate.query(sqlCheck, (rs, rowNum) -> rs.getBoolean("is_active"), id);
+        if (activeStates.isEmpty()) {
+            throw new MemberNotFoundException(id);
+        }
+        if (!activeStates.get(0)) {
+            throw new IllegalArgumentException("Este aluno já está cancelado/inativo.");
+        }
+
+        // Bloqueia as assinaturas para serializar a checagem com novos pagamentos.
+        jdbcTemplate.query("SELECT id FROM subscriptions WHERE member_id = ? FOR UPDATE",
+                (rs, rowNum) -> rs.getObject("id", UUID.class), id);
+        if (paymentRepository.hasPendingOrOverdueByMemberId(id)) {
+            throw new CancellationBlockedException(id);
+        }
     }
 
     private MemberResponse toResponse(Member member) {

@@ -585,7 +585,7 @@ export default function DashboardContent({ activeReport, styles } = {}) {
       if (errMsg.includes("inativo") || errMsg.includes("cancelado")) {
         setModuleFeedback("cancellation", "Este aluno já está cancelado/inativo.");
       } else {
-        setModuleFeedback("cancellation", `Impedimento de cancelamento por dívida: ${errMsg || "Cancelamento impedido pelo backend."}`);
+        setModuleFeedback("cancellation", errMsg || "Não foi possível cancelar o aluno.");
       }
     } finally {
       setModuleSaving("cancellation", false);

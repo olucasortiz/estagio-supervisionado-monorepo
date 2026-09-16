@@ -8,10 +8,12 @@ import com.lionfitness.backend.workoutexercise.dto.WorkoutExerciseCreateRequest;
 import com.lionfitness.backend.workoutexercise.dto.WorkoutExerciseResponse;
 import com.lionfitness.backend.workoutexercise.model.WorkoutExerciseRecord;
 import com.lionfitness.backend.workoutexercise.repository.WorkoutExerciseRepository;
+import com.lionfitness.backend.workout.repository.WorkoutSheetHistoryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -25,19 +27,23 @@ public class WorkoutExerciseService {
     private static final Logger logger = LoggerFactory.getLogger(WorkoutExerciseService.class);
 
     private final WorkoutExerciseRepository workoutExerciseRepository;
+    private final WorkoutSheetHistoryRepository historyRepository;
     private final UserRepository userRepository;
     private final PersonalTrainerRepository personalTrainerRepository;
 
     public WorkoutExerciseService(
             WorkoutExerciseRepository workoutExerciseRepository,
+            WorkoutSheetHistoryRepository historyRepository,
             UserRepository userRepository,
             PersonalTrainerRepository personalTrainerRepository
     ) {
         this.workoutExerciseRepository = workoutExerciseRepository;
+        this.historyRepository = historyRepository;
         this.userRepository = userRepository;
         this.personalTrainerRepository = personalTrainerRepository;
     }
 
+    @Transactional
     public WorkoutExerciseResponse create(String authenticatedEmail, WorkoutExerciseCreateRequest request) {
         AccessContext accessContext = resolveAccessContext(authenticatedEmail);
 
@@ -59,6 +65,8 @@ public class WorkoutExerciseService {
                         normalize(request.notes())
                 )
         );
+        historyRepository.recordChange(savedExercise.workoutSheetId(),
+                "Exercício adicionado: " + savedExercise.exerciseName());
 
         logger.info(
                 "Exercise {} added to workout sheet {} by personal trainer {}",

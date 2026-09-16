@@ -28,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/personal-trainers")
+@PreAuthorize("hasRole('ADMIN')")
 public class PersonalTrainerController {
 
     private final PersonalTrainerService personalTrainerService;
@@ -74,7 +75,7 @@ public class PersonalTrainerController {
     }
 
     @GetMapping("/me/members")
-    @PreAuthorize("hasAnyRole('PERSONAL_TRAINER', 'ADMIN')")
+    @PreAuthorize("hasRole('PERSONAL_TRAINER')")
     public ResponseEntity<List<MemberResponse>> findMyMembers(Authentication authentication) {
         String email = authentication.getName();
 
