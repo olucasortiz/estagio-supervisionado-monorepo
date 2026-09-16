@@ -68,6 +68,30 @@ export async function getMySubscription() {
   return getResource("/subscriptions/me", "Não foi possível carregar sua assinatura.");
 }
 
+export async function getNotifications() {
+  return getResource("/notifications", "Não foi possível carregar as notificações.");
+}
+
+export async function getUnreadNotificationCount() {
+  return getResource("/notifications/unread-count", "Não foi possível carregar o contador de notificações.");
+}
+
+export async function sendMessageToPersonal(payload) {
+  return createResource("/notifications/trainer-message", payload, "Não foi possível enviar a mensagem ao personal.");
+}
+
+export async function markNotificationAsRead(notificationId) {
+  return patchResource(`/notifications/${notificationId}/read`, undefined, "Não foi possível atualizar a notificação.");
+}
+
+export async function markAllNotificationsAsRead() {
+  return patchResource("/notifications/read-all", undefined, "Não foi possível atualizar as notificações.");
+}
+
+export async function replyToNotification(notificationId, payload) {
+  return createResource(`/notifications/${notificationId}/reply`, payload, "Não foi possível enviar a resposta.");
+}
+
 export async function getMyWorkouts() {
   return getResource("/workouts/me", "Não foi possível carregar seus treinos.");
 }
@@ -477,6 +501,17 @@ export async function processCardPayment(payload, idempotencyKey) {
       body: JSON.stringify(payload),
     },
     "Falha ao processar pagamento com cartão"
+  );
+}
+
+async function patchResource(path, payload, errorMessage) {
+  return requestResource(
+    path,
+    {
+      method: "PATCH",
+      body: payload === undefined ? undefined : JSON.stringify(payload),
+    },
+    errorMessage
   );
 }
 

@@ -42,4 +42,23 @@ public class EmailService {
 
         mailSender.send(message);
     }
+
+    public void sendNotificationEmail(String to, String title, String body) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        if (mailUsername != null && !mailUsername.isBlank()) {
+            message.setFrom(mailUsername);
+        }
+        message.setTo(to);
+        message.setSubject(title + " - Lion Fitness");
+        message.setText("""
+                Olá,
+
+                Você recebeu uma nova notificação no Lion Fitness:
+
+                %s
+
+                Acesse o sistema para acompanhar a conversa.
+                """.formatted(body));
+        mailSender.send(message);
+    }
 }

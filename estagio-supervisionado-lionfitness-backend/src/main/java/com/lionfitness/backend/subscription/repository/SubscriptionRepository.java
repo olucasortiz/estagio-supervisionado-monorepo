@@ -45,7 +45,10 @@ public class SubscriptionRepository {
                     resultSet.getString("status"),
                     resultSet.getObject("created_at", LocalDateTime.class),
                     0, // daysRemaining (será calculado no Service)
-                    true // hasSubscription (será configurado no Service/Controller)
+                    true,
+                    false,
+                    null,
+                    0
             );
 
     private final JdbcTemplate jdbcTemplate;
@@ -259,14 +262,14 @@ public class SubscriptionRepository {
         return subscriptions.stream().findFirst();
     }
 
-    public boolean renewSubscription(UUID subscriptionId) {
+    public boolean renewSubscription(UUID subscriptionId, LocalDate renewalDate) {
         int updatedRows = jdbcTemplate.update(
                 """
                 update subscriptions s
                 set end_date = (
                     case
-                        when s.end_date >= current_date then s.end_date + (p.duration_days * interval '1 day')::interval
-                        else current_date + (p.duration_days * interval '1 day')::interval
+                        when s.end_date >= ? then s.end_date + (p.duration_days * interval '1 day')::interval
+                        else ? + (p.duration_days * interval '1 day')::interval
                     end
                 )::date,
                 status = cast('ACTIVE' as subscription_status_enum)
@@ -275,6 +278,8 @@ public class SubscriptionRepository {
                   and p.id = s.plan_id
                   and s.status::text <> 'CANCELED'
                 """,
+                renewalDate,
+                renewalDate,
                 subscriptionId
         );
 

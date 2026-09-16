@@ -23,6 +23,7 @@ import com.lionfitness.backend.subscription.exception.InvalidSubscriptionPeriodE
 import com.lionfitness.backend.subscription.exception.SubscriptionMemberNotFoundException;
 import com.lionfitness.backend.subscription.exception.SubscriptionNotFoundException;
 import com.lionfitness.backend.subscription.exception.SubscriptionPlanNotFoundException;
+import com.lionfitness.backend.subscription.exception.SubscriptionRenewalNotAvailableException;
 import com.lionfitness.backend.user.exception.DuplicateEmailException;
 import com.lionfitness.backend.user.exception.UserNotFoundException;
 import com.lionfitness.backend.workout.exception.WorkoutNotFoundException;
@@ -559,6 +560,20 @@ public class GlobalExceptionHandler {
     ) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(buildErrorResponse(
                 HttpStatus.FORBIDDEN, "Acesso negado.", request.getRequestURI(), List.of()));
+    }
+
+    @ExceptionHandler(SubscriptionRenewalNotAvailableException.class)
+    public ResponseEntity<ApiErrorResponse> handleSubscriptionRenewalNotAvailableException(
+            SubscriptionRenewalNotAvailableException exception,
+            HttpServletRequest request
+    ) {
+        ApiErrorResponse response = buildErrorResponse(
+                HttpStatus.CONFLICT,
+                exception.getMessage(),
+                request.getRequestURI(),
+                List.of()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     @ExceptionHandler(Exception.class)

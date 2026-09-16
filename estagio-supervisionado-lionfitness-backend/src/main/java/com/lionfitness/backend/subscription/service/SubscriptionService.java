@@ -31,13 +31,16 @@ public class SubscriptionService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final PaymentRepository paymentRepository;
+    private final SubscriptionRenewalEligibilityService renewalEligibilityService;
 
     public SubscriptionService(
             SubscriptionRepository subscriptionRepository,
-            PaymentRepository paymentRepository
+            PaymentRepository paymentRepository,
+            SubscriptionRenewalEligibilityService renewalEligibilityService
     ) {
         this.subscriptionRepository = subscriptionRepository;
         this.paymentRepository = paymentRepository;
+        this.renewalEligibilityService = renewalEligibilityService;
     }
 
     @Transactional
@@ -105,13 +108,17 @@ public class SubscriptionService {
     @Transactional
     public boolean renewSubscription(UUID id) {
         logger.info("Renewing subscription for id {}", id);
-        return subscriptionRepository.renewSubscription(id);
+        return subscriptionRepository.renewSubscription(id, LocalDate.now());
     }
 
     public Optional<MySubscriptionResponse> findMine(String authenticatedEmail) {
         logger.info("Loading active subscription for authenticated email {}", authenticatedEmail);
         return subscriptionRepository.findActiveByUserEmail(authenticatedEmail)
                 .map(sub -> {
+                    SubscriptionRenewalEligibilityService.RenewalEligibility renewalEligibility =
+                            renewalEligibilityService.assess(new Subscription(
+                                    sub.id(), sub.memberId(), sub.planId(), sub.startDate(), sub.endDate(),
+                                    sub.status(), sub.createdAt()));
                     int days = 0;
                     if ("ACTIVE".equalsIgnoreCase(sub.status()) && sub.endDate() != null) {
                         long diff = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), sub.endDate());
@@ -129,7 +136,10 @@ public class SubscriptionService {
                             sub.status(),
                             sub.createdAt(),
                             days,
-                            true
+                            true,
+                            renewalEligibility.eligible(),
+                            renewalEligibility.availableFrom(),
+                            renewalEligibility.daysUntilRenewal()
                     );
                 });
     }

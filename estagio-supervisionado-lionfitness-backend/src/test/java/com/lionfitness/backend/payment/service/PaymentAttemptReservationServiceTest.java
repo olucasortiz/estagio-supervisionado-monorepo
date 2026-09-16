@@ -8,6 +8,8 @@ import com.lionfitness.backend.payment.repository.OnlinePaymentRepository;
 import com.lionfitness.backend.payment.repository.PaymentRepository;
 import com.lionfitness.backend.subscription.model.Subscription;
 import com.lionfitness.backend.subscription.repository.SubscriptionRepository;
+import com.lionfitness.backend.subscription.service.SubscriptionRenewalEligibilityService;
+import com.lionfitness.backend.subscription.exception.SubscriptionRenewalNotAvailableException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,12 +33,14 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentAttemptReservationServiceTest {
     @Mock SubscriptionRepository subscriptionRepository;
     @Mock PaymentRepository paymentRepository;
     @Mock OnlinePaymentRepository onlinePaymentRepository;
+    @Mock SubscriptionRenewalEligibilityService renewalEligibilityService;
 
     private PaymentAttemptReservationService service;
     private final UUID subscriptionId = UUID.randomUUID();
@@ -47,7 +51,7 @@ class PaymentAttemptReservationServiceTest {
     @BeforeEach
     void setUp() {
         service = new PaymentAttemptReservationService(
-                subscriptionRepository, paymentRepository, onlinePaymentRepository);
+                subscriptionRepository, paymentRepository, onlinePaymentRepository, renewalEligibilityService);
     }
 
     @Test
@@ -92,6 +96,37 @@ class PaymentAttemptReservationServiceTest {
         assertThatThrownBy(() -> service.reserveCard(subscriptionId, email, false, UUID.randomUUID().toString()))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+
+        verifyNoInteractions(paymentRepository, onlinePaymentRepository);
+    }
+
+    @Test
+    void cardAndPixReservationsAreBlockedBeforeAnyPaymentIsCreatedOutsideRenewalWindow() {
+        Subscription subscription = new Subscription(subscriptionId, UUID.randomUUID(), planId,
+                LocalDate.now(), LocalDate.now().plusDays(6), "ACTIVE", LocalDateTime.now());
+        when(subscriptionRepository.findActiveByIdAndUserEmailForUpdate(subscriptionId, email))
+                .thenReturn(Optional.of(subscription));
+        doThrow(new SubscriptionRenewalNotAvailableException(subscription.endDate().minusDays(5)))
+                .when(renewalEligibilityService).requireEligible(subscription);
+
+        assertThatThrownBy(() -> service.reserveCard(subscriptionId, email, false, UUID.randomUUID().toString()))
+                .isInstanceOf(SubscriptionRenewalNotAvailableException.class);
+        assertThatThrownBy(() -> service.reservePix(subscriptionId, email, false))
+                .isInstanceOf(SubscriptionRenewalNotAvailableException.class);
+
+        verifyNoInteractions(paymentRepository, onlinePaymentRepository);
+    }
+
+    @Test
+    void administrativeReservationAlsoRespectsTheRenewalWindow() {
+        Subscription subscription = new Subscription(subscriptionId, UUID.randomUUID(), planId,
+                LocalDate.now(), LocalDate.now().plusDays(6), "ACTIVE", LocalDateTime.now());
+        when(subscriptionRepository.findActiveByIdForUpdate(subscriptionId)).thenReturn(Optional.of(subscription));
+        doThrow(new SubscriptionRenewalNotAvailableException(subscription.endDate().minusDays(5)))
+                .when(renewalEligibilityService).requireEligible(subscription);
+
+        assertThatThrownBy(() -> service.reserveCard(subscriptionId, "admin@lionfitness.com", true,
+                UUID.randomUUID().toString())).isInstanceOf(SubscriptionRenewalNotAvailableException.class);
 
         verifyNoInteractions(paymentRepository, onlinePaymentRepository);
     }

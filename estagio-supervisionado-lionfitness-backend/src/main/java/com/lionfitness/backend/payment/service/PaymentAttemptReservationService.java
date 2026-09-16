@@ -9,6 +9,7 @@ import com.lionfitness.backend.payment.repository.PaymentRepository;
 import com.lionfitness.backend.subscription.exception.SubscriptionNotFoundException;
 import com.lionfitness.backend.subscription.model.Subscription;
 import com.lionfitness.backend.subscription.repository.SubscriptionRepository;
+import com.lionfitness.backend.subscription.service.SubscriptionRenewalEligibilityService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -28,13 +29,16 @@ public class PaymentAttemptReservationService {
     private final SubscriptionRepository subscriptionRepository;
     private final PaymentRepository paymentRepository;
     private final OnlinePaymentRepository onlinePaymentRepository;
+    private final SubscriptionRenewalEligibilityService renewalEligibilityService;
 
     public PaymentAttemptReservationService(SubscriptionRepository subscriptionRepository,
                                             PaymentRepository paymentRepository,
-                                            OnlinePaymentRepository onlinePaymentRepository) {
+                                            OnlinePaymentRepository onlinePaymentRepository,
+                                            SubscriptionRenewalEligibilityService renewalEligibilityService) {
         this.subscriptionRepository = subscriptionRepository;
         this.paymentRepository = paymentRepository;
         this.onlinePaymentRepository = onlinePaymentRepository;
+        this.renewalEligibilityService = renewalEligibilityService;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -43,6 +47,7 @@ public class PaymentAttemptReservationService {
                                    boolean isAdmin,
                                    String idempotencyKey) {
         Subscription subscription = findAuthorizedSubscription(subscriptionId, requesterEmail, isAdmin);
+        renewalEligibilityService.requireEligible(subscription);
         BigDecimal officialPrice = findOfficialPrice(subscription);
 
         Optional<OnlinePaymentTransaction> existing =
@@ -69,6 +74,7 @@ public class PaymentAttemptReservationService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Reservation reservePix(UUID subscriptionId, String payerEmail, boolean isAdmin) {
         Subscription subscription = findAuthorizedSubscription(subscriptionId, payerEmail, isAdmin);
+        renewalEligibilityService.requireEligible(subscription);
         BigDecimal officialPrice = findOfficialPrice(subscription);
 
         Optional<OnlinePaymentTransaction> existing = onlinePaymentRepository

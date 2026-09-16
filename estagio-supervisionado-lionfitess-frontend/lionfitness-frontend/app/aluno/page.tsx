@@ -14,15 +14,17 @@ export default function AlunoPage() {
   // Estado dinâmico: subscriptionId e amount vêm do backend via PlanoAluno
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
   const [amount, setAmount]                 = useState<number | null>(null);
+  const [renewalEligible, setRenewalEligible] = useState(false);
 
   /**
    * Callback chamado pelo PlanoAluno assim que GET /subscriptions/me responde.
    * Popula os dados reais para o PixPaymentModal e CardPaymentModal.
    */
   const handleSubscriptionLoaded = useCallback(
-    (subId: string, planPrice: number) => {
+    (subId: string, planPrice: number, eligible: boolean) => {
       setSubscriptionId(subId);
       setAmount(planPrice);
+      setRenewalEligible(eligible);
     },
     []
   );
@@ -45,7 +47,7 @@ export default function AlunoPage() {
         onOpenCardModal={() => setCardOpen(true)}
         onSubscriptionLoaded={handleSubscriptionLoaded}
       />
-      {pixOpen && subscriptionId && amount !== null && (
+      {pixOpen && renewalEligible && subscriptionId && amount !== null && (
         <PixPaymentModal
           open={pixOpen}
           onClose={() => setPixOpen(false)}
@@ -54,7 +56,7 @@ export default function AlunoPage() {
           onSuccess={handlePaymentSuccess}
         />
       )}
-      {cardOpen && subscriptionId && amount !== null && (
+      {cardOpen && renewalEligible && subscriptionId && amount !== null && (
         <CardPaymentModal
           open={cardOpen}
           onClose={() => setCardOpen(false)}

@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,7 +26,7 @@ class PaymentSettlementServiceTest {
     private final PaymentRepository paymentRepository = mock(PaymentRepository.class);
     private final SubscriptionRepository subscriptionRepository = mock(SubscriptionRepository.class);
     private final PaymentSettlementService service = new PaymentSettlementService(
-            onlineRepository, paymentRepository, subscriptionRepository, new ObjectMapper());
+            onlineRepository, paymentRepository, subscriptionRepository, new ObjectMapper(), Clock.systemUTC());
 
     @Test
     void duplicateSynchronousAndWebhookSettlementRenewsOnlyOnce() {
@@ -39,7 +40,7 @@ class PaymentSettlementServiceTest {
         when(onlineRepository.updateOrderStateIfNotApproved(eq(txId), eq("ORD-1"), eq("APPROVED"), any(), anyString()))
                 .thenReturn(true);
         when(paymentRepository.markAsPaid(eq(paymentId), any())).thenReturn(true);
-        when(subscriptionRepository.renewSubscription(subscriptionId)).thenReturn(true);
+        when(subscriptionRepository.renewSubscription(eq(subscriptionId), any())).thenReturn(true);
         MercadoPagoOrder order = approvedOrder(txId, amount);
 
         PaymentSettlementService.SettlementResult first = service.synchronize(txId, order);
@@ -48,7 +49,7 @@ class PaymentSettlementServiceTest {
         assertThat(first.renewed()).isTrue();
         assertThat(duplicate.renewed()).isFalse();
         verify(paymentRepository, times(1)).markAsPaid(eq(paymentId), any());
-        verify(subscriptionRepository, times(1)).renewSubscription(subscriptionId);
+        verify(subscriptionRepository, times(1)).renewSubscription(eq(subscriptionId), any());
     }
 
     @Test
@@ -79,7 +80,7 @@ class PaymentSettlementServiceTest {
         PaymentSettlementService.SettlementResult result = service.synchronize(txId, approvedOrder(txId, amount));
 
         assertThat(result.renewed()).isFalse();
-        verify(subscriptionRepository, never()).renewSubscription(any());
+        verify(subscriptionRepository, never()).renewSubscription(any(), any());
     }
 
     private OnlinePaymentTransaction transaction(UUID txId, UUID paymentId, UUID subscriptionId,

@@ -4,6 +4,7 @@ import React from "react";
 import { Dumbbell, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { NotificationBell } from "@/components/notification/NotificationBell";
 
 export type PersonalTabKey = "alunos" | "fichas" | "montar";
 
@@ -46,6 +47,7 @@ export function PersonalHeader({
             {initials}
           </span>
           <ThemeToggle />
+          <NotificationBell canReply />
           <Button
             variant="ghost"
             size="sm"

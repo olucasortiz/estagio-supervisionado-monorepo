@@ -13,9 +13,37 @@ import Combobox from "../../ui/Combobox";
 
 const METHOD_LABELS = { PIX: "Pix", CASH: "Dinheiro", CARD: "Cartão", Dinheiro: "Dinheiro", Cartão: "Cartão", Pix: "Pix", Boleto: "Boleto" };
 
-function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, feedback, isEditing, data }) {
+function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, feedback, error, isEditing, data }) {
   const isPixMethod = ["Pix", "PIX"].includes(form.method);
   const isCardMethod = ["Cartão", "CARD"].includes(form.method);
+
+  const selectedSub = (data.subscriptions || []).find((s) => String(s.id) === String(form.subscriptionId));
+  let renewalNotice = null;
+  if (selectedSub?.endDate) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const end = new Date(selectedSub.endDate);
+    end.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays > 5) {
+      const avail = new Date(end);
+      avail.setDate(avail.getDate() - 5);
+      renewalNotice = {
+        blocked: true,
+        message: `Plano ativo até ${end.toLocaleDateString("pt-BR")} (${diffDays} dias restantes). Renovação permitida somente a partir de ${avail.toLocaleDateString("pt-BR")}.`,
+      };
+    } else if (diffDays >= 0) {
+      renewalNotice = {
+        blocked: false,
+        message: `Plano vence em ${diffDays} ${diffDays === 1 ? "dia" : "dias"}. Renovação liberada sem perda dos dias restantes.`,
+      };
+    } else {
+      renewalNotice = {
+        blocked: false,
+        message: "Assinatura vencida. Renovação liberada.",
+      };
+    }
+  }
 
   return (
     <Modal
@@ -53,6 +81,22 @@ function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, fee
             emptyMessage="Nenhuma assinatura encontrada."
           />
         </div>
+        {renewalNotice && (
+          <div
+            style={{
+              padding: "8px 12px",
+              borderRadius: "6px",
+              fontSize: "12px",
+              lineHeight: 1.4,
+              backgroundColor: renewalNotice.blocked ? "rgba(239, 68, 68, 0.1)" : "rgba(16, 185, 129, 0.1)",
+              border: `1px solid ${renewalNotice.blocked ? "rgba(239, 68, 68, 0.3)" : "rgba(16, 185, 129, 0.3)"}`,
+              color: renewalNotice.blocked ? "#ef4444" : "#10b981",
+            }}
+          >
+            {renewalNotice.blocked ? "⚠️ " : "✅ "}
+            {renewalNotice.message}
+          </div>
+        )}
         <div className="form-grid">
           <div className="form-field">
             <label className="label">Valor (R$) *</label>
@@ -84,6 +128,9 @@ function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, fee
             </select>
           </div>
         </div>
+        {error && (
+          <p className="feedback-error" role="alert">{error}</p>
+        )}
         {feedback && (
           <p className={feedback.includes("sucesso") ? "feedback-success" : "feedback-error"}>{feedback}</p>
         )}
@@ -91,11 +138,24 @@ function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, fee
     </Modal>
   );
 }
+
 export default function PaymentsSection({
-  data, forms, editing, feedback, saving,
-  fmtDate, fmtCurrency, onChangeFormValue, onSubmitForm, onStartEdit, onRemoveItem, onResetForm, onRefreshData
+  data,
+  forms,
+  onChangeFormValue,
+  onResetForm,
+  onSubmitForm,
+  onRemoveItem,
+  onStartEdit,
+  editing,
+  saving,
+  feedback,
+  onRefreshData,
+  fmtDate,
+  fmtCurrency,
 }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [formError, setFormError] = useState("");
   const [pixModalSubId, setPixModalSubId] = useState(null);
   const [pixModalAmount, setPixModalAmount] = useState(null);
   const [pixModalMemberName, setPixModalMemberName] = useState(null);
@@ -106,51 +166,70 @@ export default function PaymentsSection({
   const [cardModalMemberName, setCardModalMemberName] = useState(null);
   const [cardModalPlanName, setCardModalPlanName] = useState(null);
 
-  // Resolve nome do aluno e plano a partir de uma subscriptionId
   const resolvePixContext = (subscriptionId) => {
-    const sub = data.subscriptions.find((s) => String(s.id ?? "") === String(subscriptionId ?? ""));
+    const sub = data.subscriptions.find((s) => s.id === subscriptionId);
+    const plan = data.plans.find((p) => p.id === sub?.planId);
     setPixModalMemberName(sub?.memberName || null);
     setPixModalPlanName(sub?.planName || null);
+    setPixModalAmount(plan?.price != null ? Number(plan.price) : null);
   };
 
   const resolveCardContext = (subscriptionId) => {
-    const sub = data.subscriptions.find((s) => String(s.id ?? "") === String(subscriptionId ?? ""));
-    const plan = data.plans.find((p) => String(p.id ?? "") === String(sub?.planId ?? sub?.plan_id ?? ""));
+    const sub = data.subscriptions.find((s) => s.id === subscriptionId);
+    const plan = data.plans.find((p) => p.id === sub?.planId);
     setCardModalMemberName(sub?.memberName || null);
     setCardModalPlanName(sub?.planName || null);
     setCardModalAmount(plan?.price != null ? Number(plan.price) : null);
   };
 
   const handleOpen = (item = null) => {
+    setFormError("");
     if (item) onStartEdit("payments", item);
     else onResetForm("payments");
     setModalOpen(true);
   };
 
-  const handleClose = () => { setModalOpen(false); onResetForm("payments"); };
+  const handleClose = () => {
+    setFormError("");
+    setModalOpen(false);
+    onResetForm("payments");
+  };
 
   const handleSubmit = async () => {
+    setFormError("");
     const isPixMethod = ["Pix", "PIX"].includes(forms.payments.method);
+    const isCardMethod = ["Cartão", "CARD"].includes(forms.payments.method);
 
-    if (!editing.payments && isPixMethod) {
-      if (!forms.payments.subscriptionId) {
-        alert("Por favor, selecione uma assinatura para gerar a cobrança Pix.");
+    if (!forms.payments.subscriptionId) {
+      setFormError("Por favor, selecione uma assinatura para continuar.");
+      return;
+    }
+
+    const selectedSub = (data.subscriptions || []).find((s) => String(s.id) === String(forms.payments.subscriptionId));
+    if (selectedSub?.endDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const end = new Date(selectedSub.endDate);
+      end.setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      const isPaidRenewal = ["PAID", "Pago"].includes(forms.payments.status) || isPixMethod || isCardMethod;
+      if (diffDays > 5 && isPaidRenewal) {
+        const avail = new Date(end);
+        avail.setDate(avail.getDate() - 5);
+        setFormError(`Renovação antecipada bloqueada: faltam ${diffDays} dias para o vencimento. Disponível a partir de ${avail.toLocaleDateString("pt-BR")}.`);
         return;
       }
+    }
+
+    if (!editing.payments && isPixMethod) {
       setModalOpen(false);
-      // amount do formulário é enviado mas ignorado pelo backend para ADMIN — preço vem do banco
       setPixModalAmount(forms.payments.amount ? Number(forms.payments.amount) : null);
       setPixModalSubId(forms.payments.subscriptionId);
       resolvePixContext(forms.payments.subscriptionId);
       return;
     }
 
-    const isCardMethod = ["Cartão", "CARD"].includes(forms.payments.method);
     if (!editing.payments && isCardMethod) {
-      if (!forms.payments.subscriptionId) {
-        alert("Por favor, selecione uma assinatura para realizar o pagamento com cartão.");
-        return;
-      }
       setModalOpen(false);
       setCardModalSubId(forms.payments.subscriptionId);
       resolveCardContext(forms.payments.subscriptionId);
@@ -254,6 +333,7 @@ export default function PaymentsSection({
         onSubmit={handleSubmit}
         saving={saving.payments}
         feedback={feedback.payments}
+        error={formError}
         isEditing={!!editing.payments}
         data={data}
       />
@@ -296,5 +376,4 @@ export default function PaymentsSection({
     </div>
   );
 }
-
 

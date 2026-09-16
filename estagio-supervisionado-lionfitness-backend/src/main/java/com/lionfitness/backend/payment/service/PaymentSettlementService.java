@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -27,15 +29,18 @@ public class PaymentSettlementService {
     private final PaymentRepository paymentRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final ObjectMapper objectMapper;
+    private final Clock clock;
 
     public PaymentSettlementService(OnlinePaymentRepository onlinePaymentRepository,
                                     PaymentRepository paymentRepository,
                                     SubscriptionRepository subscriptionRepository,
-                                    ObjectMapper objectMapper) {
+                                    ObjectMapper objectMapper,
+                                    Clock applicationClock) {
         this.onlinePaymentRepository = onlinePaymentRepository;
         this.paymentRepository = paymentRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.objectMapper = objectMapper;
+        this.clock = applicationClock;
     }
 
     @Transactional
@@ -64,7 +69,8 @@ public class PaymentSettlementService {
                         transaction.paymentId(), order.id());
                 return new SettlementResult(internalStatus, statusDetail, false, auditJson);
             }
-            boolean subscriptionRenewed = subscriptionRepository.renewSubscription(transaction.subscriptionId());
+            boolean subscriptionRenewed = subscriptionRepository.renewSubscription(
+                    transaction.subscriptionId(), LocalDate.now(clock));
             if (!subscriptionRenewed) {
                 throw new IllegalStateException("Não foi possível concluir atomicamente a renovação.");
             }

@@ -20,6 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { NotificationBell } from "@/components/notification/NotificationBell";
+import { ContactPersonalDialog } from "@/components/notification/ContactPersonalDialog";
 import {
   getMySubscription,
   getMyWorkouts,
@@ -71,6 +73,9 @@ export type MySubscriptionResponse = {
   createdAt?: string | number[];
   daysRemaining?: number;
   hasSubscription: boolean;
+  renewalEligible?: boolean;
+  renewalAvailableFrom?: string | number[] | null;
+  daysUntilRenewal?: number;
 };
 
 export type PersonalTrainerItem = {
@@ -182,7 +187,7 @@ export default function PlanoAlunoPage({
 }: {
   onOpenPixModal?: () => void;
   onOpenCardModal?: () => void;
-  onSubscriptionLoaded?: (subscriptionId: string, amount: number) => void;
+  onSubscriptionLoaded?: (subscriptionId: string, amount: number, renewalEligible: boolean) => void;
 }) {
   const { user, logout } = useAuth();
 
@@ -242,7 +247,7 @@ export default function PlanoAlunoPage({
           setSubscription(null);
         } else {
           setSubscription(data);
-          onSubscriptionLoaded?.(data.id, data.planPrice);
+          onSubscriptionLoaded?.(data.id, data.planPrice, data.renewalEligible === true);
         }
       })
       .catch(() => {
@@ -451,6 +456,7 @@ export default function PlanoAlunoPage({
             />
 
             <ThemeToggle />
+            <NotificationBell />
 
             {/* Botão de Logout — Visualmente idêntico ao de /personal */}
             <Button
@@ -582,6 +588,13 @@ export default function PlanoAlunoPage({
                 )}
               </div>
 
+              {subscription?.renewalEligible ? (
+              <>
+                {subscription.daysRemaining != null && subscription.daysRemaining > 0 ? (
+                  <div className="mb-4 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-700 dark:text-emerald-300">
+                    Seu plano vence em {subscription.daysRemaining} {subscription.daysRemaining === 1 ? "dia" : "dias"}. Você já pode renovar sem perder os dias restantes.
+                  </div>
+                ) : null}
               <div className="grid gap-3 min-[390px]:grid-cols-2">
                 {/* Botão Pix */}
                 <button
@@ -628,6 +641,22 @@ export default function PlanoAlunoPage({
                   </span>
                 </button>
               </div>
+              </>
+              ) : subscription ? (
+                <div className="rounded-lg border border-border bg-muted/35 px-4 py-4 text-sm text-muted-foreground">
+                  <p className="font-semibold text-foreground">Seu plano está ativo até {formatDate(subscription.endDate)}.</p>
+                  <p className="mt-1">
+                    A renovação estará disponível a partir de {formatDate(subscription.renewalAvailableFrom)}.
+                    {subscription.daysUntilRenewal != null && subscription.daysUntilRenewal > 0
+                      ? ` Faltam ${subscription.daysUntilRenewal} ${subscription.daysUntilRenewal === 1 ? "dia" : "dias"} para você poder renovar.`
+                      : ""}
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-border bg-muted/35 px-4 py-4 text-sm text-muted-foreground">
+                  Não há assinatura disponível para renovação.
+                </div>
+              )}
             </div>
           </section>
 
@@ -790,6 +819,7 @@ export default function PlanoAlunoPage({
                   </div>
                 </div>
               )}
+              {personalTrainer ? <ContactPersonalDialog personalName={personalTrainer.name} /> : null}
 
               {isTraining && (
                 <Badge className="border-lion-red/20 bg-lion-red/10 text-lion-red hover:bg-lion-red/15">

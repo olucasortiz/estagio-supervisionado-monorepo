@@ -138,7 +138,7 @@ public class PixPaymentService {
                     transaction.gatewayReturn());
             if (changed) {
                 boolean paid = paymentRepository.markAsPaid(transaction.paymentId(), confirmedAt.toLocalDate());
-                if (paid && !subscriptionRepository.renewSubscription(transaction.subscriptionId())) {
+                if (paid && !subscriptionRepository.renewSubscription(transaction.subscriptionId(), confirmedAt.toLocalDate())) {
                     throw new IllegalStateException("Não foi possível confirmar integralmente o Pix simulado.");
                 }
             }

@@ -17,6 +17,9 @@ public record MySubscriptionResponse(
         String status,
         LocalDateTime createdAt,
         Integer daysRemaining,
-        Boolean hasSubscription
+        Boolean hasSubscription,
+        Boolean renewalEligible,
+        LocalDate renewalAvailableFrom,
+        Integer daysUntilRenewal
 ) {
 }

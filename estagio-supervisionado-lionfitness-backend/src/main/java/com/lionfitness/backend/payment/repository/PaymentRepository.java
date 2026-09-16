@@ -253,6 +253,18 @@ public class PaymentRepository {
 
                 return rows > 0;
         }
+
+        public boolean hasPaidPaymentBySubscriptionId(UUID subscriptionId) {
+                Integer result = jdbcTemplate.queryForObject(
+                                """
+                                                select count(*)
+                                                from payments
+                                                where subscription_id = ?
+                                                  and status::text = 'PAID'
+                                                """,
+                                Integer.class,
+                                subscriptionId);
+
+                return result != null && result > 0;
+        }
 }
-
-
