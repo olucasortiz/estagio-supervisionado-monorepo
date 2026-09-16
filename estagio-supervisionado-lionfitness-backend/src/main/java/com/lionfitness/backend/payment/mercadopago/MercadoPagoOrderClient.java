@@ -58,6 +58,7 @@ public class MercadoPagoOrderClient {
             BigDecimal amount,
             String token,
             String paymentMethodId,
+            String paymentType,
             int installments,
             String payerEmail,
             String identificationType,
@@ -65,9 +66,15 @@ public class MercadoPagoOrderClient {
             String externalReference,
             String idempotencyKey
     ) {
+        if (!"credit_card".equals(paymentType) && !"debit_card".equals(paymentType)) {
+            throw new IllegalArgumentException("Tipo de cartão inválido.");
+        }
+        if ("debit_card".equals(paymentType) && installments != 1) {
+            throw new IllegalArgumentException("Cartão de débito deve ser pago em 1 parcela.");
+        }
         Map<String, Object> paymentMethod = new LinkedHashMap<>();
         paymentMethod.put("id", paymentMethodId);
-        paymentMethod.put("type", "credit_card");
+        paymentMethod.put("type", paymentType);
         paymentMethod.put("token", token);
         paymentMethod.put("installments", installments);
 

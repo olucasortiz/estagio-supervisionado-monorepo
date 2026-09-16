@@ -52,7 +52,7 @@ class CardPaymentServiceTest {
         OnlinePaymentTransaction reserved = transaction("LOCAL-reserved", "PENDING", idempotencyKey);
         when(reservationService.reserveCard(subscriptionId, studentEmail, false, idempotencyKey))
                 .thenReturn(new PaymentAttemptReservationService.Reservation(reserved, false));
-        when(orderClient.createCardOrder(eq(price), eq("token"), eq("visa"), eq(1),
+        when(orderClient.createCardOrder(eq(price), eq("token"), eq("visa"), eq("credit_card"), eq(1),
                 eq(studentEmail), eq("CPF"), eq("12345678909"), eq(reserved.id().toString()),
                 eq(idempotencyKey))).thenReturn(approvedOrder(reserved.id().toString()));
         when(settlementService.synchronize(eq(reserved.id()), any())).thenReturn(
@@ -64,8 +64,82 @@ class CardPaymentServiceTest {
         assertThat(response.transactionIdentifier()).isEqualTo("ORD-card");
         InOrder order = inOrder(reservationService, orderClient);
         order.verify(reservationService).reserveCard(subscriptionId, studentEmail, false, idempotencyKey);
-        order.verify(orderClient).createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+        order.verify(orderClient).createCardOrder(any(), any(), any(), any(), anyInt(), any(), any(), any(),
                 eq(reserved.id().toString()), eq(idempotencyKey));
+    }
+
+    @Test
+    void debitCardUsesOneInstallmentAndSelectedPaymentType() {
+        OnlinePaymentTransaction reserved = transaction("LOCAL-debit", "PENDING", idempotencyKey);
+        when(reservationService.reserveCard(subscriptionId, studentEmail, false, idempotencyKey))
+                .thenReturn(new PaymentAttemptReservationService.Reservation(reserved, false));
+        when(orderClient.createCardOrder(eq(price), eq("token"), eq("elo"), eq("debit_card"), eq(1),
+                eq(studentEmail), eq("CPF"), eq("12345678909"), eq(reserved.id().toString()),
+                eq(idempotencyKey))).thenReturn(approvedOrder(reserved.id().toString()));
+        when(settlementService.synchronize(eq(reserved.id()), any())).thenReturn(
+                new PaymentSettlementService.SettlementResult("APPROVED", "accredited", true, "{}"));
+
+        CardPaymentResponse response = service.processCardPayment(
+                request("elo", "debit_card", null), idempotencyKey, studentEmail, false);
+
+        assertThat(response.status()).isEqualTo("APPROVED");
+        assertThat(response.installments()).isEqualTo(1);
+        verify(orderClient).createCardOrder(eq(price), eq("token"), eq("elo"), eq("debit_card"), eq(1),
+                eq(studentEmail), eq("CPF"), eq("12345678909"), eq(reserved.id().toString()),
+                eq(idempotencyKey));
+    }
+
+    @Test
+    void creditCardKeepsRequestedInstallments() {
+        OnlinePaymentTransaction reserved = transaction("LOCAL-credit", "PENDING", idempotencyKey);
+        when(reservationService.reserveCard(subscriptionId, studentEmail, false, idempotencyKey))
+                .thenReturn(new PaymentAttemptReservationService.Reservation(reserved, false));
+        when(orderClient.createCardOrder(eq(price), eq("token"), eq("visa"), eq("credit_card"), eq(3),
+                eq(studentEmail), eq("CPF"), eq("12345678909"), eq(reserved.id().toString()),
+                eq(idempotencyKey))).thenReturn(approvedOrder(reserved.id().toString()));
+        when(settlementService.synchronize(eq(reserved.id()), any())).thenReturn(
+                new PaymentSettlementService.SettlementResult("APPROVED", "accredited", true, "{}"));
+
+        CardPaymentResponse response = service.processCardPayment(
+                request("visa", "credit_card", 3), idempotencyKey, studentEmail, false);
+
+        assertThat(response.installments()).isEqualTo(3);
+    }
+
+    @Test
+    void normalizesPreviouslyAcceptedUppercaseCreditType() {
+        OnlinePaymentTransaction reserved = transaction("LOCAL-credit", "PENDING", idempotencyKey);
+        when(reservationService.reserveCard(subscriptionId, studentEmail, false, idempotencyKey))
+                .thenReturn(new PaymentAttemptReservationService.Reservation(reserved, false));
+        when(orderClient.createCardOrder(eq(price), eq("token"), eq("visa"), eq("credit_card"), eq(1),
+                eq(studentEmail), eq("CPF"), eq("12345678909"), eq(reserved.id().toString()),
+                eq(idempotencyKey))).thenReturn(approvedOrder(reserved.id().toString()));
+        when(settlementService.synchronize(eq(reserved.id()), any())).thenReturn(
+                new PaymentSettlementService.SettlementResult("APPROVED", "accredited", true, "{}"));
+
+        service.processCardPayment(request("visa", "CREDIT_CARD", 1), idempotencyKey, studentEmail, false);
+
+        verify(orderClient).createCardOrder(eq(price), eq("token"), eq("visa"), eq("credit_card"), eq(1),
+                eq(studentEmail), eq("CPF"), eq("12345678909"), eq(reserved.id().toString()),
+                eq(idempotencyKey));
+    }
+
+    @Test
+    void rejectsDebitInstallmentsBeforeReservingAttempt() {
+        assertThatThrownBy(() -> service.processCardPayment(
+                request("elo", "debit_card", 2), idempotencyKey, studentEmail, false))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        exception -> assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+        verifyNoInteractions(reservationService, orderClient);
+    }
+
+    @Test
+    void rejectsUnsupportedPaymentTypeBeforeReservingAttempt() {
+        assertThatThrownBy(() -> service.processCardPayment(
+                request("visa", "bank_transfer", 1), idempotencyKey, studentEmail, false))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        exception -> assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+        verifyNoInteractions(reservationService, orderClient);
     }
 
     @Test
@@ -86,7 +160,7 @@ class CardPaymentServiceTest {
         OnlinePaymentTransaction reserved = transaction("LOCAL-reserved", "PENDING", idempotencyKey);
         when(reservationService.reserveCard(subscriptionId, studentEmail, false, idempotencyKey))
                 .thenReturn(new PaymentAttemptReservationService.Reservation(reserved, true));
-        when(orderClient.createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+        when(orderClient.createCardOrder(any(), any(), any(), any(), anyInt(), any(), any(), any(),
                 eq(reserved.id().toString()), eq(idempotencyKey)))
                 .thenReturn(approvedOrder(reserved.id().toString()));
         when(settlementService.synchronize(eq(reserved.id()), any())).thenReturn(
@@ -94,7 +168,7 @@ class CardPaymentServiceTest {
 
         service.processCardPayment(request(), idempotencyKey, studentEmail, false);
 
-        verify(orderClient).createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+        verify(orderClient).createCardOrder(any(), any(), any(), any(), anyInt(), any(), any(), any(),
                 eq(reserved.id().toString()), eq(idempotencyKey));
     }
 
@@ -107,10 +181,10 @@ class CardPaymentServiceTest {
                 .thenReturn(new PaymentAttemptReservationService.Reservation(rejected, false));
         when(reservationService.reserveCard(subscriptionId, studentEmail, false, nextKey))
                 .thenReturn(new PaymentAttemptReservationService.Reservation(next, false));
-        when(orderClient.createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+        when(orderClient.createCardOrder(any(), any(), any(), any(), anyInt(), any(), any(), any(),
                 eq(rejected.id().toString()), eq(idempotencyKey)))
                 .thenThrow(gatewayFailure(400, "invalid_email_for_sandbox"));
-        when(orderClient.createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+        when(orderClient.createCardOrder(any(), any(), any(), any(), anyInt(), any(), any(), any(),
                 eq(next.id().toString()), eq(nextKey)))
                 .thenReturn(approvedOrder(next.id().toString()));
         when(settlementService.synchronize(eq(next.id()), any())).thenReturn(
@@ -122,7 +196,7 @@ class CardPaymentServiceTest {
 
         assertThat(response.status()).isEqualTo("APPROVED");
         verify(reservationService).rejectUnconfirmedAttempt(rejected.id());
-        verify(orderClient).createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+        verify(orderClient).createCardOrder(any(), any(), any(), any(), anyInt(), any(), any(), any(),
                 eq(next.id().toString()), eq(nextKey));
     }
 
@@ -132,7 +206,7 @@ class CardPaymentServiceTest {
         when(reservationService.reserveCard(subscriptionId, studentEmail, false, idempotencyKey))
                 .thenReturn(new PaymentAttemptReservationService.Reservation(reserved, false),
                         new PaymentAttemptReservationService.Reservation(reserved, true));
-        when(orderClient.createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+        when(orderClient.createCardOrder(any(), any(), any(), any(), anyInt(), any(), any(), any(),
                 eq(reserved.id().toString()), eq(idempotencyKey)))
                 .thenThrow(gatewayFailure(503, "service_unavailable"))
                 .thenReturn(approvedOrder(reserved.id().toString()));
@@ -144,7 +218,7 @@ class CardPaymentServiceTest {
         service.processCardPayment(request(), idempotencyKey, studentEmail, false);
 
         verify(reservationService, never()).rejectUnconfirmedAttempt(any());
-        verify(orderClient, times(2)).createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+        verify(orderClient, times(2)).createCardOrder(any(), any(), any(), any(), anyInt(), any(), any(), any(),
                 eq(reserved.id().toString()), eq(idempotencyKey));
     }
 
@@ -153,7 +227,7 @@ class CardPaymentServiceTest {
         OnlinePaymentTransaction reserved = transaction("LOCAL-reserved", "PENDING", idempotencyKey);
         when(reservationService.reserveCard(subscriptionId, studentEmail, false, idempotencyKey))
                 .thenReturn(new PaymentAttemptReservationService.Reservation(reserved, true));
-        when(orderClient.createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+        when(orderClient.createCardOrder(any(), any(), any(), any(), anyInt(), any(), any(), any(),
                 eq(reserved.id().toString()), eq(idempotencyKey)))
                 .thenThrow(gatewayFailure(409, "idempotency_key_already_used"));
 
@@ -162,7 +236,7 @@ class CardPaymentServiceTest {
                         exception -> assertThat(exception.isIdempotencyKeyAlreadyUsed()).isTrue());
 
         verify(reservationService).rejectUnconfirmedAttempt(reserved.id());
-        verify(orderClient, times(1)).createCardOrder(any(), any(), any(), anyInt(), any(), any(), any(),
+        verify(orderClient, times(1)).createCardOrder(any(), any(), any(), any(), anyInt(), any(), any(), any(),
                 eq(reserved.id().toString()), eq(idempotencyKey));
         verifyNoInteractions(settlementService);
     }
@@ -208,7 +282,11 @@ class CardPaymentServiceTest {
     }
 
     private CardPaymentRequest request() {
-        return new CardPaymentRequest(subscriptionId, "token", "visa", "credit_card", 1,
+        return request("visa", "credit_card", 1);
+    }
+
+    private CardPaymentRequest request(String method, String type, Integer installments) {
+        return new CardPaymentRequest(subscriptionId, "token", method, type, installments,
                 studentEmail, "CPF", "12345678909");
     }
 

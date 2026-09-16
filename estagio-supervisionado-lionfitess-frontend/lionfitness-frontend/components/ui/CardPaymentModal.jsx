@@ -49,6 +49,7 @@ export default function CardPaymentModal({
   const [expiration, setExpiration] = useState("");
   const [cvv, setCvv] = useState("");
   const [cpf, setCpf] = useState("");
+  const [paymentType, setPaymentType] = useState("credit_card");
   const [isFlipped, setIsFlipped] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -68,6 +69,7 @@ export default function CardPaymentModal({
     setExpiration("");
     setCvv("");
     setCpf("");
+    setPaymentType("credit_card");
     setError("");
     setSuccessMessage("");
     setPendingMessage("");
@@ -245,11 +247,11 @@ export default function CardPaymentModal({
           ? paymentMethodsResult
           : paymentMethodsResult?.results;
         const paymentMethod = paymentMethods?.find(
-          (method) => method?.payment_type_id === "credit_card"
+          (method) => method?.payment_type_id === paymentType
         );
 
         if (!paymentMethod?.id) {
-          throw new Error("Este cartão não possui uma modalidade de crédito disponível para pagamento.");
+          throw new Error(`Este cartão não possui uma modalidade de ${paymentType === "debit_card" ? "débito" : "crédito"} disponível para pagamento.`);
         }
 
         // Os dados brutos seguem diretamente do navegador ao Mercado Pago. Somente
@@ -279,7 +281,7 @@ export default function CardPaymentModal({
         subscriptionId,
         token: paymentAttempt.token,
         paymentMethodId: paymentAttempt.paymentMethodId,
-        paymentTypeId: "credit_card",
+        paymentTypeId: paymentType,
         installments: 1,
         identificationType: "CPF",
         identificationNumber: cleanCpf,
@@ -316,7 +318,7 @@ export default function CardPaymentModal({
   };
 
   const brand = detectBrand(cardNumber);
-  const methodLabel = "Cartão de crédito";
+  const methodLabel = paymentType === "debit_card" ? "Cartão de débito" : "Cartão de crédito";
   const viewState = successMessage ? "success" : pendingMessage ? "waiting" : error ? "error" : loading ? "processing" : "idle";
   const handleComplete = () => {
     if (successTimerRef.current) clearTimeout(successTimerRef.current);
@@ -326,7 +328,7 @@ export default function CardPaymentModal({
   };
   const subtitle = isAdmin && memberName
     ? <><span className="font-medium text-foreground">{memberName}</span>{planName ? ` · ${planName}` : ""}</>
-    : "Crédito com tokenização segura";
+    : "Crédito ou débito com tokenização segura";
 
   return (
     <Modal
@@ -370,29 +372,57 @@ export default function CardPaymentModal({
           />
 
           {!successMessage && !pendingMessage ? (
-            <CreditCardForm
-              cardNumber={cardNumber}
-              cardholderName={cardholderName}
-              expiration={expiration}
-              cvv={cvv}
-              cpf={cpf}
-              brand={brand}
-              disabled={loading}
-              onCardNumberChange={handleCardNumberChange}
-              onCardholderNameChange={(value) => {
-                resetPaymentAttemptAfterEdit();
-                setCardholderName(value);
-              }}
-              onExpirationChange={handleExpirationChange}
-              onCvvChange={(value) => {
-                resetPaymentAttemptAfterEdit();
-                setCvv(value);
-              }}
-              onCpfChange={handleCpfChange}
-              onCvvFocus={() => setIsFlipped(true)}
-              onCvvBlur={() => setIsFlipped(false)}
-              onFrontFocus={() => setIsFlipped(false)}
-            />
+            <>
+              <fieldset disabled={loading} className="grid gap-2">
+                <legend className="mb-2 text-sm font-medium text-foreground">Tipo de cartão</legend>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: "credit_card", label: "Crédito" },
+                    { value: "debit_card", label: "Débito" },
+                  ].map(({ value, label }) => (
+                    <label key={value} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${paymentType === value ? "border-primary bg-primary/10 text-foreground" : "border-input text-muted-foreground hover:border-primary/40"}`}>
+                      <input
+                        type="radio"
+                        name="payment-card-type"
+                        value={value}
+                        checked={paymentType === value}
+                        onChange={() => {
+                          resetPaymentAttemptAfterEdit();
+                          setPaymentType(value);
+                          setError("");
+                        }}
+                        className="accent-primary"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                {paymentType === "debit_card" ? <p className="text-xs text-muted-foreground">Débito à vista, em 1 parcela.</p> : null}
+              </fieldset>
+              <CreditCardForm
+                cardNumber={cardNumber}
+                cardholderName={cardholderName}
+                expiration={expiration}
+                cvv={cvv}
+                cpf={cpf}
+                brand={brand}
+                disabled={loading}
+                onCardNumberChange={handleCardNumberChange}
+                onCardholderNameChange={(value) => {
+                  resetPaymentAttemptAfterEdit();
+                  setCardholderName(value);
+                }}
+                onExpirationChange={handleExpirationChange}
+                onCvvChange={(value) => {
+                  resetPaymentAttemptAfterEdit();
+                  setCvv(value);
+                }}
+                onCpfChange={handleCpfChange}
+                onCvvFocus={() => setIsFlipped(true)}
+                onCvvBlur={() => setIsFlipped(false)}
+                onFrontFocus={() => setIsFlipped(false)}
+              />
+            </>
           ) : null}
 
           {successMessage || pendingMessage ? (

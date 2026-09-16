@@ -24,7 +24,7 @@ public record CardPaymentRequest(
         String paymentMethodId,
 
         @NotBlank(message = "paymentTypeId é obrigatório.")
-        @Pattern(regexp = "(?i)credit_card", message = "Apenas cartão de crédito é aceito.")
+        @Pattern(regexp = "(?i)(credit_card|debit_card)", message = "Apenas cartão de crédito ou débito é aceito.")
         String paymentTypeId,
 
         Integer installments, // Número de parcelas (padrão 1)

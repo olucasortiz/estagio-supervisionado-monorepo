@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -45,6 +46,10 @@ public class CardPaymentService {
                                                   boolean isAdmin) {
         String effectiveIdempotencyKey = validateIdempotencyKey(idempotencyKey);
         UUID subscriptionId = request.subscriptionId();
+        String paymentType = validatePaymentType(request.paymentTypeId());
+        if ("debit_card".equals(paymentType) && request.installments() != null && request.installments() != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cartão de débito deve ser pago em 1 parcela.");
+        }
         int installments = request.resolveInstallments();
         String effectivePayerEmail = request.payerEmail() != null && !request.payerEmail().isBlank()
                 ? request.payerEmail() : requesterEmail;
@@ -56,15 +61,16 @@ public class CardPaymentService {
             if (!isLocalReservation(transaction)) {
                 return toExistingPaymentResponse(transaction, request);
             }
-            return submitReservedAttempt(transaction, request, transaction.amount(), installments,
+            return submitReservedAttempt(transaction, request, paymentType, transaction.amount(), installments,
                     effectivePayerEmail, effectiveIdempotencyKey);
         }
-        return submitReservedAttempt(transaction, request, transaction.amount(), installments,
+        return submitReservedAttempt(transaction, request, paymentType, transaction.amount(), installments,
                 effectivePayerEmail, effectiveIdempotencyKey);
     }
 
     private CardPaymentResponse submitReservedAttempt(OnlinePaymentTransaction transaction,
                                                       CardPaymentRequest request,
+                                                      String paymentType,
                                                       BigDecimal amount,
                                                       int installments,
                                                       String payerEmail,
@@ -77,6 +83,7 @@ public class CardPaymentService {
                     amount,
                     request.token(),
                     request.paymentMethodId(),
+                    paymentType,
                     installments,
                     payerEmail,
                     request.identificationType(),
@@ -148,6 +155,14 @@ public class CardPaymentService {
             UUID.fromString(normalized);
         } catch (IllegalArgumentException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "X-Idempotency-Key deve ser um UUID válido.");
+        }
+        return normalized;
+    }
+
+    private String validatePaymentType(String paymentType) {
+        String normalized = paymentType == null ? null : paymentType.toLowerCase(Locale.ROOT);
+        if (!"credit_card".equals(normalized) && !"debit_card".equals(normalized)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tipo de cartão inválido.");
         }
         return normalized;
     }

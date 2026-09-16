@@ -39,14 +39,50 @@ class MercadoPagoOrderClientTest {
                 .andExpect(jsonPath("$.processing_mode").value("automatic"))
                 .andExpect(jsonPath("$.payer.email").value("lionfitness@testuser.com"))
                 .andExpect(jsonPath("$.transactions.payments[0].payment_method.type").value("credit_card"))
+                .andExpect(jsonPath("$.transactions.payments[0].payment_method.installments").value(1))
                 .andExpect(jsonPath("$.transactions.payments[0].payment_method.token").value("card-token"))
+                .andExpect(jsonPath("$..card_number").doesNotExist())
+                .andExpect(jsonPath("$..security_code").doesNotExist())
                 .andRespond(withSuccess(responseJson("credit_card"), MediaType.APPLICATION_JSON));
 
         MercadoPagoOrder order = client.createCardOrder(new BigDecimal("89.90"), "card-token", "visa",
-                1, "buyer@testuser.com", "CPF", "123", "external-ref", "idem-1");
+                "credit_card", 1, "buyer@testuser.com", "CPF", "123", "external-ref", "idem-1");
 
         assertThat(order.id()).isEqualTo("ORD-123");
         assertThat(order.firstPayment().orElseThrow().id()).isEqualTo("PAY-123");
+        server.verify();
+    }
+
+    @Test
+    void postsDebitCardUsingOrdersContractWithOneInstallment() {
+        server.expect(once(), requestTo("https://api.mercadopago.com/v1/orders"))
+                .andExpect(header("X-Idempotency-Key", "idem-debit"))
+                .andExpect(jsonPath("$.type").value("online"))
+                .andExpect(jsonPath("$.processing_mode").value("automatic"))
+                .andExpect(jsonPath("$.transactions.payments[0].payment_method.id").value("elo"))
+                .andExpect(jsonPath("$.transactions.payments[0].payment_method.type").value("debit_card"))
+                .andExpect(jsonPath("$.transactions.payments[0].payment_method.token").value("debit-token"))
+                .andExpect(jsonPath("$.transactions.payments[0].payment_method.installments").value(1))
+                .andExpect(jsonPath("$..card_number").doesNotExist())
+                .andExpect(jsonPath("$..security_code").doesNotExist())
+                .andRespond(withSuccess(responseJson("debit_card"), MediaType.APPLICATION_JSON));
+
+        MercadoPagoOrder order = client.createCardOrder(new BigDecimal("89.90"), "debit-token", "elo",
+                "debit_card", 1, "buyer@testuser.com", "CPF", "123", "external-ref", "idem-debit");
+
+        assertThat(order.id()).isEqualTo("ORD-123");
+        assertThat(order.firstPayment().orElseThrow().id()).isEqualTo("PAY-123");
+        server.verify();
+    }
+
+    @Test
+    void clientRejectsInvalidTypeOrDebitInstallmentsBeforePost() {
+        assertThatThrownBy(() -> client.createCardOrder(new BigDecimal("89.90"), "token", "elo",
+                "bank_transfer", 1, "buyer@testuser.com", "CPF", "123", "external-ref", "idem-1"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> client.createCardOrder(new BigDecimal("89.90"), "token", "elo",
+                "debit_card", 2, "buyer@testuser.com", "CPF", "123", "external-ref", "idem-2"))
+                .isInstanceOf(IllegalArgumentException.class);
         server.verify();
     }
 
@@ -74,7 +110,7 @@ class MercadoPagoOrderClientTest {
                 .andRespond(withSuccess(responseJson("credit_card"), MediaType.APPLICATION_JSON));
 
         client.createCardOrder(new BigDecimal("89.90"), "card-token", "visa",
-                1, "student@lionfitness.com.br", "CPF", "123", "external-ref", "idem-card");
+                "credit_card", 1, "student@lionfitness.com.br", "CPF", "123", "external-ref", "idem-card");
 
         server.verify();
     }
