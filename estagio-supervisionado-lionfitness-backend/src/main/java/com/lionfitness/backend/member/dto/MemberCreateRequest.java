@@ -35,4 +35,7 @@ public record MemberCreateRequest(
         String photoUrl,
         UUID personalTrainerId
 ) {
+    public MemberCreateRequest {
+        cpf = com.lionfitness.backend.common.validation.CpfValidator.normalize(cpf);
+    }
 }

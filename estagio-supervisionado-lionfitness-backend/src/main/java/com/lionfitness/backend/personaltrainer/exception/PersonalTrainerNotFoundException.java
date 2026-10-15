@@ -7,4 +7,8 @@ public class PersonalTrainerNotFoundException extends RuntimeException {
     public PersonalTrainerNotFoundException(UUID id) {
         super("Personal trainer not found: " + id);
     }
+
+    public PersonalTrainerNotFoundException(String message) {
+        super(message);
+    }
 }

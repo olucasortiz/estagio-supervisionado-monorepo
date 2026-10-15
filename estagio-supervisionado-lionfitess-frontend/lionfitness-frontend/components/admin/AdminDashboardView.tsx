@@ -6,8 +6,6 @@ import {
   ArrowUpRight,
   Calendar,
   CreditCard,
-  Dumbbell,
-  Filter,
   Layers,
   UserPlus,
   Users,
@@ -19,19 +17,44 @@ import Avatar from "../ui/Avatar";
 import StatusBadge from "../ui/StatusBadge";
 import { cn } from "@/lib/utils";
 
+export type DashboardItem = {
+  [key: string]: string | number | boolean | null | undefined | Date;
+  id?: string | number;
+  name?: string;
+  email?: string;
+  active?: boolean;
+  situacao?: string;
+  status?: string;
+  amount?: number | string;
+  price?: number | string;
+  planId?: string | number;
+  paidAt?: string | Date;
+  createdAt?: string | Date;
+  dueDate?: string | Date;
+  specialty?: string | null;
+  photoUrl?: string | null;
+  phone?: string | null;
+  subscriptionLabel?: string;
+  method?: string;
+  dataCadastro?: string | Date;
+  dataCancelamento?: string | Date;
+  motivoCancelamento?: string;
+  nome?: string;
+};
+
 interface AdminDashboardViewProps {
   data: {
-    members: any[];
-    allMembers: any[];
-    plans: any[];
-    users: any[];
-    personalTrainers: any[];
-    subscriptions: any[];
-    payments: any[];
-    overdueMembers: any[];
+    members: DashboardItem[];
+    allMembers: DashboardItem[];
+    plans: DashboardItem[];
+    users: DashboardItem[];
+    personalTrainers: DashboardItem[];
+    subscriptions: DashboardItem[];
+    payments: DashboardItem[];
+    overdueMembers: DashboardItem[];
   };
-  fmtDate: (date: any) => string;
-  fmtCurrency: (val: any) => string;
+  fmtDate: (date: unknown) => string;
+  fmtCurrency: (val: unknown) => string;
   onNavigate?: (id: number | string) => void;
 }
 

@@ -95,7 +95,7 @@ export function drawReportHeader(doc, {
 
   // 4. Período / Subtítulo / Filtros compactos logo abaixo do título
   let filterText = "";
-  const filterEntries = Object.entries(filters).filter(([_, v]) => Boolean(v));
+  const filterEntries = Object.entries(filters).filter(([, v]) => Boolean(v));
   if (filterEntries.length > 0) {
     filterText = filterEntries.map(([k, v]) => `${k}: ${v}`).join("   |   ");
   } else if (subtitle) {

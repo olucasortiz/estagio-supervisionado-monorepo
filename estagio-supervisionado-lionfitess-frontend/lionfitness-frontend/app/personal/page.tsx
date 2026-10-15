@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Users, ClipboardList, LayoutGrid } from "lucide-react";
+import { ArrowLeft, Users, ClipboardList, LayoutGrid, Dumbbell } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,8 @@ import {
   getMyStudents,
   getWorkoutExercisesBySheet,
   getWorkoutSheetsByMember,
+  getWorkoutSheet,
+  updateWorkoutSheet,
   searchExerciseCatalog,
 } from "@/services/api";
 import exportWorkoutPdf from "@/components/reports/exportWorkoutPdf";
@@ -22,6 +24,7 @@ import { PersonalHeader, PersonalTabKey } from "@/components/personal/PersonalHe
 import { StudentsPanel } from "@/components/personal/StudentsPanel";
 import { SheetsPanel } from "@/components/personal/SheetsPanel";
 import { BuilderPanel } from "@/components/personal/BuilderPanel";
+import ExerciseCatalogSection from "@/components/dashboard/sections/ExerciseCatalogSection";
 import {
   StudentViewModel,
   WorkoutSheetViewModel,
@@ -30,6 +33,7 @@ import {
   NewSheetFormData,
   PrescriptionFormData,
   CustomExerciseFormData,
+  WorkoutSheetUpdateData,
 } from "@/components/personal/types";
 import {
   mapStudent,
@@ -42,6 +46,7 @@ const tabs: { key: PersonalTabKey; label: string; icon: React.ElementType }[] = 
   { key: "alunos", label: "Meus Alunos", icon: Users },
   { key: "fichas", label: "Fichas do Aluno", icon: ClipboardList },
   { key: "montar", label: "Montar Treino", icon: LayoutGrid },
+  { key: "catalogo", label: "Catálogo", icon: Dumbbell },
 ];
 
 export default function PersonalPage() {
@@ -52,27 +57,31 @@ export default function PersonalPage() {
   const [activeTab, setActiveTab] = useState<PersonalTabKey>("alunos");
 
   // ── Alunos Reais ───────────────────────────────────────────────────────────
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<StudentViewModel[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState("");
   const [membersLoading, setMembersLoading] = useState(true);
   const [membersError, setMembersError] = useState("");
 
   // ── Fichas Reais ───────────────────────────────────────────────────────────
-  const [workoutSheets, setWorkoutSheets] = useState<any[]>([]);
+  const [workoutSheets, setWorkoutSheets] = useState<WorkoutSheetViewModel[]>([]);
   const [selectedSheetId, setSelectedSheetId] = useState("");
   const [sheetsLoading, setSheetsLoading] = useState(false);
   const [sheetsError, setSheetsError] = useState("");
   const [sheetSuccess, setSheetSuccess] = useState("");
   const [creatingSheet, setCreatingSheet] = useState(false);
   const [deletingSheet, setDeletingSheet] = useState(false);
+  const [editSession, setEditSession] = useState<{ sheet: WorkoutSheetViewModel; exercises: WorkoutExerciseViewModel[] } | null>(null);
+  const [editingLoading, setEditingLoading] = useState(false);
+  const [savingSheet, setSavingSheet] = useState(false);
+  const editRequestRef = useRef(0);
 
   // ── Exercícios da Ficha ────────────────────────────────────────────────────
-  const [sheetExercises, setSheetExercises] = useState<any[]>([]);
+  const [sheetExercises, setSheetExercises] = useState<WorkoutExerciseViewModel[]>([]);
   const [sheetExercisesLoading, setSheetExercisesLoading] = useState(false);
   const [sheetExercisesError, setSheetExercisesError] = useState("");
 
   // ── Catálogo de Exercícios ─────────────────────────────────────────────────
-  const [catalogResults, setCatalogResults] = useState<any[]>([]);
+  const [catalogResults, setCatalogResults] = useState<CatalogExerciseViewModel[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState("");
 
@@ -127,9 +136,9 @@ export default function PersonalPage() {
       const list = Array.isArray(response) ? response : [];
       setMembers(list);
 
-      if (preferredMemberId && list.some((m: any) => String(m.id || m.memberId) === preferredMemberId)) {
+      if (preferredMemberId && list.some((m: StudentViewModel) => String(m.id || m.memberId) === preferredMemberId)) {
         setSelectedMemberId(preferredMemberId);
-      } else if (selectedMemberId && !list.some((m: any) => String(m.id || m.memberId) === selectedMemberId)) {
+      } else if (selectedMemberId && !list.some((m: StudentViewModel) => String(m.id || m.memberId) === selectedMemberId)) {
         setSelectedMemberId("");
       }
     } catch {
@@ -147,10 +156,10 @@ export default function PersonalPage() {
       const list = Array.isArray(response) ? response : [];
       setWorkoutSheets(list);
 
-      if (preferredSheetId && list.some((s: any) => String(s.id) === preferredSheetId)) {
+      if (preferredSheetId && list.some((s: WorkoutSheetViewModel) => String(s.id) === preferredSheetId)) {
         setSelectedSheetId(preferredSheetId);
       } else {
-        const active = list.find((s: any) => s.active);
+        const active = list.find((s: WorkoutSheetViewModel) => s.active);
         setSelectedSheetId(active?.id ? String(active.id) : list[0]?.id ? String(list[0].id) : "");
       }
     } catch {
@@ -176,7 +185,7 @@ export default function PersonalPage() {
     }
   }, []);
 
-  const loadCatalog = useCallback(async (filters: { name?: string; muscle?: string; category?: string } = {}) => {
+  const loadCatalog = useCallback(async (filters: { name?: string; muscle?: string; category?: string; equipment?: string } = {}) => {
     try {
       setCatalogLoading(true);
       setCatalogError("");
@@ -220,7 +229,56 @@ export default function PersonalPage() {
   };
 
   const handleSelectSheet = (sheetId: string) => {
+    editRequestRef.current++;
+    setEditSession(null);
+    setEditingLoading(false);
     setSelectedSheetId(sheetId);
+  };
+
+  const handleEditSheet = async (sheet: WorkoutSheetViewModel) => {
+    const requestId = ++editRequestRef.current;
+    setEditingLoading(true);
+    setSheetsError("");
+    setSaveError("");
+    setSaveSuccess("");
+    try {
+      const detail = await getWorkoutSheet(sheet.id);
+      if (requestId !== editRequestRef.current) return;
+      if (!detail?.sheet?.active) throw new Error("Ficha inativa não pode ser editada.");
+      setEditSession({ sheet: mapWorkoutSheet(detail.sheet), exercises: (detail.exercises || []).map(mapWorkoutExercise) });
+      setActiveTab("montar");
+    } catch (err: unknown) {
+      if (requestId === editRequestRef.current) setSheetsError(err instanceof Error ? err.message : "Não foi possível abrir a edição.");
+    } finally {
+      if (requestId === editRequestRef.current) setEditingLoading(false);
+    }
+  };
+
+  const handleUpdateSheet = async (data: WorkoutSheetUpdateData) => {
+    if (!editSession || savingSheet) return false;
+    setSavingSheet(true);
+    setSaveError("");
+    try {
+      const result = await updateWorkoutSheet(editSession.sheet.id, data);
+      setWorkoutSheets((current) => current.map((sheet) => String(sheet.id) === String(result.sheet.id) ? result.sheet : sheet));
+      setSheetExercises(result.exercises || []);
+      setSheetSuccess("Ficha atualizada. A versão anterior está disponível no histórico.");
+      setEditSession(null);
+      setActiveTab("fichas");
+      return true;
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : "Não foi possível salvar a edição.");
+      return false;
+    } finally { setSavingSheet(false); }
+  };
+
+  const changeTab = (tab: PersonalTabKey) => {
+    if (savingSheet) return;
+    if (editSession && tab !== "montar" && !window.confirm("Descartar as alterações ainda não salvas desta ficha?")) return;
+    if (tab !== "montar") setEditSession(null);
+    editRequestRef.current++;
+    setEditingLoading(false);
+    setActiveTab(tab);
   };
 
   const handleCreateSheet = async (formData: NewSheetFormData) => {
@@ -245,8 +303,8 @@ export default function PersonalPage() {
 
       setSheetSuccess(`Ficha "${formData.title}" criada com sucesso!`);
       return true;
-    } catch (err: any) {
-      setSheetsError(err?.message || "Não foi possível criar a ficha de treino.");
+    } catch (err: unknown) {
+      setSheetsError(err instanceof Error ? err.message : "Não foi possível criar a ficha de treino.");
       return false;
     } finally {
       setCreatingSheet(false);
@@ -277,7 +335,7 @@ export default function PersonalPage() {
     }
   };
 
-  const handleSearchCatalog = (query: { name?: string; muscle?: string; category?: string }) => {
+  const handleSearchCatalog = (query: { name?: string; muscle?: string; category?: string; equipment?: string }) => {
     return loadCatalog(query);
   };
 
@@ -289,9 +347,10 @@ export default function PersonalPage() {
 
       await createWorkoutExercise({
         workoutSheetId: prescription.workoutSheetId,
+        catalogExerciseId: catalogItem.id,
         externalName: catalogItem.name,
-        muscle: catalogItem.muscle === "Geral" ? "" : catalogItem.muscle,
-        exerciseType: catalogItem.category === "Geral" ? "" : catalogItem.category,
+        muscle: catalogItem.muscle,
+        exerciseType: catalogItem.category,
         equipment: catalogItem.equipment || "",
         difficulty: "",
         instructions: catalogItem.instructions || "",
@@ -304,8 +363,8 @@ export default function PersonalPage() {
       await loadSheetExercises(prescription.workoutSheetId);
       setSaveSuccess(`Exercício "${catalogItem.name}" adicionado à ficha com sucesso!`);
       return true;
-    } catch (err: any) {
-      setSaveError(err?.message || "Não foi possível adicionar o exercício à ficha.");
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : "Não foi possível adicionar o exercício à ficha.");
       return false;
     } finally {
       setSaveLoading(false);
@@ -335,14 +394,14 @@ export default function PersonalPage() {
               ? String(item?.id) === responseId
               : String(item?.name || "").toLocaleLowerCase("pt-BR") === data.name.toLocaleLowerCase("pt-BR"),
           );
-          return alreadyPresent ? current : [...current, response];
+          return alreadyPresent ? current : [...current, response as unknown as CatalogExerciseViewModel];
         });
       }
 
       setSaveSuccess(`Exercício personalizado "${data.name}" cadastrado com sucesso.`);
       return { success: true, catalogUpdated: canInsertLocally };
-    } catch (err: any) {
-      setCustomError(err?.message || "Não foi possível cadastrar o exercício personalizado.");
+    } catch (err: unknown) {
+      setCustomError(err instanceof Error ? err.message : "Não foi possível cadastrar o exercício personalizado.");
       return { success: false, catalogUpdated: false };
     } finally {
       setCustomLoading(false);
@@ -418,9 +477,9 @@ export default function PersonalPage() {
                     key={t.key}
                     type="button"
                     onClick={() => {
-                      if (!isDisabled) setActiveTab(t.key);
+                      if (!isDisabled) changeTab(t.key);
                     }}
-                    disabled={isDisabled}
+                    disabled={isDisabled || savingSheet}
                     className={cn(
                       "flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 lg:flex-none cursor-pointer",
                       isActive
@@ -443,7 +502,8 @@ export default function PersonalPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setActiveTab(activeTab === "montar" ? "fichas" : "alunos")}
+                onClick={() => changeTab(activeTab === "montar" ? "fichas" : "alunos")}
+                disabled={savingSheet}
                 className="h-8 px-2 text-muted-foreground hover:text-foreground text-sm font-medium"
               >
                 <ArrowLeft className="size-4 mr-1" />
@@ -454,6 +514,7 @@ export default function PersonalPage() {
 
           {/* Renderização Condicional da Aba Ativa */}
           <div key={activeTab}>
+            {activeTab === "catalogo" && <ExerciseCatalogSection />}
             {/* Aba 1: Meus Alunos */}
             {activeTab === "alunos" && (
               <StudentsPanel
@@ -481,6 +542,8 @@ export default function PersonalPage() {
                 onCreateSheet={handleCreateSheet}
                 onDeleteSheet={handleDeleteSheet}
                 onGoToBuilder={() => setActiveTab("montar")}
+                onEditSheet={handleEditSheet}
+                editingLoading={editingLoading}
                 onExportPdf={handleExportPdf}
                 pdfLoading={pdfLoading}
               />
@@ -489,13 +552,17 @@ export default function PersonalPage() {
             {/* Aba 3: Montar Treino / Builder */}
             {activeTab === "montar" && selectedStudentViewModel && selectedSheetViewModel && (
               <BuilderPanel
+                key={`${selectedSheetId}-${editSession ? `edit-${editSession.sheet.version}` : "add"}`}
                 student={selectedStudentViewModel}
-                sheet={selectedSheetViewModel}
-                exercises={exerciseViewModels}
+                sheet={editSession?.sheet || selectedSheetViewModel}
+                exercises={editSession?.exercises || exerciseViewModels}
                 catalogResults={catalogViewModels}
                 loadingExercises={sheetExercisesLoading}
                 loadingCatalog={catalogLoading}
-                savingExercise={saveLoading}
+                savingExercise={saveLoading || savingSheet}
+                editing={Boolean(editSession)}
+                onUpdateSheet={handleUpdateSheet}
+                onCancelEdit={() => changeTab("fichas")}
                 creatingCustom={customLoading}
                 error={sheetExercisesError || catalogError || saveError || customError}
                 successMessage={saveSuccess}

@@ -33,6 +33,8 @@ public record WorkoutExerciseCreateRequest(
         @Min(value = 0, message = "Descanso deve ser zero ou maior.")
         Integer restSeconds,
 
-        String notes
+        String notes,
+        @NotNull(message = "Exercício do catálogo é obrigatório.")
+        UUID catalogExerciseId
 ) {
 }

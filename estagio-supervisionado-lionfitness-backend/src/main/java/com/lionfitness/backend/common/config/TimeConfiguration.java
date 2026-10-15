@@ -1,6 +1,7 @@
 package com.lionfitness.backend.common.config;
 
 import java.time.Clock;
+import java.time.ZoneId;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -8,8 +9,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class TimeConfiguration {
 
+    public static final ZoneId BUSINESS_ZONE = ZoneId.of("America/Sao_Paulo");
+
     @Bean
     public Clock applicationClock() {
-        return Clock.systemDefaultZone();
+        return Clock.system(BUSINESS_ZONE);
     }
 }

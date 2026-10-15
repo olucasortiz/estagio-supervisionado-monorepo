@@ -117,6 +117,7 @@ export default function MemberWizardDrawer({
   const handleClose = () => { setStep(1); setDateError(""); onClose(); };
 
   const handleSubmit = () => {
+    if (saving) return;
     const err = validateBirthDate(form.birthDate);
     if (err) {
       setDateError(err);

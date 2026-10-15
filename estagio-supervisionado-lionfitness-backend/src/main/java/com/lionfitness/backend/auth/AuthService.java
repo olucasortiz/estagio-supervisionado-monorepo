@@ -30,7 +30,7 @@ public class AuthService {
 
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new AuthUserNotFoundException(request.email()));
+                .orElseThrow(InvalidCredentialsException::new);
 
         if (!user.active()) {
             throw new InactiveUserException(request.email());

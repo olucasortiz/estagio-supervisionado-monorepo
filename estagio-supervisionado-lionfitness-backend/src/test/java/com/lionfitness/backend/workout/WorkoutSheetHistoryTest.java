@@ -1,5 +1,11 @@
 package com.lionfitness.backend.workout;
 
+import com.lionfitness.backend.workout.dto.WorkoutSheetResponse;
+import com.lionfitness.backend.workout.dto.WorkoutSheetSnapshot;
+import com.lionfitness.backend.workoutexercise.repository.WorkoutExerciseRepository;
+import com.lionfitness.backend.exercisecatalog.ExerciseCatalogRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.lionfitness.backend.member.repository.MemberRepository;
 import com.lionfitness.backend.personaltrainer.model.PersonalTrainer;
 import com.lionfitness.backend.personaltrainer.repository.PersonalTrainerRepository;
@@ -38,6 +44,8 @@ class WorkoutSheetHistoryTest {
     @Mock UserRepository userRepository;
     @Mock MemberRepository memberRepository;
     @Mock PersonalTrainerRepository trainerRepository;
+    @Mock WorkoutExerciseRepository exerciseRepository;
+    @Mock ExerciseCatalogRepository catalogRepository;
     @Mock JdbcTemplate jdbcTemplate;
 
     private WorkoutService service;
@@ -49,7 +57,7 @@ class WorkoutSheetHistoryTest {
     @BeforeEach
     void setUp() {
         service = new WorkoutService(workoutRepository, historyRepository, userRepository,
-                memberRepository, trainerRepository);
+                memberRepository, trainerRepository, exerciseRepository, catalogRepository);
     }
 
     @Test
@@ -77,24 +85,28 @@ class WorkoutSheetHistoryTest {
     }
 
     @Test
-    void deactivationRecordsEventAfterSuccessfulUpdate() throws Exception {
+    void deactivationRecordsPreviousSnapshotBeforeUpdate() throws Exception {
         trainerContext();
-        when(workoutRepository.findMemberIdByWorkoutSheetId(sheetId)).thenReturn(Optional.of(memberId));
+        WorkoutSheetResponse sheet = new WorkoutSheetResponse(sheetId, memberId, trainerId, "Treino A", "MONDAY",
+                "Segunda-feira", true, LocalDateTime.now());
+        WorkoutSheetSnapshot snapshot = new WorkoutSheetSnapshot(sheet, List.of());
+        when(workoutRepository.findByIdForUpdate(sheetId)).thenReturn(Optional.of(sheet));
+        when(workoutRepository.snapshot(sheet)).thenReturn(snapshot);
         when(workoutRepository.memberBelongsToPersonalTrainer(memberId, trainerId)).thenReturn(true);
         when(workoutRepository.deactivateWorkoutSheet(sheetId)).thenReturn(true);
 
         service.deactivateWorkoutSheet(trainerEmail, sheetId);
 
         InOrder order = inOrder(workoutRepository, historyRepository);
+        order.verify(historyRepository).recordSnapshot(eq(snapshot), any(User.class), eq("Ficha inativada."));
         order.verify(workoutRepository).deactivateWorkoutSheet(sheetId);
-        order.verify(historyRepository).recordChange(sheetId, "Ficha inativada.");
         assertThat(WorkoutService.class.getMethod("deactivateWorkoutSheet", String.class, UUID.class)
                 .isAnnotationPresent(Transactional.class)).isTrue();
     }
 
     @Test
     void repositoryPersistsEventWithoutInventingSnapshotColumns() {
-        WorkoutSheetHistoryRepository repository = new WorkoutSheetHistoryRepository(jdbcTemplate);
+        WorkoutSheetHistoryRepository repository = new WorkoutSheetHistoryRepository(jdbcTemplate, new ObjectMapper());
         repository.recordChange(sheetId, "Exercício adicionado");
         verify(jdbcTemplate).update(contains("INSERT INTO workout_sheet_history (id, workout_sheet_id, change_reason)"),
                 any(UUID.class), eq(sheetId), eq("Exercício adicionado"));

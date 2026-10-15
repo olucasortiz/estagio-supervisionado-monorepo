@@ -22,6 +22,7 @@ import {
   CatalogExerciseViewModel,
   PrescriptionFormData,
   CustomExerciseFormData,
+  WorkoutSheetUpdateData,
 } from "./types";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +37,10 @@ interface BuilderPanelProps {
   creatingCustom: boolean;
   error?: string;
   successMessage?: string;
-  onSearchCatalog: (query: { name?: string; muscle?: string; category?: string }) => Promise<void>;
+  editing?: boolean;
+  onUpdateSheet?: (data: WorkoutSheetUpdateData) => Promise<boolean>;
+  onCancelEdit?: () => void;
+  onSearchCatalog: (query: { name?: string; muscle?: string; category?: string; equipment?: string }) => Promise<void>;
   onSaveExercise: (data: PrescriptionFormData, exercise: CatalogExerciseViewModel) => Promise<boolean>;
   onCreateCustomExercise: (data: CustomExerciseFormData) => Promise<{
     success: boolean;
@@ -55,14 +59,52 @@ export function BuilderPanel({
   creatingCustom,
   error,
   successMessage,
+  editing = false,
+  onUpdateSheet,
+  onCancelEdit,
   onSearchCatalog,
   onSaveExercise,
   onCreateCustomExercise,
 }: BuilderPanelProps) {
+  const [draftTitle, setDraftTitle] = useState(sheet.title);
+  const [draftWeekDay, setDraftWeekDay] = useState(sheet.weekDay);
+  const [changeReason, setChangeReason] = useState("");
+  const [draftExercises, setDraftExercises] = useState<WorkoutExerciseViewModel[]>(() => exercises.map((exercise) => ({ ...exercise })));
+  const updateInFlightRef = useRef(false);
+  const visibleExercises = editing ? draftExercises : exercises;
+
+  const changeExercise = (id: string, values: Partial<WorkoutExerciseViewModel>) => {
+    setDraftExercises((current) => current.map((exercise) => exercise.id === id ? { ...exercise, ...values } : exercise));
+  };
+
+  const moveExercise = (index: number, offset: number) => {
+    setDraftExercises((current) => {
+      const reordered = [...current];
+      [reordered[index], reordered[index + offset]] = [reordered[index + offset], reordered[index]];
+      return reordered;
+    });
+  };
+
+  const saveSheet = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!onUpdateSheet || savingExercise || updateInFlightRef.current) return;
+    updateInFlightRef.current = true;
+    try {
+      await onUpdateSheet({ title: draftTitle.trim(), weekDay: draftWeekDay, version: sheet.version,
+        changeReason: changeReason.trim(), exercises: draftExercises.map((exercise) => ({
+          ...(exercise.catalogExerciseId ? { catalogExerciseId: exercise.catalogExerciseId } : { id: exercise.id }),
+          sets: exercise.sets, reps: exercise.reps, restSeconds: exercise.restSeconds,
+          instructions: exercise.instructions, notes: exercise.notes,
+        })),
+      });
+    } finally { updateInFlightRef.current = false; }
+  };
   // Estado do modal de biblioteca
   const [openLibrary, setOpenLibrary] = useState(false);
   const [catalogQuery, setCatalogQuery] = useState("");
-  const [selectedMuscle] = useState("");
+  const [selectedMuscle, setSelectedMuscle] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedEquipment, setSelectedEquipment] = useState("");
 
   // Estado da prescrição do exercício selecionado
   const [selectedCatalogItem, setSelectedCatalogItem] = useState<CatalogExerciseViewModel | null>(null);
@@ -88,14 +130,16 @@ export function BuilderPanel({
         !catalogQuery ||
         e.name.toLowerCase().includes(catalogQuery.toLowerCase()) ||
         e.muscle.toLowerCase().includes(catalogQuery.toLowerCase());
-      const matchMuscle = !selectedMuscle || e.muscle.toLowerCase() === selectedMuscle.toLowerCase();
-      return matchQuery && matchMuscle;
+      const matchMuscle = !selectedMuscle || e.muscle.toLowerCase().includes(selectedMuscle.toLowerCase());
+      const matchCategory = !selectedCategory || e.category.toLowerCase().includes(selectedCategory.toLowerCase());
+      const matchEquipment = !selectedEquipment || e.equipment.toLowerCase().includes(selectedEquipment.toLowerCase());
+      return e.isActive && matchQuery && matchMuscle && matchCategory && matchEquipment;
     });
-  }, [catalogResults, catalogQuery, selectedMuscle]);
+  }, [catalogResults, catalogQuery, selectedMuscle, selectedCategory, selectedEquipment]);
 
   const addedExerciseNames = useMemo(
-    () => new Set(exercises.map((exercise) => exercise.exerciseName.trim().toLocaleLowerCase("pt-BR"))),
-    [exercises],
+    () => new Set(visibleExercises.map((exercise) => exercise.exerciseName.trim().toLocaleLowerCase("pt-BR"))),
+    [visibleExercises],
   );
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -103,6 +147,8 @@ export function BuilderPanel({
     onSearchCatalog({
       name: catalogQuery,
       muscle: selectedMuscle,
+      category: selectedCategory,
+      equipment: selectedEquipment,
     });
   };
 
@@ -120,6 +166,16 @@ export function BuilderPanel({
 
     saveInFlightRef.current = true;
     try {
+      if (editing) {
+        setDraftExercises((current) => [...current, {
+          id: `draft-${crypto.randomUUID()}`, catalogExerciseId: selectedCatalogItem.id,
+          workoutSheetId: sheet.id, exerciseName: selectedCatalogItem.name, muscle: selectedCatalogItem.muscle,
+          exerciseType: selectedCatalogItem.category, equipment: selectedCatalogItem.equipment,
+          instructions: selectedCatalogItem.instructions, sets, reps, restSeconds, notes,
+        }]);
+        setSelectedCatalogItem(null);
+        return;
+      }
       const saved = await onSaveExercise(
         {
           workoutSheetId: sheet.id,
@@ -157,7 +213,7 @@ export function BuilderPanel({
       // A resposta real normalmente é inserida localmente. Caso o endpoint não
       // devolva o item, refaz a busca com os filtros atuais sem inventar dados.
       if (!result.catalogUpdated) {
-        await onSearchCatalog({ name: catalogQuery, muscle: selectedMuscle });
+        await onSearchCatalog({ name: catalogQuery, muscle: selectedMuscle, category: selectedCategory, equipment: selectedEquipment });
       }
 
       setShowCustomModal(false);
@@ -188,13 +244,41 @@ export function BuilderPanel({
         <Button
           onClick={() => {
             setOpenLibrary(true);
-            onSearchCatalog({});
+            onSearchCatalog({ name: catalogQuery, muscle: selectedMuscle, category: selectedCategory, equipment: selectedEquipment });
           }}
+          disabled={savingExercise}
           className="h-10 rounded-lg bg-primary hover:bg-primary-strong text-primary-foreground font-semibold text-xs shadow-brand gap-2"
         >
           <Plus className="size-4" /> Adicionar Exercício
         </Button>
       </div>
+
+      {editing && (
+        <form id="sheet-edit" onSubmit={saveSheet} className="surface-card space-y-4 p-5">
+          <p className="text-sm font-semibold">Editar ficha · versão {sheet.version}</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-title">Objetivo da ficha</Label>
+              <Input id="edit-title" value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} required maxLength={255} disabled={savingExercise} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-week-day">Dia da semana</Label>
+              <select id="edit-week-day" className="select w-full" value={draftWeekDay} onChange={(event) => setDraftWeekDay(event.target.value)} required disabled={savingExercise}>
+                {[["MONDAY", "Segunda-feira"], ["TUESDAY", "Terça-feira"], ["WEDNESDAY", "Quarta-feira"], ["THURSDAY", "Quinta-feira"], ["FRIDAY", "Sexta-feira"], ["SATURDAY", "Sábado"], ["SUNDAY", "Domingo"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="edit-reason">Motivo da alteração</Label>
+            <Textarea id="edit-reason" value={changeReason} onChange={(event) => setChangeReason(event.target.value)} required maxLength={2000} disabled={savingExercise} placeholder="Descreva o motivo da atualização." />
+          </div>
+          <p className="text-xs text-muted-foreground">As alterações dos exercícios abaixo serão salvas junto com a ficha. A versão anterior ficará disponível no histórico.</p>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onCancelEdit} disabled={savingExercise}>Cancelar edição</Button>
+            <Button type="submit" disabled={savingExercise}>{savingExercise ? "Salvando..." : "Salvar ficha e histórico"}</Button>
+          </div>
+        </form>
+      )}
 
       {/* Messages */}
       {error && (
@@ -215,18 +299,44 @@ export function BuilderPanel({
           <Loader2 className="size-8 animate-spin text-primary mb-2" />
           <p className="text-sm font-semibold">Carregando exercícios da ficha...</p>
         </div>
-      ) : exercises.length > 0 ? (
+      ) : visibleExercises.length > 0 ? (
         <div className="space-y-3">
-          {exercises.map((ex, i) => (
+          {visibleExercises.map((ex, i) => (
             <div
               key={ex.id}
               style={{ animationDelay: `${i * 30}ms` }}
-              className="surface-card animate-rise row-raise flex items-center gap-4 p-4"
+              className="surface-card animate-rise row-raise flex flex-wrap items-center gap-4 p-4"
             >
               {/* Index number badge */}
               <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-ink text-sm font-semibold text-background">
                 {i + 1}
               </div>
+              {editing && (
+                <div className="order-last w-full space-y-3 border-t border-border pt-3">
+                  <div className="grid grid-cols-3 gap-3">
+                    {([['sets', 'Séries', 1], ['reps', 'Repetições', 1], ['restSeconds', 'Descanso (seg)', 0]] as const).map(([field, label, min]) => (
+                      <div key={field} className="space-y-1.5">
+                        <Label htmlFor={`edit-${ex.id}-${field}`}>{label}</Label>
+                        <Input id={`edit-${ex.id}-${field}`} form="sheet-edit" type="number" value={ex[field]} min={min} required disabled={savingExercise}
+                          onChange={(event) => changeExercise(ex.id, { [field]: Number(event.target.value) })} />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1.5"><Label htmlFor={`instructions-${ex.id}`}>Instruções</Label>
+                      <Textarea id={`instructions-${ex.id}`} form="sheet-edit" value={ex.instructions} disabled={savingExercise} onChange={(event) => changeExercise(ex.id, { instructions: event.target.value })} />
+                    </div>
+                    <div className="space-y-1.5"><Label htmlFor={`notes-${ex.id}`}>Observações</Label>
+                      <Textarea id={`notes-${ex.id}`} form="sheet-edit" value={ex.notes} disabled={savingExercise} onChange={(event) => changeExercise(ex.id, { notes: event.target.value })} />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" size="sm" disabled={savingExercise || i === 0} onClick={() => moveExercise(i, -1)}>Mover para cima</Button>
+                    <Button type="button" variant="outline" size="sm" disabled={savingExercise || i === visibleExercises.length - 1} onClick={() => moveExercise(i, 1)}>Mover para baixo</Button>
+                    <Button type="button" variant="outline" size="sm" disabled={savingExercise} onClick={() => setDraftExercises((current) => current.filter((exercise) => exercise.id !== ex.id))}>Remover da ficha</Button>
+                  </div>
+                </div>
+              )}
 
               {/* Exercise info */}
               <div className="min-w-0 flex-1">
@@ -402,7 +512,8 @@ export function BuilderPanel({
           ) : (
             /* Lista do Catálogo */
             <div className="space-y-3 flex-1 overflow-hidden flex flex-col">
-              <form onSubmit={handleSearchSubmit} className="relative flex gap-2">
+              <form onSubmit={handleSearchSubmit} className="space-y-2">
+                <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -415,6 +526,12 @@ export function BuilderPanel({
                 <Button type="submit" size="sm" className="h-10 px-4">
                   Buscar
                 </Button>
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <Input aria-label="Filtrar por categoria" placeholder="Categoria" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} />
+                  <Input aria-label="Filtrar por músculo" placeholder="Músculo" value={selectedMuscle} onChange={(e) => setSelectedMuscle(e.target.value)} />
+                  <Input aria-label="Filtrar por equipamento" placeholder="Equipamento" value={selectedEquipment} onChange={(e) => setSelectedEquipment(e.target.value)} />
+                </div>
               </form>
 
               {error ? (

@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import com.lionfitness.backend.workout.dto.WorkoutSheetResponse;
+import com.lionfitness.backend.workout.dto.WorkoutSheetSnapshot;
 import com.lionfitness.backend.workout.dto.WorkoutResponse;
 import com.lionfitness.backend.workout.model.WorkoutExercise;
 import com.lionfitness.backend.workout.model.WorkoutSheet;
@@ -17,8 +18,10 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.context.annotation.DependsOn;
 
 @Repository
+@DependsOn("workoutSchemaMigration")
 public class WorkoutRepository {
 
     private static final Logger logger = LoggerFactory.getLogger(WorkoutRepository.class);
@@ -41,7 +44,8 @@ public class WorkoutRepository {
                     resultSet.getString("week_day"),
                     WorkoutWeekDay.labelFor(resultSet.getString("week_day")),
                     resultSet.getBoolean("is_active"),
-                    resultSet.getObject("created_at", LocalDateTime.class)
+                    resultSet.getObject("created_at", LocalDateTime.class),
+                    resultSet.getLong("version")
             );
 
     private static final RowMapper<WorkoutExercise> WORKOUT_EXERCISE_ROW_MAPPER = (resultSet, rowNum) -> new WorkoutExercise(
@@ -180,6 +184,39 @@ public class WorkoutRepository {
         return personalTrainerIds.stream().findFirst();
     }
 
+    public Optional<WorkoutSheetResponse> findByIdForUpdate(UUID id) {
+        return findByIdLocked(id, " FOR UPDATE OF ws FOR SHARE OF m");
+    }
+
+    public Optional<WorkoutSheetResponse> findByIdForShare(UUID id) {
+        return findByIdLocked(id, " FOR SHARE OF ws, m");
+    }
+
+    private Optional<WorkoutSheetResponse> findByIdLocked(UUID id, String lock) {
+        return jdbcTemplate.query("""
+                SELECT ws.id, ws.member_id, ws.personal_trainer_id, ws.goal AS title, ws.week_day,
+                       ws.is_active, ws.created_at, ws.version
+                FROM workout_sheets ws JOIN members m ON m.id = ws.member_id WHERE ws.id = ?
+                """ + lock, WORKOUT_SHEET_RESPONSE_ROW_MAPPER, id).stream().findFirst();
+    }
+
+    public WorkoutSheetSnapshot snapshot(WorkoutSheetResponse sheet) {
+        return new WorkoutSheetSnapshot(sheet, findExercisesByWorkoutSheetId(sheet.id()));
+    }
+
+    public boolean updateSheet(UUID id, String title, String weekDay, long expectedVersion) {
+        return jdbcTemplate.update("""
+                UPDATE workout_sheets SET goal = ?, week_day = ?, version = version + 1
+                WHERE id = ? AND version = ? AND is_active = true
+                """, title, weekDay, id, expectedVersion) > 0;
+    }
+
+    public void incrementVersion(UUID id) {
+        if (jdbcTemplate.update("UPDATE workout_sheets SET version = version + 1 WHERE id = ?", id) != 1) {
+            throw new IllegalStateException("Ficha não encontrada ao atualizar versão.");
+        }
+    }
+
     public Optional<UUID> findMemberIdByWorkoutSheetId(UUID workoutSheetId) {
         List<UUID> memberIds = jdbcTemplate.query(
                 """
@@ -237,7 +274,8 @@ public class WorkoutRepository {
                     goal as title,
                     week_day,
                     is_active,
-                    created_at
+                    created_at,
+                    version
                 from workout_sheets
                 where member_id = ?
                   and is_active = true
@@ -260,11 +298,111 @@ public class WorkoutRepository {
         );
     }
 
+    public long countByMemberId(UUID memberId) {
+        Long total = jdbcTemplate.queryForObject(
+                "select count(*) from workout_sheets where member_id = ? and is_active = true",
+                Long.class,
+                memberId
+        );
+        return total != null ? total : 0L;
+    }
+
+    public List<WorkoutSheetResponse> findByMemberIdPaged(UUID memberId, int limit, int offset) {
+        ensureWeekDayColumn();
+        return jdbcTemplate.query(
+                """
+                select
+                    id,
+                    member_id,
+                    personal_trainer_id,
+                    goal as title,
+                    week_day,
+                    is_active,
+                    created_at,
+                    version
+                from workout_sheets
+                where member_id = ?
+                  and is_active = true
+                order by
+                  case week_day
+                    when 'MONDAY' then 1
+                    when 'TUESDAY' then 2
+                    when 'WEDNESDAY' then 3
+                    when 'THURSDAY' then 4
+                    when 'FRIDAY' then 5
+                    when 'SATURDAY' then 6
+                    when 'SUNDAY' then 7
+                    else 8
+                  end,
+                  created_at asc nulls last,
+                  id asc
+                limit ? offset ?
+                """,
+                WORKOUT_SHEET_RESPONSE_ROW_MAPPER,
+                memberId,
+                limit,
+                offset
+        );
+    }
+
+    public long countAllActive() {
+        Long total = jdbcTemplate.queryForObject(
+                "select count(*) from workout_sheets where is_active = true",
+                Long.class
+        );
+        return total != null ? total : 0L;
+    }
+
+    public List<WorkoutSheetResponse> findAllActive() {
+        ensureWeekDayColumn();
+        return jdbcTemplate.query(
+                """
+                select
+                    id,
+                    member_id,
+                    personal_trainer_id,
+                    goal as title,
+                    week_day,
+                    is_active,
+                    created_at,
+                    version
+                from workout_sheets
+                where is_active = true
+                order by created_at desc nulls last, id desc
+                """,
+                WORKOUT_SHEET_RESPONSE_ROW_MAPPER
+        );
+    }
+
+    public List<WorkoutSheetResponse> findAllActivePaged(int limit, int offset) {
+        ensureWeekDayColumn();
+        return jdbcTemplate.query(
+                """
+                select
+                    id,
+                    member_id,
+                    personal_trainer_id,
+                    goal as title,
+                    week_day,
+                    is_active,
+                    created_at,
+                    version
+                from workout_sheets
+                where is_active = true
+                order by created_at desc nulls last, id desc
+                limit ? offset ?
+                """,
+                WORKOUT_SHEET_RESPONSE_ROW_MAPPER,
+                limit,
+                offset
+        );
+    }
+
     public boolean deactivateWorkoutSheet(UUID workoutSheetId) {
         return jdbcTemplate.update(
                 """
                 update workout_sheets
-                set is_active = false
+                set is_active = false, version = version + 1
                 where id = ? and is_active = true
                 """,
                 workoutSheetId
@@ -293,7 +431,8 @@ public class WorkoutRepository {
                         created_at
                     from workout_exercises
                     where workout_sheet_id = ?
-                    order by created_at asc nulls last, exercise_name asc
+                      and is_active = true
+                    order by sort_order asc nulls last, created_at asc nulls last, id asc
                     """,
                     WORKOUT_EXERCISE_ROW_MAPPER,
                     workoutSheetId

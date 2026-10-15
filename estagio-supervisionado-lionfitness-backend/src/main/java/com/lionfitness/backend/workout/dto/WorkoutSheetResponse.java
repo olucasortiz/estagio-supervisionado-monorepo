@@ -11,6 +11,11 @@ public record WorkoutSheetResponse(
         String weekDay,
         String weekDayLabel,
         boolean active,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        long version
 ) {
+    public WorkoutSheetResponse(UUID id, UUID memberId, UUID personalTrainerId, String title, String weekDay,
+                                String weekDayLabel, boolean active, LocalDateTime createdAt) {
+        this(id, memberId, personalTrainerId, title, weekDay, weekDayLabel, active, createdAt, 0);
+    }
 }

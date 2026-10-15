@@ -90,7 +90,7 @@ function SubscriptionFormModal({ open, onClose, form, onChange, onSubmit, saving
 export default function SubscriptionsSection({
   data, forms, editing, feedback, saving,
   fmtDate, onChangeFormValue, onSubmitForm, onStartEdit, onRemoveItem, onResetForm,
-  calculateSubscriptionEndDate, normalizeUppercase, findById, getEntityId,
+  calculateSubscriptionEndDate, normalizeUppercase, findById,
 }) {
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -106,6 +106,7 @@ export default function SubscriptionsSection({
   const handleClose = () => { setModalOpen(false); onResetForm("subscriptions"); };
 
   const handleSubmit = async () => {
+    if (saving?.subscriptions) return;
     await onSubmitForm("subscriptions", null, forms.subscriptions);
     if (!feedback.subscriptions?.includes("Falha")) setModalOpen(false);
   };

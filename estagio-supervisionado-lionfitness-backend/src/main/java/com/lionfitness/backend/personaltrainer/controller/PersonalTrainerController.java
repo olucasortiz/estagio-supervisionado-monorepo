@@ -57,7 +57,8 @@ public class PersonalTrainerController {
             @RequestParam String specialty,
             @RequestParam(required = false) MultipartFile photo
     ) {
-        PersonalTrainerCreateRequest request = new PersonalTrainerCreateRequest(null, name, cpf, email, phone, specialty);
+        String cleanCpf = cpf != null ? com.lionfitness.backend.common.validation.CpfValidator.normalize(cpf) : null;
+        PersonalTrainerCreateRequest request = new PersonalTrainerCreateRequest(null, name, cleanCpf, email, phone, specialty);
         var violations = validator.validate(request);
         if (!violations.isEmpty()) {
             throw new jakarta.validation.ConstraintViolationException(violations);
@@ -105,7 +106,8 @@ public class PersonalTrainerController {
             @RequestParam String specialty,
             @RequestParam(required = false) MultipartFile photo
     ) {
-        PersonalTrainerUpdateRequest request = new PersonalTrainerUpdateRequest(name, cpf, email, phone, specialty);
+        String cleanCpf = cpf != null ? com.lionfitness.backend.common.validation.CpfValidator.normalize(cpf) : null;
+        PersonalTrainerUpdateRequest request = new PersonalTrainerUpdateRequest(name, cleanCpf, email, phone, specialty);
         var violations = validator.validate(request);
         if (!violations.isEmpty()) {
             throw new jakarta.validation.ConstraintViolationException(violations);

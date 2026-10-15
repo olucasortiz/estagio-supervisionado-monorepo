@@ -1,5 +1,11 @@
 package com.lionfitness.backend.workoutexercise.service;
 
+import com.lionfitness.backend.exercisecatalog.ExerciseCatalogRepository;
+import com.lionfitness.backend.exercisecatalog.ExerciseCatalog;
+import com.lionfitness.backend.workout.repository.WorkoutRepository;
+import com.lionfitness.backend.workout.dto.WorkoutSheetResponse;
+import com.lionfitness.backend.workout.dto.WorkoutSheetSnapshot;
+import java.util.List;
 import com.lionfitness.backend.personaltrainer.model.PersonalTrainer;
 import com.lionfitness.backend.personaltrainer.repository.PersonalTrainerRepository;
 import com.lionfitness.backend.user.model.User;
@@ -30,6 +36,8 @@ class WorkoutExerciseHistoryTest {
     @Mock WorkoutSheetHistoryRepository historyRepository;
     @Mock UserRepository userRepository;
     @Mock PersonalTrainerRepository trainerRepository;
+    @Mock ExerciseCatalogRepository catalogRepository;
+    @Mock WorkoutRepository workoutRepository;
 
     private WorkoutExerciseService service;
     private final UUID sheetId = UUID.randomUUID();
@@ -39,7 +47,7 @@ class WorkoutExerciseHistoryTest {
     @BeforeEach
     void setUp() {
         service = new WorkoutExerciseService(exerciseRepository, historyRepository,
-                userRepository, trainerRepository);
+                userRepository, trainerRepository, catalogRepository, workoutRepository);
     }
 
     @Test
@@ -50,17 +58,26 @@ class WorkoutExerciseHistoryTest {
         when(trainerRepository.findActiveByUserId(userId)).thenReturn(Optional.of(new PersonalTrainer(
                 trainerId, userId, "Trainer", "", email, "", "", true, LocalDateTime.now(), null)));
         when(exerciseRepository.workoutSheetExists(sheetId)).thenReturn(true);
+        WorkoutSheetResponse sheet = new WorkoutSheetResponse(sheetId, UUID.randomUUID(), trainerId,
+                "Treino A", "MONDAY", "Segunda-feira", true, LocalDateTime.now());
+        WorkoutSheetSnapshot snapshot = new WorkoutSheetSnapshot(sheet, List.of());
+        when(workoutRepository.findByIdForUpdate(sheetId)).thenReturn(Optional.of(sheet));
+        when(workoutRepository.snapshot(sheet)).thenReturn(snapshot);
         when(exerciseRepository.findWorkoutSheetAssignedPersonalTrainerId(sheetId))
                 .thenReturn(Optional.of(trainerId));
         when(exerciseRepository.save(any(WorkoutExerciseRecord.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        UUID catalogId = UUID.randomUUID();
+        when(catalogRepository.findByIdForShare(catalogId)).thenReturn(Optional.of(new ExerciseCatalog(
+                catalogId, "Agachamento", "Pernas", "Pernas", null, "Instruções", false, null, true, LocalDateTime.now())));
 
         service.create(email, new WorkoutExerciseCreateRequest(sheetId, "Agachamento", "Pernas", null,
-                null, null, null, 3, 12, 60, null));
+                null, null, null, 3, 12, 60, null, catalogId));
 
         InOrder order = inOrder(exerciseRepository, historyRepository);
+        order.verify(historyRepository).recordSnapshot(eq(snapshot), any(User.class), eq("Exercício adicionado: Agachamento"));
         order.verify(exerciseRepository).save(any(WorkoutExerciseRecord.class));
-        order.verify(historyRepository).recordChange(sheetId, "Exercício adicionado: Agachamento");
+        verify(workoutRepository).incrementVersion(sheetId);
         assertThat(WorkoutExerciseService.class.getMethod("create", String.class, WorkoutExerciseCreateRequest.class)
                 .isAnnotationPresent(Transactional.class)).isTrue();
     }

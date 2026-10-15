@@ -51,6 +51,24 @@ public class PaymentRepository {
                 this.jdbcTemplate = jdbcTemplate;
         }
 
+        public record CreationReplay(String fingerprint, Payment payment) {}
+
+        public Optional<CreationReplay> findCreationKey(UUID subscriptionId, UUID key) {
+                return jdbcTemplate.query("""
+                        select p.*, k.request_fingerprint
+                        from payment_creation_keys k join payments p on p.id = k.payment_id
+                        where k.subscription_id = ? and k.idempotency_key = ?
+                        """, (rs, row) -> new CreationReplay(rs.getString("request_fingerprint"), PAYMENT_ROW_MAPPER.mapRow(rs, row)),
+                        subscriptionId, key).stream().findFirst();
+        }
+
+        public void saveCreationKey(UUID subscriptionId, UUID key, String fingerprint, UUID paymentId) {
+                jdbcTemplate.update("""
+                        insert into payment_creation_keys(subscription_id, idempotency_key, request_fingerprint, payment_id)
+                        values (?, ?, ?, ?)
+                        """, subscriptionId, key, fingerprint, paymentId);
+        }
+
         public Payment save(
                         UUID id,
                         UUID subscriptionId,
@@ -108,6 +126,12 @@ public class PaymentRepository {
                                 id);
 
                 return payments.stream().findFirst();
+        }
+
+        public void lockActiveById(UUID id) {
+                var ids = jdbcTemplate.query("select id from payments where id = ? and status::text <> 'CANCELED' for update",
+                        (rs, row) -> rs.getObject("id", UUID.class), id);
+                if (ids.isEmpty()) throw new com.lionfitness.backend.payment.exception.PaymentNotFoundException(id);
         }
 
         public boolean subscriptionExists(UUID subscriptionId) {
@@ -266,5 +290,38 @@ public class PaymentRepository {
                                 subscriptionId);
 
                 return result != null && result > 0;
+        }
+
+        public Optional<Payment> findDuplicatePayment(
+                        UUID subscriptionId,
+                        BigDecimal amount,
+                        PaymentMethod method,
+                        PaymentStatus status,
+                        LocalDate paidAt,
+                        LocalDateTime createdSince) {
+                LocalDateTime paidAtDateTime = paidAt != null ? paidAt.atStartOfDay() : null;
+                List<Payment> payments = jdbcTemplate.query(
+                                """
+                                                select id, subscription_id, amount, paid_at, method, status, created_at
+                                                from payments
+                                                where subscription_id = ?
+                                                  and amount = ?
+                                                  and method::text = ?
+                                                  and status::text = ?
+                                                  and paid_at is not distinct from cast(? as timestamp)
+                                                  and status::text <> 'CANCELED'
+                                                  and created_at >= ?
+                                                order by created_at desc
+                                                limit 1
+                                                """,
+                                PAYMENT_ROW_MAPPER,
+                                subscriptionId,
+                                amount,
+                                method.name(),
+                                status.name(),
+                                paidAtDateTime != null ? Timestamp.valueOf(paidAtDateTime) : null,
+                                Timestamp.valueOf(createdSince));
+
+                return payments.stream().findFirst();
         }
 }

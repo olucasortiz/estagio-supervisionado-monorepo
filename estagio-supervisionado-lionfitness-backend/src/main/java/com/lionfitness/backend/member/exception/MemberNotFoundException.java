@@ -7,4 +7,8 @@ public class MemberNotFoundException extends RuntimeException {
     public MemberNotFoundException(UUID id) {
         super("Member not found: " + id);
     }
+
+    public MemberNotFoundException(String message) {
+        super(message);
+    }
 }

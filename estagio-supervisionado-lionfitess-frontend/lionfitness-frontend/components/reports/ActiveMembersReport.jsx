@@ -43,7 +43,7 @@ function formatSecureDate(value) {
 import { useAuth } from "../../hooks/useAuth";
 import exportReportPdf from "./exportReportPdf";
 
-export default function ActiveMembersReport({ styles, members = [], Badge }) {
+export default function ActiveMembersReport({ members = [] }) {
   const { user } = useAuth();
   const [filtro, setFiltro] = useState("todos");
   const [generated, setGenerated] = useState(false);

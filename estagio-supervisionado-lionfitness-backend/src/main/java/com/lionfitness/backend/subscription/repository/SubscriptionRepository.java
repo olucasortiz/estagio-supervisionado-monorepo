@@ -127,6 +127,11 @@ public class SubscriptionRepository {
         return subscriptions.stream().findFirst();
     }
 
+    public void lockActiveById(UUID id) {
+        findActiveByIdForUpdate(id).orElseThrow(() ->
+                new com.lionfitness.backend.payment.exception.PaymentSubscriptionNotFoundException(id));
+    }
+
     public boolean memberExists(UUID memberId) {
         Integer result = jdbcTemplate.queryForObject(
                 """
@@ -139,6 +144,14 @@ public class SubscriptionRepository {
         );
 
         return result != null && result > 0;
+    }
+
+    public void lockMember(UUID memberId) {
+        var ids = jdbcTemplate.query("select id from members where id = ? and is_active = true for update",
+                (rs, row) -> rs.getObject("id", UUID.class), memberId);
+        if (ids.isEmpty()) {
+            throw new com.lionfitness.backend.subscription.exception.SubscriptionMemberNotFoundException(memberId);
+        }
     }
 
     public Optional<PlanSubscriptionData> findActivePlanData(UUID planId) {
@@ -284,5 +297,28 @@ public class SubscriptionRepository {
         );
 
         return updatedRows > 0;
+    }
+
+    public Optional<Subscription> findRecentDuplicate(UUID memberId, UUID planId, LocalDate startDate, LocalDateTime cutoff) {
+        List<Subscription> subscriptions = jdbcTemplate.query(
+                """
+                select id, member_id, plan_id, start_date, end_date, status::text as status, created_at
+                from subscriptions
+                where member_id = ?
+                  and plan_id = ?
+                  and start_date = ?
+                  and status::text <> 'CANCELED'
+                  and created_at >= ?
+                order by created_at desc
+                limit 1
+                """,
+                SUBSCRIPTION_ROW_MAPPER,
+                memberId,
+                planId,
+                startDate,
+                Timestamp.valueOf(cutoff)
+        );
+
+        return subscriptions.stream().findFirst();
     }
 }

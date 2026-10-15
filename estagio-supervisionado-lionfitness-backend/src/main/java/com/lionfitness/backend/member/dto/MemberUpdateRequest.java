@@ -28,4 +28,7 @@ public record MemberUpdateRequest(
 
         UUID personalTrainerId
 ) {
+    public MemberUpdateRequest {
+        cpf = com.lionfitness.backend.common.validation.CpfValidator.normalize(cpf);
+    }
 }

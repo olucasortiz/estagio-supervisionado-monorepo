@@ -8,7 +8,7 @@
  * Delega a renderização visual para seções individuais.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   API_BASE_URL,
   cancelMember,
@@ -43,6 +43,7 @@ import NewMembersReport from "../reports/NewMembersReport";
 import CancellationsReport from "../reports/CancellationsReport";
 import ActiveMembersReport from "../reports/ActiveMembersReport";
 import OverdueMembersReport from "../reports/OverdueMembersReport";
+import ExerciseCatalogSection from "./sections/ExerciseCatalogSection";
 
 // ─── Seções de CRUD ────────────────────────────────────────────────────────
 import MembersSection    from "./sections/MembersSection";
@@ -451,6 +452,7 @@ export default function DashboardContent({ activeReport, styles } = {}) {
   const [saving, setSaving] = useState({ members: false, plans: false, users: false, personalTrainers: false, subscriptions: false, payments: false, cancellation: false });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const submittingModulesRef = useRef({});
 
   const loadDashboardData = useCallback(async () => {
     try {
@@ -489,6 +491,8 @@ export default function DashboardContent({ activeReport, styles } = {}) {
 
   useEffect(() => { loadDashboardData(); }, [loadDashboardData]);
 
+  const paymentCreationKeysRef = useRef({});
+
   const changeFormValue = (moduleKey, fieldKey, value) => {
     let processed = value;
     if (fieldKey !== "photo") {
@@ -508,6 +512,7 @@ export default function DashboardContent({ activeReport, styles } = {}) {
   };
 
   const resetForm = (moduleKey) => {
+    delete paymentCreationKeysRef.current[moduleKey];
     setForms((cur) => ({ ...cur, [moduleKey]: initialForms[moduleKey] }));
     setEditing((cur) => ({ ...cur, [moduleKey]: null }));
   };
@@ -523,12 +528,22 @@ export default function DashboardContent({ activeReport, styles } = {}) {
 
   const submitForm = async (moduleKey, event, overrideForm) => {
     if (event?.preventDefault) event.preventDefault();
+    if (submittingModulesRef.current[moduleKey]) return;
+    submittingModulesRef.current[moduleKey] = true;
+
     const config = moduleConfig[moduleKey];
     const item = editing[moduleKey];
     const formToSubmit = { ...(overrideForm || forms[moduleKey]) };
     if (formToSubmit.cpf)   formToSubmit.cpf   = cleanDigits(formToSubmit.cpf);
     if (formToSubmit.phone) formToSubmit.phone = cleanDigits(formToSubmit.phone);
     const payload = config.toPayload(formToSubmit);
+    if (moduleKey === "payments" && !item?.id) {
+      const fingerprint = JSON.stringify(payload);
+      const previous = paymentCreationKeysRef.current[moduleKey];
+      const key = previous?.fingerprint === fingerprint ? previous.key : crypto.randomUUID();
+      paymentCreationKeysRef.current[moduleKey] = { fingerprint, key };
+      payload.idempotencyKey = key;
+    }
     try {
       setModuleSaving(moduleKey, true);
       setModuleFeedback(moduleKey, "Salvando...");
@@ -540,6 +555,7 @@ export default function DashboardContent({ activeReport, styles } = {}) {
       console.error(err);
       setModuleFeedback(moduleKey, `Falha ao salvar ${config.successName}: ${err?.message || "Não foi possível salvar o registro."}`);
     } finally {
+      submittingModulesRef.current[moduleKey] = false;
       setModuleSaving(moduleKey, false);
     }
   };
@@ -562,12 +578,20 @@ export default function DashboardContent({ activeReport, styles } = {}) {
 
   const submitCancellation = async (event) => {
     event.preventDefault();
+    if (submittingModulesRef.current["cancellation"]) return;
+    submittingModulesRef.current["cancellation"] = true;
+
     const payload = { memberId: toPayloadId(forms.cancellation.memberId), reason: forms.cancellation.reason || null };
-    if (!payload.memberId) { setModuleFeedback("cancellation", "Selecione um membro para cancelar."); return; }
+    if (!payload.memberId) {
+      submittingModulesRef.current["cancellation"] = false;
+      setModuleFeedback("cancellation", "Selecione um membro para cancelar.");
+      return;
+    }
     
     // Validar no frontend se o aluno ainda está ativo
     const member = findById(data.members, payload.memberId);
     if (!member || member.active === false || member.situacao !== "Ativo") {
+      submittingModulesRef.current["cancellation"] = false;
       setModuleFeedback("cancellation", "Este aluno já está cancelado/inativo.");
       return;
     }
@@ -588,6 +612,7 @@ export default function DashboardContent({ activeReport, styles } = {}) {
         setModuleFeedback("cancellation", errMsg || "Não foi possível cancelar o aluno.");
       }
     } finally {
+      submittingModulesRef.current["cancellation"] = false;
       setModuleSaving("cancellation", false);
     }
   };
@@ -663,6 +688,7 @@ export default function DashboardContent({ activeReport, styles } = {}) {
   };
 
   const sections = {
+    38: <ExerciseCatalogSection />,
     dashboard: (
       <AdminDashboardView
         data={data}

@@ -53,7 +53,7 @@ function maskCPF(cpf) {
 import { useAuth } from "../../hooks/useAuth";
 import exportReportPdf from "./exportReportPdf";
 
-export default function NewMembersReport({ styles }) {
+export default function NewMembersReport() {
   const { user } = useAuth();
   const [di, setDi] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 30); return toDateInput(d); });
   const [df, setDf] = useState(() => toDateInput(new Date()));

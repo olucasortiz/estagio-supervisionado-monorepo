@@ -106,6 +106,7 @@ export default function UsersSection({
   };
 
   const handleSubmit = async () => {
+    if (saving?.users) return;
     // Garante role: ADMIN no envio
     const formWithAdmin = { ...forms.users, role: "ADMIN" };
     await onSubmitForm("users", null, formWithAdmin);

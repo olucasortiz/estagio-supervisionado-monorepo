@@ -13,6 +13,7 @@ import com.lionfitness.backend.member.dto.MemberUpdateRequest;
 import com.lionfitness.backend.member.dto.OverdueMemberResponse;
 import com.lionfitness.backend.member.model.Member;
 import com.lionfitness.backend.member.service.MemberService;
+import com.lionfitness.backend.user.exception.UserNotFoundException;
 import com.lionfitness.backend.user.model.User;
 import com.lionfitness.backend.user.repository.UserRepository;
 import jakarta.validation.Valid;
@@ -146,7 +147,7 @@ public class MemberController {
     public ResponseEntity<Member> getMyProfile(Authentication authentication) {
         String email = authentication.getName();
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Usuario nao encontrado"));
+                .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado para o e-mail: " + email));
 
         Member member = memberService.findByUserId(user.id());
         return ResponseEntity.ok(member);

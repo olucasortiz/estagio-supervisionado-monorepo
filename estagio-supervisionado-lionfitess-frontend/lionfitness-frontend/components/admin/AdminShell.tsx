@@ -57,6 +57,7 @@ export const adminMenuGroupsDef: NavGroup[] = [
       { id: 31, label: "Planos", icon: Layers },
       { id: 32, label: "Usuários", icon: ShieldCheck },
       { id: 33, label: "Personal Trainers", icon: Dumbbell },
+      { id: 38, label: "Catálogo de Exercícios", icon: Dumbbell },
     ],
   },
   {

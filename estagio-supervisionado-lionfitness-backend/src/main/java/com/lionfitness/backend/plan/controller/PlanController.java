@@ -41,8 +41,17 @@ public class PlanController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'OPERATIONAL', 'USER')")
-    public List<PlanResponse> findAll() {
-        return planService.findAll();
+    public ResponseEntity<?> findAll(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer page,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) Integer size
+    ) {
+        if (page == null && size == null) {
+            return ResponseEntity.ok(planService.findAll());
+        }
+
+        int validPage = com.lionfitness.backend.common.api.PaginationUtils.validateAndGetPage(page);
+        int validSize = com.lionfitness.backend.common.api.PaginationUtils.validateAndGetSize(size);
+        return ResponseEntity.ok(planService.findPaged(validPage, validSize));
     }
 
     @GetMapping("/{id}")

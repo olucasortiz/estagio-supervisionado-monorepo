@@ -15,6 +15,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -47,14 +48,22 @@ public class ExerciseCatalogRepository {
         runSeed();
     }
 
-    public List<ExerciseCatalog> findAll(String name, String category, String muscle) {
+    public List<ExerciseCatalog> findAll(String name, String category, String muscle, String equipment,
+                                         boolean includeInactive, UUID personalTrainerId) {
         List<Object> params = new ArrayList<>();
         StringBuilder sql = new StringBuilder("""
                 SELECT id, name, category, muscle, equipment, instructions,
                        is_custom, created_by_personal_trainer_id, is_active, created_at
                 FROM exercise_catalog
-                WHERE is_active = true
+                WHERE 1 = 1
                 """);
+
+        if (!includeInactive) {
+            sql.append(" AND is_active = true");
+        } else if (personalTrainerId != null) {
+            sql.append(" AND (is_active = true OR (is_custom = true AND created_by_personal_trainer_id = ?))");
+            params.add(personalTrainerId);
+        }
 
         if (StringUtils.hasText(name)) {
             sql.append(" AND name ILIKE ?");
@@ -71,10 +80,39 @@ public class ExerciseCatalogRepository {
             params.add("%" + muscle.trim() + "%");
         }
 
+        if (StringUtils.hasText(equipment)) {
+            sql.append(" AND equipment ILIKE ?");
+            params.add("%" + equipment.trim() + "%");
+        }
+
         // Exercícios padrão primeiro, depois personalizados; ambos em ordem alfabética
-        sql.append(" ORDER BY is_custom ASC, name ASC LIMIT 200");
+        sql.append(" ORDER BY is_custom ASC, name ASC");
+        if (!includeInactive) sql.append(" LIMIT 200");
 
         return jdbcTemplate.query(sql.toString(), ROW_MAPPER, params.toArray());
+    }
+
+    public Optional<ExerciseCatalog> findById(UUID id) {
+        return findById(id, false);
+    }
+
+    public Optional<ExerciseCatalog> findByIdForShare(UUID id) {
+        return findById(id, true);
+    }
+
+    private Optional<ExerciseCatalog> findById(UUID id, boolean lock) {
+        String sql = """
+                SELECT id, name, category, muscle, equipment, instructions,
+                       is_custom, created_by_personal_trainer_id, is_active, created_at
+                FROM exercise_catalog WHERE id = ?
+                """;
+        // Serializa a inclusão na ficha com uma eventual inativação do catálogo.
+        if (lock) sql += " FOR SHARE";
+        return jdbcTemplate.query(sql, ROW_MAPPER, id).stream().findFirst();
+    }
+
+    public boolean updateActiveStatus(UUID id, boolean isActive) {
+        return jdbcTemplate.update("UPDATE exercise_catalog SET is_active = ? WHERE id = ?", isActive, id) > 0;
     }
 
     public boolean existsStandardByNameAndCategory(String name, String category) {

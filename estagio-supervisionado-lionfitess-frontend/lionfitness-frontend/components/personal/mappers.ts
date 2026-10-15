@@ -77,6 +77,7 @@ export function mapWorkoutSheet(entry: unknown, index = 0): WorkoutSheetViewMode
     weekDay,
     weekDayLabel: readString(sheet.weekDayLabel, readString(sheet.week_day_label, weekDayMap[weekDay] || weekDay)),
     active: Boolean(sheet.active ?? sheet.isActive ?? sheet.is_active ?? true),
+    version: Number(sheet.version ?? 0),
     createdAtFormatted: formattedDate,
   };
 }
@@ -111,5 +112,6 @@ export function mapCatalogExercise(entry: unknown, index = 0): CatalogExerciseVi
     equipment: readString(exercise.equipment, ""),
     instructions: readString(exercise.instructions, ""),
     isCustom: Boolean(exercise.isCustom ?? exercise.is_custom),
+    isActive: Boolean(exercise.isActive ?? exercise.is_active ?? true),
   };
 }

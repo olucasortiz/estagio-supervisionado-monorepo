@@ -131,6 +131,7 @@ export default function PlansSection({
   const handleClose = () => { setModalOpen(false); onResetForm("plans"); };
 
   const handleSubmit = async () => {
+    if (saving?.plans) return;
     await onSubmitForm("plans", null, forms.plans);
     if (!feedback.plans?.includes("Falha")) setModalOpen(false);
   };

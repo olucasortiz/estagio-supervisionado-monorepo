@@ -1,5 +1,6 @@
 package com.lionfitness.backend.member.service;
 
+import com.lionfitness.backend.cancellationrecord.dto.CancellationRecordResponse;
 import com.lionfitness.backend.cancellationrecord.dto.CancellationRequest;
 import com.lionfitness.backend.cancellationrecord.exception.CancellationBlockedException;
 import com.lionfitness.backend.cancellationrecord.model.CancellationRecord;
@@ -60,10 +61,13 @@ class MemberCancellationTest {
                         invocation.getArgument(2), "Pedido", LocalDateTime.now()));
         when(memberRepository.softDelete(memberId)).thenReturn(true);
 
-        service.cancel(memberId, new CancellationRequest("Pedido"));
+        CancellationRecordResponse response = service.cancel(memberId, new CancellationRequest("Pedido"));
 
         verify(cancellationRecordRepository).save(any(UUID.class), eq(memberId), any(LocalDateTime.class), eq("Pedido"));
         verify(memberRepository).softDelete(memberId);
+        assertThat(response).isNotNull();
+        assertThat(response.memberName()).isEqualTo("Aluno Teste");
+        assertThat(response.memberCpf()).isEqualTo("12345678901");
     }
 
     @Test
@@ -93,6 +97,25 @@ class MemberCancellationTest {
                 .isAnnotationPresent(Transactional.class)).isTrue();
     }
 
+    @Test
+    void cancellationResponseSerializesMemberNameAndCpfToJson() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+
+        activeMember();
+        when(paymentRepository.hasPendingOrOverdueByMemberId(memberId)).thenReturn(false);
+        when(cancellationRecordRepository.save(any(UUID.class), eq(memberId), any(LocalDateTime.class), eq("Pedido")))
+                .thenAnswer(invocation -> new CancellationRecord(invocation.getArgument(0), memberId,
+                        invocation.getArgument(2), "Pedido", LocalDateTime.now()));
+        when(memberRepository.softDelete(memberId)).thenReturn(true);
+
+        CancellationRecordResponse response = service.cancel(memberId, new CancellationRequest("Pedido"));
+        String json = mapper.writeValueAsString(response);
+
+        assertThat(json).contains("\"memberName\":\"Aluno Teste\"");
+        assertThat(json).contains("\"memberCpf\":\"12345678901\"");
+    }
+
     private void assertDebtBlocksCancellation() {
         activeMember();
         when(paymentRepository.hasPendingOrOverdueByMemberId(memberId)).thenReturn(true);
@@ -106,8 +129,8 @@ class MemberCancellationTest {
 
     @SuppressWarnings("unchecked")
     private void activeMember() {
-        when(jdbcTemplate.query(eq("SELECT is_active FROM members WHERE id = ? FOR UPDATE"),
-                any(RowMapper.class), eq(memberId))).thenReturn(List.of(true));
+        when(jdbcTemplate.query(eq("SELECT is_active, name, cpf FROM members WHERE id = ? FOR UPDATE"),
+                any(RowMapper.class), eq(memberId))).thenReturn(List.of(new MemberService.MemberCancellationInfo(true, "Aluno Teste", "12345678901")));
         when(jdbcTemplate.query(eq("SELECT id FROM subscriptions WHERE member_id = ? FOR UPDATE"),
                 any(RowMapper.class), eq(memberId))).thenReturn(List.of());
     }

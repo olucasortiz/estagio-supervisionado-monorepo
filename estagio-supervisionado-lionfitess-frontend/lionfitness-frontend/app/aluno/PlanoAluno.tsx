@@ -222,7 +222,7 @@ export default function PlanoAlunoPage({
   useEffect(() => {
     let active = true;
     getMemberProfile()
-      .then((data: any) => {
+      .then((data: MemberProfile | null) => {
         if (active && data) {
           setMemberProfile(data);
         }
@@ -238,10 +238,9 @@ export default function PlanoAlunoPage({
   // 2. Carregar assinatura real
   useEffect(() => {
     let active = true;
-    setLoadingSubscription(true);
 
     getMySubscription()
-      .then((data: any) => {
+      .then((data: MySubscriptionResponse | null) => {
         if (!active) return;
         if (!data || data.hasSubscription === false) {
           setSubscription(null);
@@ -265,11 +264,9 @@ export default function PlanoAlunoPage({
   // 3. Carregar treinos reais
   useEffect(() => {
     let active = true;
-    setLoadingWorkouts(true);
-    setErrorWorkouts(null);
 
     getMyWorkouts()
-      .then((data: any) => {
+      .then((data: WorkoutResponse[] | unknown) => {
         if (!active) return;
         const list: WorkoutResponse[] = Array.isArray(data) ? data : [];
         setWorkouts(list);
@@ -299,20 +296,20 @@ export default function PlanoAlunoPage({
 
   // 4. Carregar Personal Trainer do aluno (se houver associação real)
   useEffect(() => {
-    // Se o perfil do membro foi carregado, seu personalTrainerId é a fonte de verdade.
-    // Caso ainda não tenha perfil, podemos usar o do primeiro treino como fallback.
+    let active = true;
     const ptId = memberProfile !== null
       ? memberProfile.personalTrainerId
       : workouts[0]?.personalTrainerId;
 
     if (!ptId) {
-      setPersonalTrainer(null);
+      queueMicrotask(() => {
+        if (active) setPersonalTrainer(null);
+      });
       return;
     }
 
-    let active = true;
     getPersonalTrainers()
-      .then((trainers: any) => {
+      .then((trainers: PersonalTrainerItem[] | unknown) => {
         if (!active || !Array.isArray(trainers)) return;
         const found = trainers.find((t: PersonalTrainerItem) => String(t.id) === String(ptId));
         if (found) {
@@ -333,17 +330,19 @@ export default function PlanoAlunoPage({
   // Timer de descanso durante o treino
   useEffect(() => {
     if (!isTraining || !isResting) return;
-    if (restSecondsLeft <= 0) {
-      setIsResting(false);
-      return;
-    }
 
     const timer = setInterval(() => {
-      setRestSecondsLeft((prev) => Math.max(0, prev - 1));
+      setRestSecondsLeft((prev) => {
+        if (prev <= 1) {
+          setIsResting(false);
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isTraining, isResting, restSecondsLeft]);
+  }, [isTraining, isResting]);
 
   // ─── Dados Derivados ───────────────────────────────────────────────────────
 

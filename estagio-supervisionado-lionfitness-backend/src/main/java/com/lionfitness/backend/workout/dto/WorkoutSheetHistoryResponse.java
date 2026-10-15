@@ -7,5 +7,13 @@ public record WorkoutSheetHistoryResponse(
         UUID id,
         UUID workoutSheetId,
         String changeReason,
-        LocalDateTime createdAt
-) {}
+        @com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING)
+        LocalDateTime createdAt,
+        UUID changedByUserId,
+        String changedByName,
+        WorkoutSheetSnapshot snapshot
+) {
+    public WorkoutSheetHistoryResponse(UUID id, UUID workoutSheetId, String changeReason, LocalDateTime createdAt) {
+        this(id, workoutSheetId, changeReason, createdAt, null, null, null);
+    }
+}

@@ -3,7 +3,9 @@ package com.lionfitness.backend.payment.service;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import com.lionfitness.backend.payment.dto.PaymentCreateRequest;
@@ -44,8 +46,37 @@ public class PaymentService {
     public PaymentResponse create(PaymentCreateRequest request) {
         validateRequest(request.subscriptionId(), request.amount());
 
+        // Serializes manual creation for this subscription across application instances.
+        subscriptionRepository.lockActiveById(request.subscriptionId());
+
+        PaymentMethod method = PaymentMethod.fromRequestValue(request.method());
         PaymentStatus status = PaymentStatus.fromRequestValue(request.status());
         LocalDate effectivePaidAt = request.paidAt() != null ? request.paidAt() : LocalDate.now(clock);
+
+        // Idempotency guard against rapid double-submit
+        LocalDateTime duplicateCutoff = LocalDateTime.now(clock).minusMinutes(2);
+        String fingerprint = request.amount().stripTrailingZeros().toPlainString() + "|" + method + "|" + status + "|" + request.paidAt();
+        if (request.idempotencyKey() != null) {
+            var replay = paymentRepository.findCreationKey(request.subscriptionId(), request.idempotencyKey());
+            if (replay.isPresent()) {
+                if (!replay.get().fingerprint().equals(fingerprint)) {
+                    throw new org.springframework.web.server.ResponseStatusException(
+                            org.springframework.http.HttpStatus.CONFLICT, "Chave de idempotência reutilizada com dados diferentes.");
+                }
+                return toResponse(replay.get().payment());
+            }
+        }
+        Optional<Payment> existingDuplicate = request.idempotencyKey() != null ? Optional.empty() : paymentRepository.findDuplicatePayment(
+                request.subscriptionId(),
+                request.amount(),
+                method,
+                status,
+                effectivePaidAt,
+                duplicateCutoff
+        );
+        if (existingDuplicate.isPresent()) {
+            return toResponse(existingDuplicate.get());
+        }
 
         boolean isRenewal = false;
         Subscription subscription = null;
@@ -67,12 +98,16 @@ public class PaymentService {
                 request.subscriptionId(),
                 request.amount(),
                 effectivePaidAt,
-                PaymentMethod.fromRequestValue(request.method()),
+                method,
                 status
         );
 
         if (isRenewal && subscription != null) {
             subscriptionRepository.renewSubscription(subscription.id(), effectivePaidAt);
+        }
+
+        if (request.idempotencyKey() != null) {
+            paymentRepository.saveCreationKey(request.subscriptionId(), request.idempotencyKey(), fingerprint, payment.id());
         }
 
         return toResponse(payment);
@@ -94,6 +129,9 @@ public class PaymentService {
 
     @Transactional
     public PaymentResponse update(UUID id, PaymentUpdateRequest request) {
+        // Match the payment-before-subscription order used by gateway settlement.
+        paymentRepository.lockActiveById(id);
+        subscriptionRepository.lockActiveById(request.subscriptionId());
         Payment existing = paymentRepository.findActiveById(id)
                 .orElseThrow(() -> new PaymentNotFoundException(id));
 

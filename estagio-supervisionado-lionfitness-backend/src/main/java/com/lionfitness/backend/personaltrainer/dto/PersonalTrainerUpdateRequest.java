@@ -29,4 +29,7 @@ public record PersonalTrainerUpdateRequest(
         @Size(max = 150, message = "Especialidade deve ter no máximo 150 caracteres.")
         String specialty
 ) {
+    public PersonalTrainerUpdateRequest {
+        cpf = com.lionfitness.backend.common.validation.CpfValidator.normalize(cpf);
+    }
 }

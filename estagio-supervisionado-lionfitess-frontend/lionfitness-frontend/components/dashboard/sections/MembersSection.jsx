@@ -14,9 +14,9 @@ const maskCPF = (v) => {
 };
 
 export default function MembersSection({
-  data, forms, editing, feedback, saving,
-  fmtDate, onChangeFormValue, onSubmitForm, onStartEdit, onRemoveItem, onResetForm,
-  resolveFields, moduleConfig,
+  data, editing, feedback, saving,
+  fmtDate, onSubmitForm, onStartEdit, onRemoveItem, onResetForm,
+  moduleConfig,
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -36,6 +36,7 @@ export default function MembersSection({
   };
 
   const handleSubmit = async (formData) => {
+    if (saving?.members) return;
     await onSubmitForm("members", null, formData);
     if (!feedback.members?.includes("Falha")) setDrawerOpen(false);
   };

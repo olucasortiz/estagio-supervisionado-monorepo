@@ -2,6 +2,7 @@ package com.lionfitness.backend.subscription.service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,11 +48,26 @@ public class SubscriptionService {
     public SubscriptionResponse create(SubscriptionCreateRequest request) {
         logger.info("Creating subscription for memberId {} and planId {}", request.memberId(), request.planId());
 
+        subscriptionRepository.lockMember(request.memberId());
+
         SubscriptionRepository.PlanSubscriptionData planData = validateRequest(
                 request.memberId(),
                 request.planId(),
                 request.startDate()
         );
+
+        // Idempotency guard against rapid double-submit
+        LocalDateTime duplicateCutoff = LocalDateTime.now().minusMinutes(2);
+        Optional<Subscription> duplicate = subscriptionRepository.findRecentDuplicate(
+                request.memberId(),
+                request.planId(),
+                request.startDate(),
+                duplicateCutoff
+        );
+        if (duplicate.isPresent()) {
+            return toResponse(duplicate.get());
+        }
+
         LocalDate endDate = calculateEndDate(request.startDate(), planData);
 
         Subscription subscription = subscriptionRepository.save(UUID.randomUUID(), request, endDate);

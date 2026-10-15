@@ -8,12 +8,14 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
+import org.springframework.context.annotation.DependsOn;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 @Repository
+@DependsOn("workoutSchemaMigration")
 public class WorkoutExerciseRepository {
 
     private static final Logger logger = LoggerFactory.getLogger(WorkoutExerciseRepository.class);
@@ -74,6 +76,10 @@ public class WorkoutExerciseRepository {
     }
 
     public WorkoutExerciseRecord save(WorkoutExerciseRecord exercise) {
+        return save(exercise, null);
+    }
+
+    public WorkoutExerciseRecord save(WorkoutExerciseRecord exercise, Integer sortOrder) {
         logger.info("Saving workout exercise for sheetId {}", exercise.workoutSheetId());
 
         try {
@@ -93,9 +99,10 @@ public class WorkoutExerciseRepository {
                         reps,
                         rest_seconds,
                         notes,
+                        sort_order,
                         created_at
                     )
-                    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())
+                    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, now())
                     """,
                     exercise.id(),
                     exercise.workoutSheetId(),
@@ -108,7 +115,8 @@ public class WorkoutExerciseRepository {
                     exercise.sets(),
                     exercise.reps(),
                     exercise.restSeconds(),
-                    exercise.notes()
+                    exercise.notes(),
+                    sortOrder
             );
         } catch (DataAccessException exception) {
             logger.error(
@@ -143,7 +151,8 @@ public class WorkoutExerciseRepository {
                         notes
                     from workout_exercises
                     where workout_sheet_id = ?
-                    order by created_at asc, id
+                      and is_active = true
+                    order by sort_order asc nulls last, created_at asc, id
                     """,
                     WORKOUT_EXERCISE_ROW_MAPPER,
                     workoutSheetId
@@ -152,5 +161,19 @@ public class WorkoutExerciseRepository {
             logger.error("Failed to load exercises for sheetId {}", workoutSheetId, exception);
             throw exception;
         }
+    }
+
+    public void deactivateBySheet(UUID sheetId) {
+        jdbcTemplate.update("UPDATE workout_exercises SET is_active = false WHERE workout_sheet_id = ? AND is_active = true", sheetId);
+    }
+
+    public void updateExisting(WorkoutExerciseRecord exercise, int sortOrder) {
+        int count = jdbcTemplate.update("""
+                UPDATE workout_exercises SET "sets" = ?, reps = ?, rest_seconds = ?, instructions = ?, notes = ?,
+                    is_active = true, sort_order = ?
+                WHERE id = ? AND workout_sheet_id = ?
+                """, exercise.sets(), exercise.reps(), exercise.restSeconds(), exercise.instructions(), exercise.notes(),
+                sortOrder, exercise.id(), exercise.workoutSheetId());
+        if (count != 1) throw new IllegalStateException("Exercício da ficha não encontrado.");
     }
 }

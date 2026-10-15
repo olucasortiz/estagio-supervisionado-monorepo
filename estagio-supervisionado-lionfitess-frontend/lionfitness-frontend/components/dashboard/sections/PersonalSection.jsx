@@ -72,6 +72,7 @@ export default function PersonalSection({
   const handleClose = () => { setModalOpen(false); onResetForm("personalTrainers"); };
 
   const handleSubmit = async () => {
+    if (saving?.personalTrainers) return;
     await onSubmitForm("personalTrainers", null, forms.personalTrainers);
     if (!feedback.personalTrainers?.includes("Falha")) setModalOpen(false);
   };

@@ -6,6 +6,13 @@ import com.lionfitness.backend.personaltrainer.repository.PersonalTrainerReposit
 import com.lionfitness.backend.workout.dto.WorkoutSheetCreateRequest;
 import com.lionfitness.backend.workout.dto.WorkoutSheetResponse;
 import com.lionfitness.backend.workout.dto.WorkoutSheetHistoryResponse;
+import com.lionfitness.backend.workout.dto.WorkoutSheetSnapshot;
+import com.lionfitness.backend.workout.dto.WorkoutSheetUpdateRequest;
+import com.lionfitness.backend.workout.model.WorkoutExercise;
+import com.lionfitness.backend.workoutexercise.model.WorkoutExerciseRecord;
+import com.lionfitness.backend.workoutexercise.repository.WorkoutExerciseRepository;
+import com.lionfitness.backend.exercisecatalog.ExerciseCatalog;
+import com.lionfitness.backend.exercisecatalog.ExerciseCatalogRepository;
 import com.lionfitness.backend.user.model.User;
 import com.lionfitness.backend.user.repository.UserRepository;
 import com.lionfitness.backend.workout.dto.WorkoutResponse;
@@ -22,6 +29,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class WorkoutService {
@@ -33,19 +45,95 @@ public class WorkoutService {
     private final UserRepository userRepository;
     private final MemberRepository memberRepository;
     private final PersonalTrainerRepository personalTrainerRepository;
+    private final WorkoutExerciseRepository exerciseRepository;
+    private final ExerciseCatalogRepository catalogRepository;
 
     public WorkoutService(
             WorkoutRepository workoutRepository,
             WorkoutSheetHistoryRepository historyRepository,
             UserRepository userRepository,
             MemberRepository memberRepository,
-            PersonalTrainerRepository personalTrainerRepository
+            PersonalTrainerRepository personalTrainerRepository,
+            WorkoutExerciseRepository exerciseRepository,
+            ExerciseCatalogRepository catalogRepository
     ) {
         this.workoutRepository = workoutRepository;
         this.historyRepository = historyRepository;
         this.userRepository = userRepository;
         this.memberRepository = memberRepository;
         this.personalTrainerRepository = personalTrainerRepository;
+        this.exerciseRepository = exerciseRepository;
+        this.catalogRepository = catalogRepository;
+    }
+
+    @Transactional
+    public WorkoutSheetSnapshot findWorkoutSheet(String email, UUID id) {
+        AccessContext context = resolveAccessContext(email);
+        WorkoutSheetResponse sheet = workoutRepository.findByIdForShare(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ficha de treino não encontrada."));
+        validateMemberAccess(sheet.memberId(), context);
+        return workoutRepository.snapshot(sheet);
+    }
+
+    @Transactional
+    public WorkoutSheetSnapshot updateWorkoutSheet(String email, UUID id, WorkoutSheetUpdateRequest request) {
+        AccessContext context = resolveAccessContext(email);
+        WorkoutSheetResponse sheet = workoutRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ficha de treino não encontrada."));
+        validateMemberAccess(sheet.memberId(), context);
+        if (!sheet.active()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Ficha inativa não pode ser editada.");
+        if (request.version() != sheet.version()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A ficha foi alterada por outro usuário. Reabra a edição para carregar a versão atual.");
+        }
+
+        WorkoutSheetSnapshot previous = workoutRepository.snapshot(sheet);
+        Map<UUID, WorkoutExercise> existing = previous.exercises().stream()
+                .collect(Collectors.toMap(WorkoutExercise::id, Function.identity()));
+        Map<UUID, ExerciseCatalog> sources = request.exercises().stream()
+                .map(WorkoutSheetUpdateRequest.ExerciseUpdate::catalogExerciseId).filter(java.util.Objects::nonNull)
+                .distinct().sorted().collect(Collectors.toMap(Function.identity(), sourceId -> {
+                    ExerciseCatalog source = catalogRepository.findByIdForShare(sourceId)
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Exercício do catálogo não encontrado."));
+                    if (!source.isActive()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Novas inclusões exigem exercícios ativos no catálogo.");
+                    return source;
+                }));
+
+        List<WorkoutExerciseRecord> updatedExercises = new ArrayList<>();
+        HashSet<UUID> retained = new HashSet<>();
+        for (WorkoutSheetUpdateRequest.ExerciseUpdate input : request.exercises()) {
+            if (input.id() != null) {
+                WorkoutExercise old = existing.get(input.id());
+                if (old == null || !retained.add(input.id())) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Exercício existente inválido ou repetido para esta ficha.");
+                }
+                updatedExercises.add(new WorkoutExerciseRecord(old.id(), id, old.exerciseName(), old.muscle(),
+                        old.exerciseType(), old.equipment(), old.difficulty(),
+                        input.instructions() == null ? old.instructions() : input.instructions().trim(),
+                        input.sets(), input.reps(), input.restSeconds(), input.notes() == null ? old.notes() : input.notes().trim()));
+            } else {
+                ExerciseCatalog source = sources.get(input.catalogExerciseId());
+                if (source == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Exercício do catálogo é obrigatório.");
+                updatedExercises.add(new WorkoutExerciseRecord(UUID.randomUUID(), id, source.name(), source.muscle(),
+                        source.category(), source.equipment(), null,
+                        input.instructions() == null ? source.instructions() : input.instructions().trim(),
+                        input.sets(), input.reps(), input.restSeconds(), input.notes() == null ? null : input.notes().trim()));
+            }
+        }
+
+        String weekDay = WorkoutWeekDay.normalizeRequired(request.weekDay());
+        historyRepository.recordSnapshot(previous, context.user(), request.changeReason().trim());
+        if (!workoutRepository.updateSheet(id, request.title().trim(), weekDay, sheet.version())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "A ficha foi alterada. Reabra a edição.");
+        }
+        exerciseRepository.deactivateBySheet(id);
+        for (int index = 0; index < updatedExercises.size(); index++) {
+            WorkoutExerciseRecord exercise = updatedExercises.get(index);
+            if (retained.contains(exercise.id())) exerciseRepository.updateExisting(exercise, index);
+            else exerciseRepository.save(exercise, index);
+        }
+        return workoutRepository.snapshot(new WorkoutSheetResponse(sheet.id(), sheet.memberId(), sheet.personalTrainerId(),
+                request.title().trim(), weekDay, WorkoutWeekDay.labelFor(weekDay), true, sheet.createdAt(), sheet.version() + 1));
     }
 
     public List<WorkoutResponse> findMyActiveWorkout(String email) {
@@ -88,19 +176,54 @@ public class WorkoutService {
         return workoutRepository.findByMemberId(memberId);
     }
 
+    public com.lionfitness.backend.common.api.PagedResponse<WorkoutSheetResponse> findWorkoutSheetsByMemberPaged(
+            String authenticatedEmail, UUID memberId, int page, int size
+    ) {
+        AccessContext accessContext = resolveAccessContext(authenticatedEmail);
+        validateMemberAccess(memberId, accessContext);
+
+        long total = workoutRepository.countByMemberId(memberId);
+        int offset = com.lionfitness.backend.common.api.PaginationUtils.calculateOffset(page, size);
+        List<WorkoutSheetResponse> items = workoutRepository.findByMemberIdPaged(memberId, size, offset);
+        return com.lionfitness.backend.common.api.PagedResponse.of(items, page, size, total);
+    }
+
+    public List<WorkoutSheetResponse> findAllWorkoutSheets(String authenticatedEmail) {
+        AccessContext accessContext = resolveAccessContext(authenticatedEmail);
+        if (!accessContext.admin() && accessContext.personalTrainerId() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Acesso não autorizado.");
+        }
+        return workoutRepository.findAllActive();
+    }
+
+    public com.lionfitness.backend.common.api.PagedResponse<WorkoutSheetResponse> findAllWorkoutSheetsPaged(
+            String authenticatedEmail, int page, int size
+    ) {
+        AccessContext accessContext = resolveAccessContext(authenticatedEmail);
+        if (!accessContext.admin() && accessContext.personalTrainerId() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Acesso não autorizado.");
+        }
+        long total = workoutRepository.countAllActive();
+        int offset = com.lionfitness.backend.common.api.PaginationUtils.calculateOffset(page, size);
+        List<WorkoutSheetResponse> items = workoutRepository.findAllActivePaged(size, offset);
+        return com.lionfitness.backend.common.api.PagedResponse.of(items, page, size, total);
+    }
+
     @Transactional
     public void deactivateWorkoutSheet(String authenticatedEmail, UUID workoutSheetId) {
         AccessContext accessContext = resolveAccessContext(authenticatedEmail);
 
-        UUID memberId = workoutRepository.findMemberIdByWorkoutSheetId(workoutSheetId)
+        WorkoutSheetResponse sheet = workoutRepository.findByIdForUpdate(workoutSheetId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ficha de treino nao encontrada."));
 
-        validateMemberAccess(memberId, accessContext);
+        validateMemberAccess(sheet.memberId(), accessContext);
+
+        if (!sheet.active()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Ficha já inativa.");
+        historyRepository.recordSnapshot(workoutRepository.snapshot(sheet), accessContext.user(), "Ficha inativada.");
 
         if (!workoutRepository.deactivateWorkoutSheet(workoutSheetId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ficha de treino nao encontrada.");
         }
-        historyRepository.recordChange(workoutSheetId, "Ficha inativada.");
     }
 
     public List<WorkoutSheetHistoryResponse> findWorkoutSheetHistory(String authenticatedEmail, UUID workoutSheetId) {
@@ -127,6 +250,10 @@ public class WorkoutService {
     private AccessContext resolveAccessContext(String authenticatedEmail) {
         User user = userRepository.findByEmail(authenticatedEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found: " + authenticatedEmail));
+
+        if (!user.active() || (!"ADMIN".equalsIgnoreCase(user.role()) && !"PERSONAL_TRAINER".equalsIgnoreCase(user.role()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso negado à gestão de fichas.");
+        }
 
         boolean isAdmin = "ADMIN".equalsIgnoreCase(user.role());
         if (isAdmin) {

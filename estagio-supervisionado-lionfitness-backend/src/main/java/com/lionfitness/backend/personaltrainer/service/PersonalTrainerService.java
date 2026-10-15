@@ -16,9 +16,11 @@ import com.lionfitness.backend.personaltrainer.repository.PersonalTrainerReposit
 import com.lionfitness.backend.user.dto.UserCreateRequest;
 import com.lionfitness.backend.user.model.User;
 import com.lionfitness.backend.user.service.UserService;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class PersonalTrainerService {
@@ -42,23 +44,43 @@ public class PersonalTrainerService {
 
     @Transactional
     public PersonalTrainerResponse create(PersonalTrainerCreateRequest request) {
-        if (personalTrainerRepository.existsActiveByCpf(request.cpf())) {
-            throw new DuplicatePersonalTrainerCpfException(request.cpf());
+        if (request == null || request.cpf() == null || request.cpf().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CPF é obrigatório.");
         }
 
-        String defaultPassword = request.cpf().replaceAll("\\D", "").substring(0, 6);
+        String cleanCpf = com.lionfitness.backend.common.validation.CpfValidator.normalize(request.cpf());
+        if (cleanCpf.length() != 11) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CPF deve conter exatamente 11 dígitos.");
+        }
+
+        com.lionfitness.backend.common.validation.CpfValidator.requireValid(cleanCpf);
+
+        if (personalTrainerRepository.existsActiveByCpf(cleanCpf)) {
+            throw new DuplicatePersonalTrainerCpfException(cleanCpf);
+        }
+
+        // BUG-11: Elimina o uso dos 6 primeiros dígitos do CPF como senha inicial
+        String secureInitialSecret = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
+
+        PersonalTrainerCreateRequest normalizedRequest = new PersonalTrainerCreateRequest(
+                request.userId(),
+                request.name(),
+                cleanCpf,
+                request.email(),
+                request.phone(),
+                request.specialty()
+        );
 
         User user = userService.create(new UserCreateRequest(
-                request.name(),
-                request.email(), // Certifique-se que o Request do Personal tem email
-                defaultPassword,
+                normalizedRequest.name(),
+                normalizedRequest.email(),
+                secureInitialSecret,
                 "PERSONAL_TRAINER"
         ));
 
-
         PersonalTrainer personalTrainer = personalTrainerRepository.save(
                 UUID.randomUUID(),
-                request,
+                normalizedRequest,
                 user.id()
         );
 
@@ -77,7 +99,7 @@ public class PersonalTrainerService {
     public List<MemberResponse> findMyMembersByEmail(String email) {
         PersonalTrainer personalTrainer = personalTrainerRepository.findActiveByEmail(email)
                 .orElseThrow(() ->
-                        new RuntimeException("Personal trainer not found for email: " + email));
+                        new PersonalTrainerNotFoundException("Personal trainer não encontrado para o e-mail: " + email));
 
         return memberService.findByPersonalTrainerId(personalTrainer.id());
     }
@@ -100,8 +122,19 @@ public class PersonalTrainerService {
         PersonalTrainer currentPersonal = personalTrainerRepository.findActiveById(id)
                 .orElseThrow(() -> new PersonalTrainerNotFoundException(id));
 
-        if (personalTrainerRepository.existsActiveByCpfAndIdNot(request.cpf(), id)) {
-            throw new DuplicatePersonalTrainerCpfException(request.cpf());
+        if (request == null || request.cpf() == null || request.cpf().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CPF é obrigatório.");
+        }
+
+        String cleanCpf = com.lionfitness.backend.common.validation.CpfValidator.normalize(request.cpf());
+        if (cleanCpf.length() != 11) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "CPF deve conter exatamente 11 dígitos.");
+        }
+
+        com.lionfitness.backend.common.validation.CpfValidator.requireValidChange(cleanCpf, currentPersonal.cpf());
+
+        if (personalTrainerRepository.existsActiveByCpfAndIdNot(cleanCpf, id)) {
+            throw new DuplicatePersonalTrainerCpfException(cleanCpf);
         }
 
         // Validate email uniqueness on users table (excluding this personal trainer's user ID)
@@ -109,29 +142,24 @@ public class PersonalTrainerService {
             throw new com.lionfitness.backend.user.exception.DuplicateEmailException(request.email());
         }
 
-        personalTrainerRepository.update(id, request);
-        userRepository.updateNameAndEmail(currentPersonal.userId(), request.name(), request.email());
+        PersonalTrainerUpdateRequest normalizedRequest = new PersonalTrainerUpdateRequest(
+                request.name(),
+                cleanCpf,
+                request.email(),
+                request.phone(),
+                request.specialty()
+        );
+
+        personalTrainerRepository.update(id, normalizedRequest);
+        userRepository.updateNameAndEmail(currentPersonal.userId(), normalizedRequest.name(), normalizedRequest.email());
         return findById(id);
     }
 
     @Transactional
     public PersonalTrainerResponse updateWithPhoto(UUID id, PersonalTrainerUpdateRequest request, MultipartFile photo) {
-        PersonalTrainer currentPersonal = personalTrainerRepository.findActiveById(id)
-                .orElseThrow(() -> new PersonalTrainerNotFoundException(id));
-        
-        if (personalTrainerRepository.existsActiveByCpfAndIdNot(request.cpf(), id)) {
-            throw new DuplicatePersonalTrainerCpfException(request.cpf());
-        }
-
-        // Validate email uniqueness on users table (excluding this personal trainer's user ID)
-        if (userRepository.existsActiveByEmailAndIdNot(request.email(), currentPersonal.userId())) {
-            throw new com.lionfitness.backend.user.exception.DuplicateEmailException(request.email());
-        }
-
-        personalTrainerRepository.update(id, request);
-        userRepository.updateNameAndEmail(currentPersonal.userId(), request.name(), request.email());
+        PersonalTrainerResponse response = update(id, request);
         if (photo != null && !photo.isEmpty()) {
-            userService.saveUserPhoto(currentPersonal.userId(), photo);
+            userService.saveUserPhoto(response.userId(), photo);
         }
         return findById(id);
     }

@@ -31,6 +31,13 @@ type SheetHistoryEntry = {
   workoutSheetId: string;
   changeReason: string;
   createdAt: string;
+  changedByUserId: string | null;
+  changedByName: string | null;
+  snapshot: {
+    sheet: { title: string; weekDay: string; weekDayLabel: string; version: number; active: boolean };
+    exercises: { id: string; exerciseName: string; muscle: string; exerciseType: string; equipment: string;
+      difficulty: string | null; instructions: string | null; sets: number; reps: number; restSeconds: number; notes: string | null }[];
+  } | null;
 };
 
 interface SheetsPanelProps {
@@ -47,6 +54,8 @@ interface SheetsPanelProps {
   onCreateSheet: (data: NewSheetFormData) => Promise<boolean>;
   onDeleteSheet: (sheet: WorkoutSheetViewModel) => Promise<boolean>;
   onGoToBuilder: () => void;
+  onEditSheet: (sheet: WorkoutSheetViewModel) => Promise<void>;
+  editingLoading: boolean;
   onExportPdf: () => void;
   pdfLoading?: boolean;
 }
@@ -75,6 +84,8 @@ export function SheetsPanel({
   onCreateSheet,
   onDeleteSheet,
   onGoToBuilder,
+  onEditSheet,
+  editingLoading,
   onExportPdf,
   pdfLoading = false,
 }: SheetsPanelProps) {
@@ -87,6 +98,8 @@ export function SheetsPanel({
   const [historyError, setHistoryError] = useState("");
   const [historyEntries, setHistoryEntries] = useState<SheetHistoryEntry[]>([]);
   const [historySheetTitle, setHistorySheetTitle] = useState("");
+  const [selectedHistoryId, setSelectedHistoryId] = useState("");
+  const selectedHistory = historyEntries.find((entry) => entry.id === selectedHistoryId);
 
   // Identificar ficha atualmente selecionada ou ativa
   const currentSheet = React.useMemo(() => {
@@ -123,6 +136,7 @@ export function SheetsPanel({
     if (!currentSheet) return;
     setHistorySheetTitle(currentSheet.title);
     setHistoryEntries([]);
+    setSelectedHistoryId("");
     setHistoryError("");
     setHistoryOpen(true);
     setHistoryLoading(true);
@@ -294,11 +308,20 @@ export function SheetsPanel({
                     <History className="size-4" /> Histórico de alterações
                   </Button>
                   <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onEditSheet(currentSheet)}
+                    disabled={editingLoading || !currentSheet.active}
+                    className="mb-2 w-full h-10 rounded-lg text-xs font-semibold"
+                  >
+                    {editingLoading ? <Loader2 className="size-4 animate-spin" /> : <FileText className="size-4" />} Editar ficha completa
+                  </Button>
+                  <Button
                     onClick={onGoToBuilder}
                     className="w-full h-11 rounded-lg bg-primary hover:bg-primary-strong text-primary-foreground font-semibold text-xs shadow-brand flex items-center justify-center gap-2"
                   >
                     <Dumbbell className="size-4" />
-                    Montar / Editar Exercícios desta Ficha
+                    Adicionar exercícios à ficha
                     <ArrowRight className="size-4 ml-1" />
                   </Button>
                   <Button
@@ -382,10 +405,10 @@ export function SheetsPanel({
 
       {/* Modal: Nova Ficha */}
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-4xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Histórico de alterações</DialogTitle>
-            <DialogDescription>{historySheetTitle} — registros de alterações, sem versões completas da ficha.</DialogDescription>
+            <DialogDescription>{historySheetTitle} — selecione uma alteração para consultar a versão anterior. Eventos legados podem não possuir snapshot.</DialogDescription>
           </DialogHeader>
           {historyLoading ? (
             <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" /> Carregando...</p>
@@ -394,16 +417,50 @@ export function SheetsPanel({
           ) : historyEntries.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma alteração registrada para esta ficha.</p>
           ) : (
-            <ol className="max-h-80 space-y-3 overflow-y-auto">
+            <div className="grid gap-4 md:grid-cols-[1fr_1.5fr]">
+            <ol className="max-h-[60dvh] space-y-3 overflow-y-auto">
               {historyEntries.map((entry) => (
-                <li key={entry.id} className="rounded-lg border border-border p-3">
+                <li key={entry.id}>
+                  <button type="button" onClick={() => setSelectedHistoryId(entry.id)} className={cn("w-full rounded-lg border p-3 text-left", selectedHistoryId === entry.id ? "border-primary bg-primary-soft/30" : "border-border")}>
                   <p className="text-sm font-medium text-foreground">{entry.changeReason}</p>
                   <time className="text-xs text-muted-foreground" dateTime={entry.createdAt}>
                     {new Date(entry.createdAt).toLocaleString("pt-BR")}
                   </time>
+                  <p className="mt-1 text-xs text-muted-foreground">{entry.changedByName || "Responsável não registrado"}</p>
+                  <Badge variant="outline" className="mt-2">{entry.snapshot ? `Versão anterior ${entry.snapshot.sheet.version}` : "Evento legado sem snapshot"}</Badge>
+                  </button>
                 </li>
               ))}
             </ol>
+            <div className="space-y-3 rounded-lg border border-border p-4">
+              {!selectedHistory ? <p className="text-sm text-muted-foreground">Selecione uma alteração ao lado.</p> : (
+                <>
+                  <h3 className="font-semibold">{selectedHistory.changeReason}</h3>
+                  <p className="text-xs text-muted-foreground">{new Date(selectedHistory.createdAt).toLocaleString("pt-BR")} · {selectedHistory.changedByName || "Responsável não registrado"}</p>
+                  {selectedHistory.snapshot ? (
+                    <>
+                      <p className="text-sm"><strong>Objetivo anterior:</strong> {selectedHistory.snapshot.sheet.title}</p>
+                      <p className="text-sm"><strong>Dia anterior:</strong> {selectedHistory.snapshot.sheet.weekDayLabel || selectedHistory.snapshot.sheet.weekDay || "Não registrado"}</p>
+                      <p className="text-sm"><strong>Situação anterior:</strong> {selectedHistory.snapshot.sheet.active ? "Ativa" : "Inativa"}</p>
+                      {selectedHistory.snapshot.exercises.length === 0 && <p className="text-sm text-muted-foreground">A versão anterior não possuía exercícios.</p>}
+                      <ol className="space-y-3">
+                        {selectedHistory.snapshot.exercises.map((exercise, index) => (
+                          <li key={exercise.id} className="rounded-lg border border-border p-3 text-sm">
+                            <p className="font-semibold">{index + 1}. {exercise.exerciseName}</p>
+                            <p className="text-xs text-muted-foreground">{exercise.muscle} · {exercise.exerciseType} · {exercise.equipment || "Sem equipamento"}</p>
+                            {exercise.difficulty && <p>Dificuldade: {exercise.difficulty}</p>}
+                            <p className="mt-1">{exercise.sets} séries × {exercise.reps} repetições · descanso {exercise.restSeconds}s</p>
+                            <p className="mt-1 whitespace-pre-wrap"><strong>Instruções:</strong> {exercise.instructions || "—"}</p>
+                            <p className="mt-1 whitespace-pre-wrap"><strong>Observações:</strong> {exercise.notes || "—"}</p>
+                          </li>
+                        ))}
+                      </ol>
+                    </>
+                  ) : <p className="text-sm text-muted-foreground">Este registro legado contém somente o evento textual. O conteúdo anterior da ficha e a autoria não foram reconstruídos.</p>}
+                </>
+              )}
+            </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>

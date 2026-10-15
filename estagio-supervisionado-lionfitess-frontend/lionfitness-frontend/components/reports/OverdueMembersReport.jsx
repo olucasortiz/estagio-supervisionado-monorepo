@@ -46,7 +46,7 @@ function formatSecureCurrency(value) {
 import { useAuth } from "../../hooks/useAuth";
 import exportReportPdf from "./exportReportPdf";
 
-export default function OverdueMembersReport({ styles, members = [], Badge }) {
+export default function OverdueMembersReport({ members = [] }) {
   const { user } = useAuth();
   const [generated, setGenerated] = useState(false);
 
@@ -193,7 +193,7 @@ export default function OverdueMembersReport({ styles, members = [], Badge }) {
               { key: "nome", label: "Nome", render: (r) => r.nome || r.name || "—" },
               { key: "cpf",  label: "CPF",  render: (r) => <span style={{ fontFamily: "monospace", fontSize: 12 }}>{maskCPF(r.cpf)}</span> },
               { key: "plano", label: "Plano", render: (r) => r.plano || "—" },
-              { key: "situacaoFin", label: "Situação financeira", render: (r) => <StatusBadge status="Inadimplente" /> },
+              { key: "situacaoFin", label: "Situação financeira", render: () => <StatusBadge status="Inadimplente" /> },
             ]}
           />
         </div>

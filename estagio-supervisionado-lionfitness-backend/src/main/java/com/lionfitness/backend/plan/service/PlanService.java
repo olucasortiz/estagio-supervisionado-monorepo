@@ -32,6 +32,16 @@ public class PlanService {
                 .toList();
     }
 
+    public com.lionfitness.backend.common.api.PagedResponse<PlanResponse> findPaged(int page, int size) {
+        long total = planRepository.countActive();
+        int offset = com.lionfitness.backend.common.api.PaginationUtils.calculateOffset(page, size);
+        List<PlanResponse> items = planRepository.findActivePaged(size, offset)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+        return com.lionfitness.backend.common.api.PagedResponse.of(items, page, size, total);
+    }
+
     public PlanResponse findById(UUID id) {
         Plan plan = planRepository.findActiveById(id)
                 .orElseThrow(() -> new PlanNotFoundException(id));

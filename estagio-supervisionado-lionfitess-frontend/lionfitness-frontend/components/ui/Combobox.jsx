@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useId } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 
 /**
  * Combobox — Campo de busca com autocomplete para listas longas.
@@ -76,35 +76,29 @@ export default function Combobox({
     el?.scrollIntoView({ block: "nearest" });
   }, [highlighted]);
 
-  const openList = useCallback(() => {
+  const openList = () => {
     if (disabled) return;
     setOpen(true);
     setHighlighted(-1);
     // Se já tem seleção, pré-preenche o campo com o label para edição
     setQuery("");
     setTimeout(() => inputRef.current?.focus(), 0);
-  }, [disabled]);
+  };
 
-  const selectItem = useCallback(
-    (item) => {
-      onChange(getId(item));
-      setQuery("");
-      setOpen(false);
-      setHighlighted(-1);
-    },
-    [onChange, getId]
-  );
+  const selectItem = (item) => {
+    onChange(getId(item));
+    setQuery("");
+    setOpen(false);
+    setHighlighted(-1);
+  };
 
-  const clearSelection = useCallback(
-    (e) => {
-      e.stopPropagation();
-      onChange("");
-      setQuery("");
-      setOpen(false);
-      setTimeout(() => inputRef.current?.focus(), 0);
-    },
-    [onChange]
-  );
+  const clearSelection = (e) => {
+    e.stopPropagation();
+    onChange("");
+    setQuery("");
+    setOpen(false);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
 
   const handleKeyDown = (e) => {
     if (!open) {

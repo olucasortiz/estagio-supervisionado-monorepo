@@ -68,6 +68,7 @@ public class MemberService {
     // Transacional: se salvar o member falhar, o user criado será revertido
     @Transactional
     public MemberResponse create(MemberCreateRequest request) {
+        com.lionfitness.backend.common.validation.CpfValidator.requireValid(request.cpf());
         validateBirthDate(request.birthDate());
         validatePersonalTrainer(request.personalTrainerId());
 
@@ -81,10 +82,10 @@ public class MemberService {
         }
 
         UUID userId = UUID.randomUUID();
-        String rawCpf = request.cpf().replaceAll("\\D", "");
-        String defaultPassword = rawCpf.substring(0, Math.min(rawCpf.length(), 6));
+        String secureInitialSecret = UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "");
+        // BUG-11: Não utiliza os 6 dígitos do CPF como senha inicial
         String rawPassword = request.password() == null || request.password().isBlank()
-                ? defaultPassword
+                ? secureInitialSecret
                 : request.password();
 
         UserCreateRequest userRequest = new UserCreateRequest(
@@ -134,6 +135,8 @@ public class MemberService {
         Member currentMember = memberRepository.findActiveById(id)
                 .orElseThrow(() -> new MemberNotFoundException(id));
 
+        com.lionfitness.backend.common.validation.CpfValidator.requireValidChange(request.cpf(), currentMember.cpf());
+
         if (memberRepository.existsActiveByCpfAndIdNot(request.cpf(), id)) {
             throw new DuplicateCpfException(request.cpf());
         }
@@ -145,17 +148,10 @@ public class MemberService {
 
     @Transactional
     public MemberResponse updateWithPhoto(UUID id, MemberUpdateRequest request, MultipartFile photo) {
-        validateBirthDate(request.birthDate());
-        validatePersonalTrainer(request.personalTrainerId());
-
-        Member currentMember = memberRepository.findActiveById(id)
-                .orElseThrow(() -> new MemberNotFoundException(id));
-        
-        memberRepository.update(id, request);
-        userRepository.updateName(currentMember.userId(), request.name());
+        MemberResponse response = update(id, request);
 
         if (photo != null && !photo.isEmpty()) {
-            userService.saveUserPhoto(currentMember.userId(), photo);
+            userService.saveUserPhoto(response.userId(), photo);
         }
         return findById(id);
     }
@@ -211,12 +207,12 @@ public class MemberService {
 
     public Member findByUserId(UUID userId) {
         return memberRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Perfil de aluno nao encontrado para este usuario."));
+                .orElseThrow(() -> new MemberNotFoundException("Perfil de aluno não encontrado para o usuário: " + userId));
     }
 
     @Transactional
     public CancellationRecordResponse cancel(UUID id, CancellationRequest request) {
-        lockAndAssertNoDebt(id);
+        MemberCancellationInfo memberInfo = lockAndAssertNoDebt(id);
 
         CancellationRecord cancellationRecord = cancellationRecordRepository.save(
                 UUID.randomUUID(),
@@ -228,16 +224,18 @@ public class MemberService {
         if (!memberRepository.softDelete(id)) {
             throw new MemberNotFoundException(id);
         }
-        return toCancellationRecordResponse(cancellationRecord);
+        return toCancellationRecordResponse(cancellationRecord, memberInfo.name(), memberInfo.cpf());
     }
 
-    private void lockAndAssertNoDebt(UUID id) {
-        String sqlCheck = "SELECT is_active FROM members WHERE id = ? FOR UPDATE";
-        List<Boolean> activeStates = jdbcTemplate.query(sqlCheck, (rs, rowNum) -> rs.getBoolean("is_active"), id);
+    public record MemberCancellationInfo(boolean active, String name, String cpf) {}
+
+    private MemberCancellationInfo lockAndAssertNoDebt(UUID id) {
+        String sqlCheck = "SELECT is_active, name, cpf FROM members WHERE id = ? FOR UPDATE";
+        List<MemberCancellationInfo> activeStates = jdbcTemplate.query(sqlCheck, (rs, rowNum) -> new MemberCancellationInfo(rs.getBoolean("is_active"), rs.getString("name"), rs.getString("cpf")), id);
         if (activeStates.isEmpty()) {
             throw new MemberNotFoundException(id);
         }
-        if (!activeStates.get(0)) {
+        if (!activeStates.get(0).active()) {
             throw new IllegalArgumentException("Este aluno já está cancelado/inativo.");
         }
 
@@ -247,6 +245,7 @@ public class MemberService {
         if (paymentRepository.hasPendingOrOverdueByMemberId(id)) {
             throw new CancellationBlockedException(id);
         }
+        return activeStates.get(0);
     }
 
     private MemberResponse toResponse(Member member) {
@@ -265,12 +264,12 @@ public class MemberService {
         );
     }
 
-    private CancellationRecordResponse toCancellationRecordResponse(CancellationRecord cancellationRecord) {
+    private CancellationRecordResponse toCancellationRecordResponse(CancellationRecord cancellationRecord, String memberName, String memberCpf) {
         return new CancellationRecordResponse(
                 cancellationRecord.id(),
                 cancellationRecord.memberId(),
-                null,
-                null,
+                memberName,
+                memberCpf,
                 cancellationRecord.cancellationDate(),
                 cancellationRecord.reason(),
                 cancellationRecord.createdAt()

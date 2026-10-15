@@ -196,6 +196,7 @@ export default function PaymentsSection({
   };
 
   const handleSubmit = async () => {
+    if (saving?.payments) return;
     setFormError("");
     const isPixMethod = ["Pix", "PIX"].includes(forms.payments.method);
     const isCardMethod = ["Cartão", "CARD"].includes(forms.payments.method);

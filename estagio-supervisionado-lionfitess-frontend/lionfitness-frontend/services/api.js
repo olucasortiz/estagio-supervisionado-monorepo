@@ -103,10 +103,12 @@ export async function getMemberProfile() {
 export async function searchExerciseCatalog(filters = {}) {
   const params = new URLSearchParams();
 
-  // Suporta name, category e muscle — chama o catálogo interno (sem API externa)
+  // Filtros combinados do catálogo interno.
   Object.entries(filters).forEach(([key, value]) => {
     if (typeof value === "string" && value.trim()) {
       params.append(key, value.trim());
+    } else if (key === "includeInactive" && typeof value === "boolean") {
+      params.append(key, String(value));
     }
   });
 
@@ -128,8 +130,20 @@ export async function getWorkoutSheetsByMember(memberId) {
   return getResource(`/workout-sheets/member/${memberId}`, "Failed to fetch workout sheets");
 }
 
+export async function updateExerciseCatalogStatus(id, isActive) {
+  return patchResource(`/exercise-catalog/${id}/status`, { isActive }, "Não foi possível atualizar a situação do exercício.");
+}
+
 export async function getWorkoutSheetHistory(workoutSheetId) {
   return getResource(`/workout-sheets/${workoutSheetId}/history`, "Não foi possível carregar o histórico de alterações.");
+}
+
+export async function getWorkoutSheet(workoutSheetId) {
+  return getResource(`/workout-sheets/${workoutSheetId}`, "Não foi possível carregar a ficha para edição.");
+}
+
+export async function updateWorkoutSheet(workoutSheetId, payload) {
+  return updateResource("/workout-sheets", workoutSheetId, payload, "Não foi possível salvar a edição da ficha.");
 }
 
 export async function createWorkoutSheet(payload) {

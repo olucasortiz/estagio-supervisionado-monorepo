@@ -25,6 +25,11 @@ public record PaymentCreateRequest(
         String method,
 
         @NotBlank(message = "Status do pagamento é obrigatório.")
-        String status
+        String status,
+
+        UUID idempotencyKey
 ) {
+    public PaymentCreateRequest(UUID subscriptionId, BigDecimal amount, LocalDate paidAt, String method, String status) {
+        this(subscriptionId, amount, paidAt, method, status, null);
+    }
 }

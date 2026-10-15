@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { NotificationBell } from "@/components/notification/NotificationBell";
 
-export type PersonalTabKey = "alunos" | "fichas" | "montar";
+export type PersonalTabKey = "alunos" | "fichas" | "montar" | "catalogo";
 
 interface PersonalHeaderProps {
   userName?: string;

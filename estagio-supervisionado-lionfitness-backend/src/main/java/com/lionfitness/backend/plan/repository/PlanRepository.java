@@ -59,9 +59,32 @@ public class PlanRepository {
                 select id, name, type, price, duration_days, is_active, created_at
                 from plans
                 where is_active = true
-                order by created_at desc
+                order by created_at desc, id desc
                 """,
                 PLAN_ROW_MAPPER
+        );
+    }
+
+    public long countActive() {
+        Long total = jdbcTemplate.queryForObject(
+                "select count(*) from plans where is_active = true",
+                Long.class
+        );
+        return total != null ? total : 0L;
+    }
+
+    public List<Plan> findActivePaged(int limit, int offset) {
+        return jdbcTemplate.query(
+                """
+                select id, name, type, price, duration_days, is_active, created_at
+                from plans
+                where is_active = true
+                order by created_at desc, id desc
+                limit ? offset ?
+                """,
+                PLAN_ROW_MAPPER,
+                limit,
+                offset
         );
     }
 

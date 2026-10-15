@@ -2,6 +2,7 @@ export type StudentStatus = "Ativo" | "Inativo";
 
 export interface StudentViewModel {
   id: string;
+  memberId?: string;
   name: string;
   cpf: string;
   status: StudentStatus;
@@ -17,6 +18,7 @@ export interface WorkoutSheetViewModel {
   weekDay: string;
   weekDayLabel: string;
   active: boolean;
+  version: number;
   createdAtFormatted: string;
   exerciseCount?: number;
 }
@@ -34,6 +36,23 @@ export interface WorkoutExerciseViewModel {
   reps: number;
   restSeconds: number;
   notes: string;
+  catalogExerciseId?: string;
+}
+
+export interface WorkoutSheetUpdateData {
+  title: string;
+  weekDay: string;
+  version: number;
+  changeReason: string;
+  exercises: {
+    id?: string;
+    catalogExerciseId?: string;
+    sets: number;
+    reps: number;
+    restSeconds: number;
+    instructions: string;
+    notes: string;
+  }[];
 }
 
 export interface CatalogExerciseViewModel {
@@ -44,6 +63,7 @@ export interface CatalogExerciseViewModel {
   equipment: string;
   instructions: string;
   isCustom: boolean;
+  isActive: boolean;
 }
 
 export interface NewSheetFormData {

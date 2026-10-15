@@ -1,5 +1,9 @@
 package com.lionfitness.backend.workoutexercise.service;
 
+import com.lionfitness.backend.exercisecatalog.ExerciseCatalog;
+import com.lionfitness.backend.exercisecatalog.ExerciseCatalogRepository;
+import com.lionfitness.backend.workout.repository.WorkoutRepository;
+import com.lionfitness.backend.workout.dto.WorkoutSheetResponse;
 import com.lionfitness.backend.personaltrainer.model.PersonalTrainer;
 import com.lionfitness.backend.personaltrainer.repository.PersonalTrainerRepository;
 import com.lionfitness.backend.user.model.User;
@@ -30,43 +34,64 @@ public class WorkoutExerciseService {
     private final WorkoutSheetHistoryRepository historyRepository;
     private final UserRepository userRepository;
     private final PersonalTrainerRepository personalTrainerRepository;
+    private final ExerciseCatalogRepository catalogRepository;
+    private final WorkoutRepository workoutRepository;
 
     public WorkoutExerciseService(
             WorkoutExerciseRepository workoutExerciseRepository,
             WorkoutSheetHistoryRepository historyRepository,
             UserRepository userRepository,
-            PersonalTrainerRepository personalTrainerRepository
+            PersonalTrainerRepository personalTrainerRepository,
+            ExerciseCatalogRepository catalogRepository,
+            WorkoutRepository workoutRepository
     ) {
         this.workoutExerciseRepository = workoutExerciseRepository;
         this.historyRepository = historyRepository;
         this.userRepository = userRepository;
         this.personalTrainerRepository = personalTrainerRepository;
+        this.catalogRepository = catalogRepository;
+        this.workoutRepository = workoutRepository;
     }
 
     @Transactional
     public WorkoutExerciseResponse create(String authenticatedEmail, WorkoutExerciseCreateRequest request) {
         AccessContext accessContext = resolveAccessContext(authenticatedEmail);
 
+        WorkoutSheetResponse sheet = workoutRepository.findByIdForUpdate(request.workoutSheetId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ficha de treino não encontrada."));
+        if (!sheet.active()) throw new ResponseStatusException(HttpStatus.CONFLICT, "Ficha inativa.");
+
         validateWorkoutSheetAccess(accessContext, request.workoutSheetId());
 
+        if (request.catalogExerciseId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Exercício do catálogo é obrigatório.");
+        }
+        ExerciseCatalog catalogExercise = catalogRepository.findByIdForShare(request.catalogExerciseId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Exercício do catálogo não encontrado."));
+        if (!catalogExercise.isActive()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Exercício inativo no catálogo. Selecione um exercício ativo.");
+        }
+
+        historyRepository.recordSnapshot(workoutRepository.snapshot(sheet), accessContext.user(),
+                "Exercício adicionado: " + catalogExercise.name());
         WorkoutExerciseRecord savedExercise = workoutExerciseRepository.save(
                 new WorkoutExerciseRecord(
                         UUID.randomUUID(),
                         request.workoutSheetId(),
-                        request.externalName().trim(),
-                        normalize(request.muscle()),
-                        normalize(request.exerciseType()),
-                        normalize(request.equipment()),
+                        catalogExercise.name(),
+                        catalogExercise.muscle(),
+                        catalogExercise.category(),
+                        catalogExercise.equipment(),
                         normalize(request.difficulty()),
-                        normalize(request.instructions()),
+                        catalogExercise.instructions(),
                         request.sets(),
                         request.reps(),
                         request.restSeconds(),
                         normalize(request.notes())
                 )
         );
-        historyRepository.recordChange(savedExercise.workoutSheetId(),
-                "Exercício adicionado: " + savedExercise.exerciseName());
+        workoutRepository.incrementVersion(sheet.id());
 
         logger.info(
                 "Exercise {} added to workout sheet {} by personal trainer {}",

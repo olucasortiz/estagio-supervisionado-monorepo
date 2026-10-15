@@ -184,4 +184,35 @@ class PaymentServiceTest {
         verify(paymentRepository).update(paymentId, subscriptionId, amount, today, PaymentMethod.CASH, PaymentStatus.PAID);
         verify(subscriptionRepository).renewSubscription(subscriptionId, today);
     }
+
+    @Test
+    void duplicatePaymentWithinTwoMinutesReturnsExistingPaymentIdempotentlyWithoutSavingOrRenewingAgain() {
+        Payment existingPayment = new Payment(
+                paymentId,
+                subscriptionId,
+                amount,
+                today,
+                PaymentMethod.CASH,
+                PaymentStatus.PAID,
+                LocalDateTime.now(clock).minusSeconds(30)
+        );
+
+        when(paymentRepository.subscriptionExists(subscriptionId)).thenReturn(true);
+        when(paymentRepository.findDuplicatePayment(eq(subscriptionId), eq(amount), eq(PaymentMethod.CASH), eq(PaymentStatus.PAID), eq(today), any()))
+                .thenReturn(Optional.of(existingPayment));
+
+        PaymentCreateRequest request = new PaymentCreateRequest(
+                subscriptionId, amount, today, "CASH", "PAID");
+
+        PaymentResponse response = paymentService.create(request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.id()).isEqualTo(paymentId);
+        assertThat(response.amount()).isEqualTo(amount);
+        assertThat(response.status()).isEqualTo(PaymentStatus.PAID);
+
+        // Verify that duplicate is NOT inserted and subscription is NOT renewed again
+        verify(paymentRepository, never()).save(any(), any(), any(), any(), any(), any());
+        verify(subscriptionRepository, never()).renewSubscription(any(), any());
+    }
 }

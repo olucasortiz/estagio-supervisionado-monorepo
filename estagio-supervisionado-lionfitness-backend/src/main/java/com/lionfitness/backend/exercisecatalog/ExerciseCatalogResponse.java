@@ -12,6 +12,8 @@ public record ExerciseCatalogResponse(
         String equipment,
         String instructions,
         boolean isCustom,
-        UUID createdByPersonalTrainerId
+        UUID createdByPersonalTrainerId,
+        boolean isActive,
+        boolean canManage
 ) {
 }

@@ -32,6 +32,7 @@ export const adminMenuGroups = [
       { id: 31, label: "Planos" },
       { id: 32, label: "Usuários" },
       { id: 33, label: "Personal Trainers" },
+      { id: 38, label: "Catálogo de Exercícios" },
     ],
   },
   {

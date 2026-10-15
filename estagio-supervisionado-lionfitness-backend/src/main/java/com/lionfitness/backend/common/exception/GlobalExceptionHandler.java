@@ -42,6 +42,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import jakarta.validation.ConstraintViolationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
@@ -100,13 +102,13 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         ApiErrorResponse response = buildErrorResponse(
-                HttpStatus.NOT_FOUND,
-                exception.getMessage(),
+                HttpStatus.UNAUTHORIZED,
+                "Invalid credentials",
                 request.getRequestURI(),
                 List.of()
         );
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
@@ -527,7 +529,7 @@ public class GlobalExceptionHandler {
         HttpStatus status = HttpStatus.valueOf(exception.getStatusCode().value());
         ApiErrorResponse response = buildErrorResponse(
                 status,
-                exception.getReason() != null ? exception.getReason() : "Request failed",
+                exception.getReason() != null && !exception.getReason().isBlank() ? exception.getReason() : status.getReasonPhrase(),
                 request.getRequestURI(),
                 List.of()
         );
@@ -574,6 +576,22 @@ public class GlobalExceptionHandler {
                 List.of()
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadableException(
+            HttpMessageNotReadableException exception,
+            HttpServletRequest request
+    ) {
+        ApiErrorResponse response = buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                "Corpo da requisição inválido ou malformado.",
+                request.getRequestURI(),
+                List.of()
+        );
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     @ExceptionHandler(Exception.class)
