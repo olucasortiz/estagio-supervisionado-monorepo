@@ -7,6 +7,13 @@ Atualizado em 19/10/2026. Pedido vigente: refinamentos pontuais na identidade Gr
 4. Aplicação do logotipo oficial da Lion Fitness (`03-LOGO-ORIGINAL-LION.png`).
 5. Chat persistente bidirecional entre Aluno e Personal Trainer com histórico e notificações integradas.
 
+## Publicação completa e correção PostgreSQL — 20/10/2026
+
+- Push autorizado pelo usuário. Redesign, logo oficial, guias e correções publicados no GitHub em 67ab201; ativação PM2 ajustada em 1d57026. GitHub Actions run 39440985044 concluído com success. Frontend de produção agora usa /home/ubuntu/lion-frontend-releases/1d57026cf4090e6c970b11bc9d27314513272345/server.js. GET público /login = 200 com logo oficial e classes gp-auth.
+- Workflow anterior apontava para pasta diferente da aplicação ativa. Agora npm ci/build roda no GitHub em Linux; artefato standalone inclui public e .next/static; servidor extrai release separada e troca somente lion-frontend no PM2, mantendo ambiente e retorno. Primeiro reload não alterou o caminho do script; corrigido para recriar o processo nomeado. Versão anterior preservada em /home/ubuntu/lionfitness-release, cópia Git remota com mudanças locais não foi sobrescrita.
+- Novo erro 500 diagnosticado em logs: driver PostgreSQL não converte TIMESTAMPTZ diretamente para LocalDateTime. NotificationRepository agora lê Timestamp com calendário UTC, preserva instante e aceita read_at nulo. Sem alteração de schema ou dados. Teste de regressão incluído; 26 testes Notification* passaram e build/TypeScript frontend passou.
+- Backend republicado como lion-fitness-backend:chat-dates-20261020, health UP, container anterior preservado: lion-backend-before-chat-20261020143631. API pública autenticada validada: /notifications/conversation = 200, com uma mensagem existente e nome real do personal; /notifications = 200. Nenhuma mensagem real ou e-mail de teste enviado. Troca bidirecional real entre duas sessões ainda não exercitada.
+- As notas anteriores de frontend antigo ou backend pendente são históricas. Se uma aba antiga permanecer aberta, recarregá-la para carregar a release nova. Capturas outputs/ e screenshot_login.png continuam locais e não foram publicadas.
 ## Backend do chat publicado — 20/10/2026
 
 - Publicação expressamente autorizada pelo usuário. Container lion-backend atualizado na AWS com imagem lion-fitness-backend:chat-20261020; health UP. Configuração, ambiente e porta preservados. Backup parado para retorno: lion-backend-before-chat-20261020142613. Frontend não publicado nesta etapa; sem commit/push.
