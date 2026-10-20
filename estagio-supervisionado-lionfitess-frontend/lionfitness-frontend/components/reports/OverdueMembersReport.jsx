@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import PageHeader from "../ui/PageHeader";
-import DashboardCard from "../ui/DashboardCard";
+import { ReportMetrics, ReportState } from "./ReportPresentation";
 import DataTable from "../ui/DataTable";
 import StatusBadge from "../ui/StatusBadge";
 
@@ -118,16 +118,16 @@ export default function OverdueMembersReport({ members = [] }) {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="gp-registry gp-report">
       <PageHeader
         title="Relatório de Inadimplência"
         subtitle="Análise analítica de alunos com situação financeira pendente ou vencida"
         breadcrumb={<><span>Relatórios</span><span style={{ opacity: 0.4 }}>›</span><span>Relatório de Inadimplência</span></>}
         action={
-          <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+          <div className="gp-report-actions">
             {generated && overdue.length > 0 && (
               <button className="btn btn-outline" onClick={exportToPdf} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
                 Exportar PDF
@@ -143,7 +143,7 @@ export default function OverdueMembersReport({ members = [] }) {
       {/* Alerta */}
       {generated && overdue.length > 0 && (
         <div className="alert alert-error" style={{ marginBottom: 20 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
             <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
@@ -156,21 +156,17 @@ export default function OverdueMembersReport({ members = [] }) {
 
       {/* KPI cards */}
       {generated && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 20 }}>
-          <DashboardCard value={overdue.length} label="Alunos inadimplentes" accentColor="#EF4444" icon="⚠️" />
-          <DashboardCard value={members.length} label="Total no sistema" accentColor="#3B82F6" icon="👥" />
-          <DashboardCard value={`${taxa}%`} label="Taxa de inadimplência" accentColor="#F59E0B" icon="📊" />
-        </div>
+        <ReportMetrics items={[{label:"Alunos inadimplentes",value:overdue.length},{label:"Total no sistema",value:members.length},{label:"Taxa de inadimplência",value:`${taxa}%`}]} />
       )}
 
       {/* Barra de inadimplência */}
       {generated && members.length > 0 && (
-        <div className="card card-md" style={{ marginBottom: 20 }}>
+        <div className="card gp-report-chart">
           <p style={{ fontSize: "var(--font-xs)", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
             Proporção de inadimplência
           </p>
           <div style={{ height: 14, borderRadius: 999, overflow: "hidden", background: "var(--bg-subtle)", display: "flex" }}>
-            <div style={{ width: `${taxa}%`, background: "linear-gradient(90deg, #EF4444, #DC2626)", transition: "width 0.6s ease", borderRadius: 999 }} />
+            <div style={{ width: `${taxa}%`, background: "var(--error-text)", borderRadius: 999 }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
             <span style={{ fontSize: "var(--font-xs)", color: "var(--error-text)", fontWeight: 600 }}>Inadimplentes: {taxa}%</span>
@@ -179,16 +175,19 @@ export default function OverdueMembersReport({ members = [] }) {
         </div>
       )}
 
+      {!generated && <ReportState busy={false} failed={false} />}
       {/* Tabela */}
       {generated && (
-        <div className="card card-md">
+        <section className="card gp-registry-panel gp-report-results" aria-label="Resultado do relatório">
+          <div className="gp-registry-panel-heading"><h2>Resultado detalhado</h2><p>Use a busca para localizar registros nesta consulta.</p></div>
           <DataTable
             data={overdue}
             keyField="id"
+            caption="Alunos inadimplentes"
             searchPlaceholder="Buscar por nome, CPF ou plano..."
             searchFields={["nome", "name", "cpf", "plano"]}
             emptyTitle="Nenhum aluno inadimplente"
-            emptyDescription="Todos os alunos estão em dia com os pagamentos."
+            emptyDescription="Nenhum aluno com pendência na base consultada."
             columns={[
               { key: "nome", label: "Nome", render: (r) => r.nome || r.name || "—" },
               { key: "cpf",  label: "CPF",  render: (r) => <span style={{ fontFamily: "monospace", fontSize: 12 }}>{maskCPF(r.cpf)}</span> },
@@ -196,7 +195,7 @@ export default function OverdueMembersReport({ members = [] }) {
               { key: "situacaoFin", label: "Situação financeira", render: () => <StatusBadge status="Inadimplente" /> },
             ]}
           />
-        </div>
+        </section>
       )}
     </div>
   );

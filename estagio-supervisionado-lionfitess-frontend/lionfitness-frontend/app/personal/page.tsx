@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Users, ClipboardList, LayoutGrid, Dumbbell } from "lucide-react";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useAuth } from "@/hooks/useAuth";
-import { cn } from "@/lib/utils";
+import "../graphite-tokens.css";
+import "../dashboard/registry.css";
+import "../dashboard/catalog.css";
+import "../dashboard/microkit-focus.css";
+import "./personal.css";
+import "./workouts.css";
 import {
   createExerciseCatalog,
   createWorkoutExercise,
@@ -24,6 +29,7 @@ import { PersonalHeader, PersonalTabKey } from "@/components/personal/PersonalHe
 import { StudentsPanel } from "@/components/personal/StudentsPanel";
 import { SheetsPanel } from "@/components/personal/SheetsPanel";
 import { BuilderPanel } from "@/components/personal/BuilderPanel";
+import { FloatingChat } from "@/components/chat/FloatingChat";
 import ExerciseCatalogSection from "@/components/dashboard/sections/ExerciseCatalogSection";
 import {
   StudentViewModel,
@@ -205,6 +211,7 @@ export default function PersonalPage() {
   }, [loadMembers]);
 
   useEffect(() => {
+    setSheetSuccess("");
     if (!selectedMemberId) {
       setWorkoutSheets([]);
       setSelectedSheetId("");
@@ -414,19 +421,29 @@ export default function PersonalPage() {
     try {
       setPdfLoading(true);
 
-      // Mapeia todas as fichas do aluno com os exercícios carregados
-      const workoutsPayload = sheetViewModels.map((s) => ({
-        weekDay: s.weekDay,
-        title: s.title,
-        exercises: (s.id === selectedSheetId ? exerciseViewModels : []).map((ex) => ({
-          name: ex.exerciseName,
-          muscle: ex.muscle,
-          sets: ex.sets,
-          reps: ex.reps,
-          restSeconds: ex.restSeconds,
-          instructions: ex.notes || ex.instructions,
-        })),
-      }));
+      // Mapeia todas as fichas do aluno; a ficha selecionada reutiliza o que já está
+      // carregado e as demais têm seus exercícios consultados (somente leitura).
+      const workoutsPayload = await Promise.all(
+        [...sheetViewModels].sort((a, b) => Number(b.active) - Number(a.active)).map(async (s) => {
+          let sheetExerciseList: WorkoutExerciseViewModel[] = exerciseViewModels;
+          if (s.id !== selectedSheetId) {
+            const response = await getWorkoutExercisesBySheet(s.id);
+            sheetExerciseList = (Array.isArray(response) ? response : []).map((e, i) => mapWorkoutExercise(e, i));
+          }
+          return {
+            weekDay: s.weekDay,
+            title: s.title,
+            exercises: sheetExerciseList.map((ex) => ({
+              name: ex.exerciseName,
+              muscle: ex.muscle,
+              sets: ex.sets,
+              reps: ex.reps,
+              restSeconds: ex.restSeconds,
+              notes: ex.notes || ex.instructions,
+            })),
+          };
+        }),
+      );
 
       await exportWorkoutPdf({
         studentName: selectedStudentViewModel.name,
@@ -448,53 +465,30 @@ export default function PersonalPage() {
 
   return (
     <ProtectedRoute allowedRoles={["PERSONAL_TRAINER"]}>
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="graphite-personal gp-personal-shell">
+        <a className="gp-personal-skip" href="#personal-content">Pular para o conteúdo</a>
         {/* Header Exclusivo e Moderno do Personal */}
         <PersonalHeader
           userName={user?.name || "Personal Trainer"}
           onLogout={handleLogout}
         />
 
-        {/* Workspace Principal Responsivo Centralizado (1400px) */}
-        <main className="mx-auto max-w-[1400px] space-y-6 px-4 py-6 sm:px-6 lg:py-8">
-          {/* Header row: Gestão de treinos + Segmented Tabs (Estrutura Fiel do Lovable) */}
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl text-foreground">Gestão de treinos</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {members.length} {members.length === 1 ? "aluno sob sua supervisão" : "alunos sob sua supervisão"}
-              </p>
-            </div>
-            <nav className="flex w-full gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1 lg:w-auto">
-              {tabs.map((t) => {
-                const isActive = activeTab === t.key;
-                const isDisabled =
-                  (t.key === "fichas" && !selectedMemberId) ||
-                  (t.key === "montar" && (!selectedMemberId || !selectedSheetViewModel));
-
-                return (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => {
-                      if (!isDisabled) changeTab(t.key);
-                    }}
-                    disabled={isDisabled || savingSheet}
-                    className={cn(
-                      "flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 lg:flex-none cursor-pointer",
-                      isActive
-                        ? "bg-primary text-primary-foreground shadow-brand"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                      isDisabled && "cursor-not-allowed opacity-40 hover:bg-transparent hover:text-muted-foreground",
-                    )}
-                  >
-                    <t.icon className="size-4" />
-                    {t.label}
-                  </button>
-                );
-              })}
-            </nav>
+        <main id="personal-content" tabIndex={-1} className="gp-personal-main">
+          <div className="gp-personal-title">
+            <h1>Gestão de treinos</h1>
+            <p>{membersLoading ? "Carregando alunos…" : membersError ? "Acompanhe seus alunos e organize suas fichas de treino." : `${members.length} ${members.length === 1 ? "aluno sob sua supervisão" : "alunos sob sua supervisão"}`}</p>
           </div>
+          <nav className="gp-personal-navigation" aria-label="Áreas do personal" aria-describedby="personal-navigation-help">
+            {tabs.map((t) => {
+              const isDisabled = (t.key === "fichas" && !selectedMemberId) || (t.key === "montar" && (!selectedMemberId || !selectedSheetViewModel));
+              return <button key={t.key} type="button" onClick={() => { if (!isDisabled) changeTab(t.key); }} disabled={isDisabled || savingSheet} aria-current={activeTab === t.key ? "page" : undefined} aria-controls="personal-workspace">
+                <t.icon size={18} aria-hidden="true" />{t.label}
+              </button>;
+            })}
+          </nav>
+          <p id="personal-navigation-help" className="gp-personal-context">
+            {selectedStudentViewModel ? <>Aluno selecionado: <strong>{selectedStudentViewModel.name}</strong>{!selectedSheetViewModel && " · Selecione ou crie uma ficha para montar o treino."}</> : "Selecione um aluno em Gerenciar ficha para acessar suas fichas e montar o treino."}
+          </p>
 
           {/* Breadcrumb / Botão de Voltar Contextual */}
           {activeTab !== "alunos" && (
@@ -504,16 +498,16 @@ export default function PersonalPage() {
                 size="sm"
                 onClick={() => changeTab(activeTab === "montar" ? "fichas" : "alunos")}
                 disabled={savingSheet}
-                className="h-8 px-2 text-muted-foreground hover:text-foreground text-sm font-medium"
+                className="gp-personal-back"
               >
-                <ArrowLeft className="size-4 mr-1" />
+                <ArrowLeft className="size-4 mr-1" aria-hidden="true" />
                 {activeTab === "montar" ? "Voltar para Fichas do Aluno" : "Voltar para Meus Alunos"}
               </Button>
             </div>
           )}
 
           {/* Renderização Condicional da Aba Ativa */}
-          <div key={activeTab}>
+          <div id="personal-workspace" key={activeTab}>
             {activeTab === "catalogo" && <ExerciseCatalogSection />}
             {/* Aba 1: Meus Alunos */}
             {activeTab === "alunos" && (
@@ -522,6 +516,7 @@ export default function PersonalPage() {
                 loading={membersLoading}
                 error={membersError}
                 onManage={handleManageStudent}
+                onRetry={() => loadMembers()}
                 selectedStudentId={selectedMemberId}
               />
             )}
@@ -546,6 +541,7 @@ export default function PersonalPage() {
                 editingLoading={editingLoading}
                 onExportPdf={handleExportPdf}
                 pdfLoading={pdfLoading}
+                onClearSuccess={() => setSheetSuccess("")}
               />
             )}
 
@@ -569,10 +565,19 @@ export default function PersonalPage() {
                 onSearchCatalog={handleSearchCatalog}
                 onSaveExercise={handleSaveExercise}
                 onCreateCustomExercise={handleCreateCustomExercise}
+                onClearSuccess={() => setSaveSuccess("")}
               />
             )}
           </div>
         </main>
+
+        {/* Chat Flutuante Persistente */}
+        <FloatingChat
+          userRole="PERSONAL"
+          students={members.map((m) => ({ id: m.id, name: m.name }))}
+          currentStudentId={selectedMemberId || undefined}
+          onSelectStudent={(id) => setSelectedMemberId(id)}
+        />
       </div>
     </ProtectedRoute>
   );

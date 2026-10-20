@@ -1,0 +1,93 @@
+/* Lion Fitness — Acesso (login, recuperação e redefinição). Escopo .graphite-auth; tokens em graphite-tokens.css. */
+.graphite-auth { font-family: var(--font-inter), system-ui, sans-serif; color: var(--foreground); }
+.graphite-auth :is(h1,h2,h3) { font-family: var(--font-display); letter-spacing: -.03em; text-wrap: pretty; }
+.graphite-auth :is(button,a,input):focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.graphite-auth :is(button,a) { touch-action: manipulation; }
+.graphite-auth button { cursor: pointer; }
+.graphite-auth button:disabled { cursor: not-allowed; }
+
+/* Casca */
+.gp-auth-shell { min-height: 100dvh; display: flex; background: var(--background); }
+.gp-auth-aside { display: none; width: 45%; flex-direction: column; justify-content: space-between; padding: 48px 56px; background: #191c20; color: #f4f5f6; border-right: 1px solid #343b45; }
+.gp-auth-aside h1 { font-size: clamp(30px, 3vw, 40px); font-weight: 800; line-height: 1.1; color: #f4f5f6; }
+.gp-auth-aside p { margin-top: 16px; max-width: 420px; font-size: 15px; line-height: 1.6; color: #a7afba; }
+.gp-auth-modules { margin-top: 36px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 420px; }
+.gp-auth-module { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid #343b45; border-radius: 12px; background: #22262b; font-size: 14px; font-weight: 600; color: #f4f5f6; }
+.gp-auth-module svg { color: #ff9ba2; flex-shrink: 0; }
+.gp-auth-copy { font-size: 12px; color: #a7afba; }
+.gp-auth-main { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 16px; position: relative; }
+.gp-auth-topbar { position: absolute; top: 16px; right: 16px; }
+.gp-auth-brand-mobile { display: flex; flex-direction: column; align-items: center; margin-bottom: 24px; text-align: center; }
+.gp-auth-brand-mobile p { margin-top: 8px; font-size: 14px; color: var(--muted-foreground); }
+
+/* Cartão */
+.gp-auth-card { width: 100%; max-width: 440px; padding: 32px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: var(--shadow-card); }
+.gp-auth-card-head { text-align: center; margin-bottom: 24px; }
+.gp-auth-card-head h1, .gp-auth-card-head h2 { font-size: 26px; font-weight: 800; }
+.gp-auth-card-head p { margin-top: 8px; font-size: 14px; line-height: 1.6; color: var(--muted-foreground); }
+.gp-auth-form { display: flex; flex-direction: column; gap: 20px; }
+.gp-auth-field { display: flex; flex-direction: column; gap: 8px; }
+.gp-auth-label-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.gp-auth-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.gp-auth-input-wrap { position: relative; }
+.gp-auth-input-wrap > svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--muted-foreground); }
+.gp-auth-input { width: 100%; height: 48px; padding: 0 14px; border: 1px solid var(--input); border-radius: 8px; background: var(--card); color: var(--foreground); font-size: 15px; transition: border-color 160ms, box-shadow 160ms; }
+.gp-auth-input[data-icon="true"] { padding-left: 44px; }
+.gp-auth-input[data-toggle="true"] { padding-right: 48px; }
+.gp-auth-input::placeholder { color: var(--text-disabled); }
+.gp-auth-input:hover:not(:disabled) { border-color: var(--text-secondary); }
+.gp-auth-input:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-color: var(--ring); }
+.gp-auth-input:disabled { opacity: .6; cursor: not-allowed; }
+.gp-auth-toggle { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--muted-foreground); transition: color 150ms, background-color 150ms; }
+.gp-auth-toggle:hover:not(:disabled) { color: var(--foreground); background: var(--muted); }
+.gp-auth-link { padding: 0; border: 0; background: none; color: var(--primary); font-size: 13px; font-weight: 600; text-decoration: none; min-height: 24px; }
+.gp-auth-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.gp-auth-link-muted { color: var(--muted-foreground); font-weight: 500; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; }
+.gp-auth-link-muted:hover { color: var(--foreground); }
+.gp-auth-center { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+
+/* Botões */
+.gp-auth-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 48px; padding: 0 20px; border: 1px solid transparent; border-radius: 8px; background: var(--primary); color: #fff; font-size: 15px; font-weight: 700; text-decoration: none; transition: background-color 160ms, transform 160ms; }
+.gp-auth-primary:hover:not(:disabled) { background: var(--brand-primary-dark); }
+.gp-auth-primary:active:not(:disabled) { transform: translateY(1px); }
+.gp-auth-primary:disabled { opacity: .7; }
+.gp-auth-spin { animation: gp-auth-spin .8s linear infinite; }
+@keyframes gp-auth-spin { to { transform: rotate(360deg); } }
+
+/* Feedbacks (ícone + texto, nunca só cor) */
+.gp-auth-alert { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--error-text); border-radius: 8px; background: var(--error-bg); color: var(--error-text); font-size: 13px; font-weight: 600; line-height: 1.5; }
+.gp-auth-alert svg { flex-shrink: 0; margin-top: 1px; }
+.gp-auth-field-error { font-size: 13px; font-weight: 600; color: var(--error-text); }
+.gp-auth-success { display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center; }
+.gp-auth-success-icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 12px; background: var(--success-bg); color: var(--success-text); }
+.gp-auth-success h2 { font-size: 24px; font-weight: 800; }
+.gp-auth-success p { margin-top: 8px; font-size: 14px; line-height: 1.6; color: var(--muted-foreground); }
+.gp-auth-recipient { width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-subtle); text-align: left; }
+.gp-auth-recipient span { display: block; font-size: 12px; color: var(--muted-foreground); }
+.gp-auth-recipient strong { display: block; margin-top: 4px; font-size: 14px; font-weight: 600; word-break: break-all; }
+
+/* Força da senha / requisitos */
+.gp-auth-strength { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 8px; background: var(--bg-subtle); }
+.gp-auth-strength-head { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--muted-foreground); }
+.gp-auth-strength-head strong { color: var(--foreground); }
+.gp-auth-strength-bars { display: flex; gap: 4px; }
+.gp-auth-strength-bars i { flex: 1; height: 6px; border-radius: 999px; background: var(--border); transition: background-color 200ms; }
+.gp-auth-strength-bars i[data-level="bad"] { background: var(--error-text); }
+.gp-auth-strength-bars i[data-level="mid"] { background: var(--warning-text); }
+.gp-auth-strength-bars i[data-level="good"] { background: var(--success-text); }
+.gp-auth-reqs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.gp-auth-req { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted-foreground); }
+.gp-auth-req[data-met="true"] { color: var(--success-text); }
+.gp-auth-req span { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); }
+.gp-auth-req[data-met="true"] span { background: var(--success-bg); }
+
+@media (min-width: 1024px) {
+  .gp-auth-aside { display: flex; }
+  .gp-auth-main { padding: 32px 40px; }
+  .gp-auth-brand-mobile { display: none; }
+}
+@media (max-width: 480px) { .gp-auth-card { padding: 24px 20px; } }
+@media (prefers-reduced-motion: reduce) {
+  .gp-auth-input, .gp-auth-primary, .gp-auth-toggle, .gp-auth-strength-bars i { transition: none; }
+  .gp-auth-spin { animation: none; }
+}

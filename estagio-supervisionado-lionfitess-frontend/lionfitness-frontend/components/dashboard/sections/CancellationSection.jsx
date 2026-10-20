@@ -38,7 +38,7 @@ export default function CancellationSection({
   };
 
   return (
-    <div className="animate-fade-in">
+    <div className="gp-registry gp-finance">
       <PageHeader
         title="Registrar Cancelamento"
         subtitle="Registre o cancelamento de matrícula de um aluno"
@@ -56,14 +56,15 @@ export default function CancellationSection({
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "start" }}>
+      <div className="gp-cancellation-grid">
 
         {/* Seleção de aluno */}
-        <div className="card card-md">
-          <h3 style={{ fontSize: "var(--font-md)", fontWeight: 700, color: "var(--text-primary)", margin: "0 0 12px" }}>
+        <div className="card gp-registry-panel">
+          <h2 style={{ fontSize: "var(--font-md)", fontWeight: 700, color: "var(--text-primary)", margin: "0 0 12px" }}>
             Selecionar aluno
-          </h3>
+          </h2>
           <SearchInput
+            label="Buscar aluno para cancelamento"
             value={memberSearch}
             onChange={setMemberSearch}
             placeholder="Buscar por nome ou CPF..."
@@ -80,6 +81,7 @@ export default function CancellationSection({
                     key={m.id ?? m.memberId}
                     type="button"
                     onClick={() => handleSelectMember(m)}
+                    disabled={saving.cancellation}
                     style={{
                       width: "100%", display: "flex", alignItems: "center", gap: 12,
                       padding: "10px 16px", background: "transparent", border: "none",
@@ -102,10 +104,10 @@ export default function CancellationSection({
         </div>
 
         {/* Formulário de cancelamento */}
-        <div className="card card-md">
-          <h3 style={{ fontSize: "var(--font-md)", fontWeight: 700, color: "var(--text-primary)", margin: "0 0 16px" }}>
+        <div className="card gp-registry-panel">
+          <h2 style={{ fontSize: "var(--font-md)", fontWeight: 700, color: "var(--text-primary)", margin: "0 0 16px" }}>
             Dados do cancelamento
-          </h3>
+          </h2>
 
           {selectedMember ? (
             <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", background: "var(--brand-primary-bg)", borderRadius: "var(--radius-lg)", marginBottom: 16, border: "1.5px solid var(--brand-primary)" }}>
@@ -120,6 +122,8 @@ export default function CancellationSection({
                 style={{ marginLeft: "auto" }}
                 onClick={() => { onChangeFormValue("cancellation", "memberId", ""); setMemberSearch(""); }}
                 title="Remover seleção"
+                aria-label="Remover seleção"
+                disabled={saving.cancellation}
               >
                 ✕
               </button>
@@ -134,8 +138,8 @@ export default function CancellationSection({
             <input type="hidden" value={forms.cancellation.memberId} />
 
             <div className="form-field">
-              <label className="label">Motivo do cancelamento</label>
-              <textarea
+              <label className="label" htmlFor="cancellation-reason">Motivo do cancelamento</label>
+              <textarea id="cancellation-reason" disabled={saving.cancellation}
                 className="input"
                 style={{ height: 100, resize: "vertical", padding: "10px 12px", lineHeight: 1.5 }}
                 placeholder="Descreva o motivo do cancelamento (opcional)..."
@@ -144,8 +148,8 @@ export default function CancellationSection({
               />
             </div>
 
-            {feedback.cancellation && (
-              <p className={feedback.cancellation.includes("sucesso") ? "feedback-success" : "feedback-error"}>
+            {feedback.cancellation && !feedback.cancellation.includes("sucesso") && (
+              <p role="status" className={feedback.cancellation.includes("sucesso") ? "feedback-success" : "feedback-error"}>
                 {feedback.cancellation}
               </p>
             )}

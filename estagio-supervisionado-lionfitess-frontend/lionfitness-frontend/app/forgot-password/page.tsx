@@ -2,16 +2,14 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { Mail, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
+import { Mail, ArrowLeft, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 
+import "@/app/graphite-tokens.css";
+import "@/app/auth.css";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { LionLogo } from "@/components/branding/LionLogo";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { forgotPassword } from "@/services/api";
-import { cn } from "@/lib/utils";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -35,7 +33,7 @@ export default function ForgotPasswordPage() {
       setError(null);
       const response = await forgotPassword(cleanEmail);
       setFeedback(
-        response?.message || "Enviamos as instruções para redefinir sua senha."
+        response?.message || "Se o e-mail estiver cadastrado e ativo, você receberá as instruções de recuperação."
       );
       setIsSuccess(true);
     } catch (err) {
@@ -51,39 +49,36 @@ export default function ForgotPasswordPage() {
 
   return (
     <ProtectedRoute guestOnly>
-      <main className="relative flex min-h-screen items-center justify-center bg-background px-5 py-12 sm:px-8">
-        <div className="absolute top-5 right-5">
-          <ThemeToggle />
-        </div>
-        <div className="w-full max-w-md animate-fade-in">
-          {/* Logo */}
-          <div className="mb-8 flex flex-col items-center text-center">
+      <main className="graphite-auth gp-auth-shell">
+        <div className="gp-auth-main">
+          <div className="gp-auth-topbar">
+            <ThemeToggle />
+          </div>
+
+          <div className="gp-auth-brand-mobile" style={{ display: "flex" }}>
             <LionLogo variant="dark" size="lg" layout="vertical" />
           </div>
 
-          {/* Card */}
-          <div className="rounded-3xl border border-border bg-card p-8 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] sm:p-10">
+          <div className="gp-auth-card">
             {!isSuccess ? (
-              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                <div className="text-center">
-                  <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-                    Recuperar senha
-                  </h1>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    Informe seu e-mail e enviaremos as instruções para redefinir sua senha.
-                  </p>
+              <form onSubmit={handleSubmit} className="gp-auth-form">
+                <div className="gp-auth-card-head" style={{ marginBottom: 0 }}>
+                  <h1>Recuperar senha</h1>
+                  <p>Informe seu e-mail e enviaremos as instruções para redefinir sua senha.</p>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="email">E-mail</Label>
-                  <div className="relative">
-                    <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
-                    <Input
+                <div className="gp-auth-field">
+                  <label htmlFor="email" className="gp-auth-label">E-mail</label>
+                  <div className="gp-auth-input-wrap">
+                    <Mail size={18} aria-hidden="true" />
+                    <input
                       id="email"
                       name="email"
                       type="email"
                       autoComplete="email"
                       placeholder="seu@email.com"
+                      className="gp-auth-input"
+                      data-icon="true"
                       value={email}
                       onChange={(e) => {
                         setEmail(e.target.value);
@@ -91,84 +86,65 @@ export default function ForgotPasswordPage() {
                       }}
                       disabled={isLoading}
                       required
-                      className="h-12 w-full rounded-xl border-border bg-lion-slate-100 dark:bg-card pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground/60 transition-colors focus-visible:ring-2 focus-visible:ring-lion-red/20 focus-visible:border-lion-red disabled:cursor-not-allowed disabled:opacity-60"
+                      aria-invalid={error ? true : undefined}
+                      aria-describedby={error ? "forgot-error" : undefined}
                     />
                   </div>
                   {error && (
-                    <p className="text-sm text-destructive font-medium" role="alert">
-                      {error}
+                    <p id="forgot-error" className="gp-auth-alert" role="alert">
+                      <AlertCircle size={16} aria-hidden="true" />
+                      <span>{error}</span>
                     </p>
                   )}
                 </div>
 
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className={cn(
-                    "h-12 w-full items-center justify-center gap-2 rounded-xl bg-lion-red px-6 text-sm font-semibold text-white shadow-soft transition-all duration-200 hover:bg-lion-red-dark active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70",
-                    isLoading && "opacity-80"
-                  )}
-                >
+                <button type="submit" disabled={isLoading} className="gp-auth-primary">
                   {isLoading ? (
                     <>
-                      <Loader2 className="size-4 animate-spin" />
+                      <Loader2 size={16} className="gp-auth-spin" aria-hidden="true" />
                       Enviando...
                     </>
                   ) : (
                     "Enviar instruções"
                   )}
-                </Button>
+                </button>
 
-                <div className="text-center">
-                  <Link
-                    href="/login"
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <ArrowLeft className="size-4" />
+                <div className="gp-auth-center">
+                  <Link href="/login" className="gp-auth-link gp-auth-link-muted">
+                    <ArrowLeft size={16} aria-hidden="true" />
                     Voltar para o login
                   </Link>
                 </div>
               </form>
             ) : (
-              <div className="flex flex-col items-center gap-6 text-center">
-                <div className="flex size-16 items-center justify-center rounded-full bg-emerald-500/12 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
-                  <CheckCircle2 className="size-8" />
+              <div className="gp-auth-success">
+                <div className="gp-auth-success-icon">
+                  <CheckCircle2 size={28} aria-hidden="true" />
                 </div>
 
                 <div>
-                  <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-                    Verifique seu e-mail
-                  </h2>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    {feedback || "Enviamos as instruções para redefinir sua senha."}
-                  </p>
+                  <h2>Verifique seu e-mail</h2>
+                  <p role="status">{feedback || "Se o e-mail estiver cadastrado e ativo, você receberá as instruções de recuperação."}</p>
                 </div>
 
-                <div className="w-full rounded-xl border border-border bg-muted/40 p-4">
-                  <p className="text-sm text-muted-foreground">
-                    E-mail de destino:
-                  </p>
-                  <p className="mt-1 break-all text-sm font-medium text-foreground">
-                    {email}
-                  </p>
+                <div className="gp-auth-recipient">
+                  <span>E-mail de destino:</span>
+                  <strong>{email}</strong>
                 </div>
 
-                <Link
-                  href="/login"
-                  className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-lion-red px-6 text-sm font-semibold text-white shadow-soft transition-all duration-200 hover:bg-lion-red-dark active:scale-[0.99]"
-                >
+                <Link href="/login" className="gp-auth-primary">
                   Voltar para o login
                 </Link>
 
                 <button
                   type="button"
+                  className="gp-auth-link gp-auth-link-muted"
                   onClick={() => {
                     setIsSuccess(false);
                     setEmail("");
                     setError(null);
                     setFeedback("");
                   }}
-                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
                 >
                   Enviar para outro e-mail
                 </button>

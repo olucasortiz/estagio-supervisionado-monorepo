@@ -1,0 +1,88 @@
+@import "../graphite-tokens.css";
+
+/* ADMIN presentation. */
+.gp-shell { min-height: 100dvh; background: var(--background); }
+.gp-desktop-sidebar { position: fixed; inset: 0 auto 0 0; z-index: 40; width: 248px; border-right: 1px solid var(--sidebar-border); }
+.gp-sidebar-inner { height: 100%; display: flex; flex-direction: column; background: var(--sidebar); color: var(--sidebar-foreground); }
+.gp-brand { display: flex; align-items: center; gap: 12px; min-height: 80px; padding: 20px; border-bottom: 1px solid var(--sidebar-border); }
+.gp-brand span { display: block; font: 800 18px/1.3 var(--font-display); letter-spacing: -.5px; }
+.gp-brand small { display: block; color: var(--sidebar-muted); font-size: 11px; margin-top: 3px; }
+.gp-navigation { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 12px; }
+.gp-nav-item { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 42px; padding: 10px 12px; border-radius: 8px; text-align: left; font-size: 13px; color: var(--sidebar-muted); transition: background-color 150ms, color 150ms; }
+.gp-nav-item span { min-width: 0; overflow-wrap: anywhere; }.gp-nav-item svg { flex-shrink: 0; }
+.gp-nav-item:hover { background: var(--sidebar-accent); color: var(--sidebar-foreground); }
+.gp-nav-item[aria-current="page"] { background: var(--primary); color: #fff; font-weight: 600; }
+.gp-nav-group { margin-top: 22px; }
+.gp-nav-heading { display: flex; width: 100%; align-items: center; justify-content: space-between; min-height: 36px; padding: 6px 12px; color: var(--sidebar-muted); font-size: 12px; }
+.gp-chevron { transition: transform 160ms; }.gp-chevron-closed { transform: rotate(-90deg); }
+.gp-sidebar-account { display: flex; align-items: center; gap: 10px; padding: 18px 12px; border-top: 1px solid var(--sidebar-border); }
+.gp-sidebar-account > div { flex: 1; min-width: 0; }.gp-sidebar-account strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.gp-sidebar-account small { display: block; margin-top: 3px; font-size: 11px; color: var(--sidebar-muted); }
+.gp-avatar { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: #343b45; color: #f4f5f6; font-size: 12px; font-weight: 600; }
+.gp-main-column { margin-left: 248px; min-width: 0; }
+.gp-topbar { position: sticky; top: 0; z-index: 30; height: 72px; display: flex; align-items: center; gap: 12px; padding: 0 28px; background: var(--card); border-bottom: 1px solid var(--border); }
+.gp-greeting { flex: 1; min-width: 0; }.gp-greeting p { font-size: 13px; font-weight: 600; }.gp-greeting span { display: block; font-size: 11px; color: var(--muted-foreground); margin-top: 3px; }
+.gp-topbar-actions { display: flex; align-items: center; gap: 12px; }
+.gp-icon-button { display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px; border-radius: 8px; color: var(--muted-foreground); transition: background-color 150ms, color 150ms; }
+.gp-icon-button:hover { background: var(--muted); color: var(--foreground); }.gp-sidebar-account .gp-icon-button { color: var(--sidebar-muted); }.gp-sidebar-account .gp-icon-button:hover { background: var(--sidebar-accent); color: white; }
+.gp-content { max-width: 1600px; margin: 0 auto; padding: 28px; outline: none; min-width: 0; }
+.gp-menu-trigger { display: none; }
+.gp-skip-link { position: fixed; left: 264px; top: 8px; z-index: 1500; padding: 12px 16px; border-radius: 8px; background: var(--card); color: var(--foreground); transform: translateY(-180%); }.gp-skip-link:focus { transform: none; }
+.graphite-admin :is(button, a, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.graphite-admin :is(button, a) { touch-action: manipulation; }
+.graphite-admin .page-header { align-items: center; margin-bottom: 28px; }
+.graphite-admin .page-title { font-family: var(--font-display); font-size: clamp(26px, 2.6vw, 34px); font-weight: 800; letter-spacing: -.04em; }
+.graphite-admin .page-subtitle { font-size: 14px; line-height: 1.6; margin-top: 8px; }
+.graphite-admin .btn { height: 44px; font-size: 13px; border-radius: 8px; transition: background-color 150ms, border-color 150ms, color 150ms; }
+.graphite-admin .btn-primary, .graphite-admin .btn-primary:hover { box-shadow: none; transform: none; }
+.graphite-admin .btn-danger { background: var(--destructive); color: var(--destructive-foreground); }
+.graphite-admin .btn-danger:hover:not(:disabled) { background: #8f1c26; }
+.graphite-admin .btn-sm { height: 36px; font-size: 12px; }.graphite-admin .btn:disabled { cursor: not-allowed; }
+.graphite-admin .input, .graphite-admin .select { height: 44px; font-size: 14px; border: 1px solid var(--input); }
+.graphite-admin .label { font-size: 12px; text-transform: none; letter-spacing: 0; }
+.graphite-admin .card { box-shadow: none; border-radius: 12px; }
+.graphite-admin .table th { font-size: 12px; text-transform: none; letter-spacing: 0; font-weight: 500; padding: 14px 16px; color: var(--text-secondary); }
+.graphite-admin .table td { padding: 16px; font-size: 13px; }.graphite-admin .table-wrapper { border: 1px solid var(--border); border-radius: 8px; }
+.graphite-admin .page-btn { min-width: 40px; height: 40px; }
+.gp-members-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--border); border-radius: 12px; background: var(--card); margin-bottom: 24px; }
+.gp-members-summary > div { padding: 20px 24px; }.gp-members-summary > div + div { border-left: 1px solid var(--border); }
+.gp-members-summary dt { display: flex; align-items: center; gap: 8px; color: var(--muted-foreground); font-size: 12px; }.gp-members-summary dd { margin-top: 10px; font-size: 28px; font-weight: 700; letter-spacing: -.04em; }
+.gp-members-panel { padding: 24px; }.gp-members-panel-heading { margin-bottom: 20px; }.gp-members-panel-heading h2 { font-size: 16px; font-weight: 600; }.gp-members-panel-heading p { font-size: 12px; color: var(--muted-foreground); margin-top: 4px; }
+.gp-member-name { display: flex; align-items: center; gap: 12px; min-width: 180px; }.gp-member-name strong { font-weight: 600; }
+.gp-members-panel .table td { white-space: nowrap; }
+.gp-member-action { display: inline-flex; align-items: center; gap: 6px; }.gp-member-inactivate { color: var(--error-text); }
+.gp-status-filter { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted-foreground); }.gp-status-filter select { width: 130px; }
+.gp-member-notice { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 16px; }
+.gp-mobile-navigation { position: fixed; inset: 0 auto 0 0; width: min(300px, calc(100vw - 32px)); max-width: none; height: 100dvh; max-height: 100dvh; padding: 0; gap: 0; border-radius: 0; border: 0; display: flex; flex-direction: column; background: var(--sidebar); }
+.gp-mobile-navigation > .gp-sidebar-inner { min-height: 0; flex: 1; }.gp-mobile-navigation > button { color: var(--sidebar-foreground); top: 12px; right: 8px; min-width: 44px; min-height: 44px; }.gp-mobile-navigation .gp-brand { padding-right: 48px; }
+.graphite-admin .drawer-panel { overscroll-behavior: contain; }.graphite-admin .drawer-header { padding: 24px; }.graphite-admin .drawer-footer { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+.graphite-admin .step-label { text-transform: none; letter-spacing: 0; font-size: 11px; }.graphite-admin .step-circle { width: 36px; height: 36px; }
+.graphite-admin .photo-upload-area { width: 100%; }.graphite-admin .search-clear { width: 32px; height: 32px; background: transparent; }
+@media (max-width: 1023px) {
+  .gp-desktop-sidebar { display: none; }.gp-main-column { margin-left: 0; }.gp-menu-trigger { display: grid; }.gp-topbar { padding: 0 16px; }.gp-content { padding: 24px 16px; }.gp-skip-link { left: 16px; }
+}
+@media (max-width: 639px) {
+  .gp-topbar { height: 64px; gap: 6px; }.gp-topbar-actions { gap: 4px; }.gp-topbar-logout { display: none; }.gp-greeting span { font-size: 10px; }
+  .graphite-admin .page-header { gap: 16px; }
+  .graphite-admin .page-header > div:first-child { flex-basis: 100%; }
+  .graphite-admin .page-header > div:last-child { width: 100%; }
+  .graphite-admin .page-header > div:last-child > button { width: 100%; justify-content: center; }
+  .gp-members-summary > div { padding: 16px 12px; }.gp-members-summary dt { font-size: 11px; gap: 5px; }.gp-members-summary dt svg { display: none; }.gp-members-summary dd { font-size: 24px; }
+  .gp-members-panel { padding: 16px; }.gp-status-filter span { display: none; }.gp-status-filter select { width: 116px; }
+  .graphite-admin .drawer-body, .graphite-admin .drawer-header { padding: 20px 16px; }.graphite-admin .drawer-footer { padding-left: 12px; padding-right: 12px; }.graphite-admin .drawer-footer .btn { padding-inline: 12px; }
+  .graphite-admin .input, .graphite-admin .select { font-size: 16px; }.graphite-admin .gp-member-action { min-height: 44px; }
+  .gp-members-panel .table, .gp-members-panel .table thead, .gp-members-panel .table tbody { display: block; }
+  .gp-members-panel .table thead tr { display: block; }
+  .gp-members-panel .table thead th { display: none; }
+  .gp-members-panel .table thead th:nth-child(2) { display: block; border-radius: 0; }
+  .gp-members-panel .table .data-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 16px; gap: 16px 12px; border-bottom: 1px solid var(--border); }
+  .gp-members-panel .table .data-row:last-child { border-bottom: 0; }
+  .gp-members-panel .table .data-row td { display: block; min-width: 0; padding: 0; border: 0; white-space: normal; overflow-wrap: anywhere; }
+  .gp-members-panel .table .data-row td:first-child { display: none; }
+  .gp-members-panel .table .data-row td:nth-child(2), .gp-members-panel .table .data-row td:last-child { grid-column: 1 / -1; }
+  .gp-members-panel .table .data-row td[data-label]:not(:nth-child(2))::before { content: attr(data-label); display: block; color: var(--muted-foreground); font-size: 11px; margin-bottom: 5px; }
+  .gp-members-panel .table .data-row td:last-child > div > button { flex: 1; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .graphite-admin *, .graphite-admin *::before, .graphite-admin *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}

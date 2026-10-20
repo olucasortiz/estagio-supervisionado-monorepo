@@ -165,6 +165,108 @@ class NotificationServiceTest {
                 new NotificationReplyRequest("Ajustarei seu treino")).type()).isEqualTo("PERSONAL_TRAINER_REPLY");
     }
 
+    @Test
+    void studentGetsConversationWithLinkedPersonal() {
+        Member member = member(trainerId);
+        Notification n1 = notification(trainerUserId, studentUserId, NotificationType.EXERCISE_QUESTION, true);
+        Notification n2 = notification(studentUserId, trainerUserId, NotificationType.PERSONAL_TRAINER_REPLY, false);
+
+        when(userRepository.findActiveByEmail(student.email())).thenReturn(Optional.of(student));
+        when(personalTrainerRepository.findActiveByUserId(studentUserId)).thenReturn(Optional.empty());
+        when(memberRepository.findByUserId(studentUserId)).thenReturn(Optional.of(member));
+        when(personalTrainerRepository.findActiveById(trainerId)).thenReturn(Optional.of(trainer()));
+        when(userRepository.findActiveById(trainerUserId)).thenReturn(Optional.of(trainerUser));
+        when(notificationRepository.findConversation(studentUserId, trainerUserId)).thenReturn(List.of(n1, n2));
+
+        var conversation = service.getConversation(student.email(), null);
+        assertThat(conversation.interlocutorName()).isEqualTo("Personal");
+        assertThat(conversation.interlocutorRole()).isEqualTo("PERSONAL");
+        assertThat(conversation.messages()).hasSize(2);
+        assertThat(conversation.messages().get(0).fromMe()).isTrue();
+        assertThat(conversation.messages().get(1).fromMe()).isFalse();
+    }
+
+    @Test
+    void personalGetsConversationWithSupervisedStudent() {
+        Member member = member(trainerId);
+        Notification n1 = notification(trainerUserId, studentUserId, NotificationType.EXERCISE_QUESTION, true);
+
+        when(userRepository.findActiveByEmail(trainerUser.email())).thenReturn(Optional.of(trainerUser));
+        when(personalTrainerRepository.findActiveByUserId(trainerUserId)).thenReturn(Optional.of(trainer()));
+        when(memberRepository.findActiveById(member.id())).thenReturn(Optional.of(member));
+        when(userRepository.findActiveById(studentUserId)).thenReturn(Optional.of(student));
+        when(notificationRepository.findConversation(trainerUserId, studentUserId)).thenReturn(List.of(n1));
+
+        var conversation = service.getConversation(trainerUser.email(), member.id());
+        assertThat(conversation.interlocutorName()).isEqualTo("Aluno");
+        assertThat(conversation.interlocutorRole()).isEqualTo("ALUNO");
+        assertThat(conversation.messages()).hasSize(1);
+        assertThat(conversation.messages().get(0).fromMe()).isFalse();
+    }
+
+    @Test
+    void personalCannotAccessUnsupervisedStudentConversation() {
+        UUID otherTrainerId = UUID.randomUUID();
+        Member member = member(otherTrainerId);
+
+        when(userRepository.findActiveByEmail(trainerUser.email())).thenReturn(Optional.of(trainerUser));
+        when(personalTrainerRepository.findActiveByUserId(trainerUserId)).thenReturn(Optional.of(trainer()));
+        when(memberRepository.findActiveById(member.id())).thenReturn(Optional.of(member));
+
+        assertThatThrownBy(() -> service.getConversation(trainerUser.email(), member.id()))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasFieldOrPropertyWithValue("status", HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void chatStudentWritesNotificationToLinkedTrainer() {
+        when(userRepository.findActiveByEmail(student.email())).thenReturn(Optional.of(student));
+        when(personalTrainerRepository.findActiveByUserId(studentUserId)).thenReturn(Optional.empty());
+        when(memberRepository.findByUserId(studentUserId)).thenReturn(Optional.of(member(trainerId)));
+        when(personalTrainerRepository.findActiveById(trainerId)).thenReturn(Optional.of(trainer()));
+        var saved = notification(trainerUserId, studentUserId, NotificationType.EXERCISE_QUESTION, false);
+        when(notificationRepository.save(eq(trainerUserId), eq(studentUserId), eq(NotificationType.EXERCISE_QUESTION), any(), eq("Mensagem"), any())).thenReturn(saved);
+        var response = service.sendChatMessage(student.email(), new com.lionfitness.backend.notification.dto.SendChatMessageRequest(null, "  Mensagem  ", NotificationType.EXERCISE_QUESTION));
+        assertThat(response.recipientUserId()).isEqualTo(trainerUserId);
+        assertThat(response.fromMe()).isTrue();
+        verify(notificationRepository).save(eq(trainerUserId), eq(studentUserId), eq(NotificationType.EXERCISE_QUESTION), any(), eq("Mensagem"), any());
+    }
+
+    @Test
+    void chatPersonalCanStartConversationWithSupervisedStudent() {
+        Member member = member(trainerId);
+        when(userRepository.findActiveByEmail(trainerUser.email())).thenReturn(Optional.of(trainerUser));
+        when(personalTrainerRepository.findActiveByUserId(trainerUserId)).thenReturn(Optional.of(trainer()));
+        when(memberRepository.findActiveById(member.id())).thenReturn(Optional.of(member));
+        when(userRepository.findActiveById(studentUserId)).thenReturn(Optional.of(student));
+        var saved = notification(studentUserId, trainerUserId, NotificationType.PERSONAL_TRAINER_REPLY, false);
+        when(notificationRepository.save(eq(studentUserId), eq(trainerUserId), eq(NotificationType.PERSONAL_TRAINER_REPLY), any(), eq("Mensagem"), any())).thenReturn(saved);
+        var response = service.sendChatMessage(trainerUser.email(), new com.lionfitness.backend.notification.dto.SendChatMessageRequest(member.id(), "Mensagem", NotificationType.OTHER));
+        assertThat(response.recipientUserId()).isEqualTo(studentUserId);
+        assertThat(response.fromMe()).isTrue();
+    }
+
+    @Test
+    void chatPersonalCannotSendToAnotherTrainersStudent() {
+        Member otherMember = member(UUID.randomUUID());
+        when(userRepository.findActiveByEmail(trainerUser.email())).thenReturn(Optional.of(trainerUser));
+        when(personalTrainerRepository.findActiveByUserId(trainerUserId)).thenReturn(Optional.of(trainer()));
+        when(memberRepository.findActiveById(otherMember.id())).thenReturn(Optional.of(otherMember));
+        assertThatThrownBy(() -> service.sendChatMessage(trainerUser.email(), new com.lionfitness.backend.notification.dto.SendChatMessageRequest(otherMember.id(), "Mensagem", NotificationType.OTHER)))
+                .isInstanceOf(ResponseStatusException.class).hasFieldOrPropertyWithValue("status", HttpStatus.FORBIDDEN);
+        verifyNoInteractions(notificationRepository);
+    }
+
+    @Test
+    void chatReadOnlyMarksMessagesReceivedFromLinkedTrainer() {
+        when(userRepository.findActiveByEmail(student.email())).thenReturn(Optional.of(student));
+        when(personalTrainerRepository.findActiveByUserId(studentUserId)).thenReturn(Optional.empty());
+        when(memberRepository.findByUserId(studentUserId)).thenReturn(Optional.of(member(trainerId)));
+        when(personalTrainerRepository.findActiveById(trainerId)).thenReturn(Optional.of(trainer()));
+        service.markConversationRead(student.email(), null);
+        verify(notificationRepository).markConversationAsRead(eq(studentUserId), eq(trainerUserId), any());
+    }
+
     private User user(UUID id, String name, String email, String role) {
         return new User(id, name, email, "hash", role, true, LocalDateTime.now(CLOCK), false);
     }

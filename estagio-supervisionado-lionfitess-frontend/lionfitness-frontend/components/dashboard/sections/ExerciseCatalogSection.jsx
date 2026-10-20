@@ -6,6 +6,7 @@ import PageHeader from "../../ui/PageHeader";
 import DataTable from "../../ui/DataTable";
 import Modal from "../../ui/Modal";
 import StatusBadge from "../../ui/StatusBadge";
+import { Toast } from "../../ui/Toast";
 
 const initialFilters = { name: "", category: "", muscle: "", equipment: "" };
 
@@ -74,18 +75,22 @@ export default function ExerciseCatalogSection() {
   const visible = exercises.filter((exercise) => status === "all" || exercise.isActive === (status === "active"));
 
   return (
-    <section className="animate-fade-in space-y-4">
-      <PageHeader title="Catálogo de Exercícios" subtitle="Consulte a biblioteca e gerencie a disponibilidade dos exercícios autorizados." />
-      <form onSubmit={search} className="card card-md space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <section className="gp-registry gp-catalog">
+      <PageHeader title="Catálogo de Exercícios" breadcrumb="Cadastros / Catálogo" subtitle="Consulte a biblioteca e gerencie a disponibilidade dos exercícios autorizados." />
+      <form onSubmit={search} className="card gp-registry-panel gp-catalog-filters" aria-label="Filtros do catálogo">
+        <div className="gp-registry-panel-heading">
+          <h2>Filtros de busca</h2>
+          <p>Combine os campos para encontrar o exercício desejado.</p>
+        </div>
+        <div className="gp-catalog-fields">
           {[["name", "Nome"], ["category", "Categoria"], ["muscle", "Músculo"], ["equipment", "Equipamento"]].map(([field, label]) => (
             <div className="form-field" key={field}>
               <label className="label" htmlFor={`catalog-${field}`}>{label}</label>
-              <input id={`catalog-${field}`} className="input" value={filters[field]} onChange={(event) => setFilters((current) => ({ ...current, [field]: event.target.value }))} />
+              <input id={`catalog-${field}`} className="input" autoComplete="off" value={filters[field]} onChange={(event) => setFilters((current) => ({ ...current, [field]: event.target.value }))} />
             </div>
           ))}
         </div>
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="gp-catalog-toolbar">
           <div className="form-field">
             <label className="label" htmlFor="catalog-status">Situação</label>
             <select id="catalog-status" className="select" value={status} onChange={(event) => setStatus(event.target.value)}>
@@ -94,33 +99,44 @@ export default function ExerciseCatalogSection() {
               <option value="inactive">Inativos</option>
             </select>
           </div>
-          <button className="btn btn-primary" type="submit" disabled={loading || saving}>{loading ? "Buscando..." : "Buscar"}</button>
+          <button className="btn btn-primary" type="submit" disabled={loading || saving}>{loading ? "Buscando…" : "Buscar exercícios"}</button>
         </div>
       </form>
       {error && !pending && <div className="alert alert-error" role="alert">{error}</div>}
-      {feedback && <div className="alert alert-success" role="status">{feedback}</div>}
-      <div className="card card-md">
-        <DataTable data={visible} loading={loading} searchable={false} emptyTitle="Nenhum exercício encontrado" columns={[
-          { key: "name", label: "Nome" },
+      <Toast open={Boolean(feedback)} message={feedback} onClose={() => setFeedback("")} />
+      <div className="card gp-registry-panel gp-catalog-library">
+        <div className="gp-catalog-library-heading">
+          <div className="gp-registry-panel-heading">
+            <h2>Biblioteca de exercícios</h2>
+            <p>As ações disponíveis respeitam sua permissão em cada exercício.</p>
+          </div>
+          {!loading && <dl className="gp-catalog-totals" aria-label="Resumo da consulta autorizada">
+            <div><dt>Na consulta</dt><dd>{exercises.length}</dd></div>
+            <div><dt>Ativos</dt><dd>{exercises.filter((exercise) => exercise.isActive).length}</dd></div>
+            <div><dt>Gerenciáveis</dt><dd>{exercises.filter((exercise) => exercise.canManage).length}</dd></div>
+          </dl>}
+        </div>
+        <DataTable data={visible} loading={loading} searchable={false} caption="Exercícios autorizados e disponibilidade" emptyTitle="Nenhum exercício encontrado" emptyDescription="Revise os filtros de busca e a situação selecionada." columns={[
+          { key: "name", label: "Nome", sortValue: (exercise) => exercise.name, render: (exercise) => <strong className="gp-catalog-name">{exercise.name}</strong> },
           { key: "category", label: "Categoria" },
           { key: "muscle", label: "Músculo" },
           { key: "equipment", label: "Equipamento", render: (exercise) => exercise.equipment || "—" },
           { key: "isCustom", label: "Origem", render: (exercise) => exercise.isCustom ? "Personalizado" : "Padrão" },
           { key: "isActive", label: "Situação", render: (exercise) => <StatusBadge status={exercise.isActive ? "Ativo" : "Inativo"} /> },
         ]} actions={(exercise) => exercise.canManage ? (
-          <button type="button" className="btn btn-outline btn-sm" disabled={saving || loading} onClick={() => { setError(""); setPending(exercise); }}>
+          <button type="button" className="btn btn-outline btn-sm" aria-label={`${exercise.isActive ? "Inativar" : "Ativar"} ${exercise.name}`} disabled={saving || loading} onClick={() => { setError(""); setPending(exercise); }}>
             {exercise.isActive ? "Inativar" : "Ativar"}
           </button>
-        ) : <span className="text-xs text-muted-foreground">Somente consulta</span>} />
+        ) : <span className="gp-catalog-readonly">Somente consulta</span>} />
       </div>
       <Modal open={Boolean(pending)} onClose={() => { if (!saving) { setPending(null); setError(""); } }} preventClose={saving}
         title={pending?.isActive ? "Inativar exercício" : "Ativar exercício"} footer={
           <>
             <button type="button" className="btn btn-ghost" disabled={saving} onClick={() => { setPending(null); setError(""); }}>Cancelar</button>
-            <button type="button" className="btn btn-primary" disabled={saving} onClick={confirmStatus}>{saving ? "Salvando..." : "Confirmar"}</button>
+            <button type="button" className="btn btn-primary" disabled={saving} onClick={confirmStatus}>{saving ? "Salvando…" : pending?.isActive ? "Inativar exercício" : "Ativar exercício"}</button>
           </>
         }>
-        <p>Confirmar {pending?.isActive ? "inativação" : "ativação"} de <strong>{pending?.name}</strong>?</p>
+        <p>Confirmar {pending?.isActive ? "inativação" : "ativação"} de <strong className="gp-catalog-name">{pending?.name}</strong>?</p>
         <p className="mt-2 text-sm text-muted-foreground">A disponibilidade para novas prescrições será atualizada. As fichas já salvas serão preservadas.</p>
         {error && <div className="alert alert-error mt-3" role="alert">{error}</div>}
       </Modal>

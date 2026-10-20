@@ -1,6 +1,11 @@
 package com.lionfitness.backend.notification.repository;
 
 import java.sql.Timestamp;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.ZoneOffset;
+import java.util.Calendar;
+import java.util.TimeZone;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -29,10 +34,15 @@ public class NotificationRepository {
             resultSet.getString("title"),
             resultSet.getString("message"),
             resultSet.getBoolean("is_read"),
-            resultSet.getObject("created_at", LocalDateTime.class),
-            resultSet.getObject("read_at", LocalDateTime.class)
+            readUtcTimestamp(resultSet, "created_at"),
+            readUtcTimestamp(resultSet, "read_at")
     );
 
+    private static LocalDateTime readUtcTimestamp(ResultSet resultSet, String column) throws SQLException {
+        // PostgreSQL does not support getObject(LocalDateTime.class) for TIMESTAMPTZ.
+        Timestamp timestamp = resultSet.getTimestamp(column, Calendar.getInstance(TimeZone.getTimeZone("UTC")));
+        return timestamp == null ? null : LocalDateTime.ofInstant(timestamp.toInstant(), ZoneOffset.UTC);
+    }
     private final JdbcTemplate jdbcTemplate;
 
     public NotificationRepository(JdbcTemplate jdbcTemplate) {
@@ -142,6 +152,33 @@ public class NotificationRepository {
                 where recipient_user_id = ? and is_read = false
                 """,
                 Timestamp.valueOf(readAt), recipientUserId
+        );
+    }
+
+    public List<Notification> findConversation(UUID userA, UUID userB) {
+        return jdbcTemplate.query(
+                """
+                select
+                """ + NOTIFICATION_COLUMNS + """
+                from notifications n
+                left join users sender on sender.id = n.sender_user_id
+                where (n.recipient_user_id = ? and n.sender_user_id = ?)
+                   or (n.recipient_user_id = ? and n.sender_user_id = ?)
+                order by n.created_at asc, n.id asc
+                """,
+                ROW_MAPPER,
+                userA, userB, userB, userA
+        );
+    }
+
+    public int markConversationAsRead(UUID recipientUserId, UUID senderUserId, LocalDateTime readAt) {
+        return jdbcTemplate.update(
+                """
+                update notifications
+                set is_read = true, read_at = ?
+                where recipient_user_id = ? and sender_user_id = ? and is_read = false
+                """,
+                Timestamp.valueOf(readAt), recipientUserId, senderUserId
         );
     }
 }

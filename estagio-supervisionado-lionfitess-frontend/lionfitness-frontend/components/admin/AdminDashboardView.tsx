@@ -4,7 +4,6 @@ import React, { useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowUpRight,
-  Calendar,
   CreditCard,
   Layers,
   UserPlus,
@@ -237,324 +236,103 @@ export default function AdminDashboardView({
   }, [data.personalTrainers]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Cabeçalho do Dashboard */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            Dashboard
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Visão geral gerencial da academia com métricas reais
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground shadow-xs">
-            <Calendar className="size-3.5 text-muted-foreground" />
-            <span>Dados em tempo real</span>
-          </div>
-        </div>
-      </div>
+    <div className="gp-overview">
+      <header className="gp-overview-heading">
+        <h1>Visão geral</h1>
+        <p>Acompanhe os alunos, os recebimentos e a operação da academia.</p>
+      </header>
 
-      {/* Grid de KPIs Reais */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {/* Card 1: Alunos Ativos */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs transition-shadow duration-200 hover:shadow-md">
-          <div className="flex items-start justify-between">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Users className="size-5" />
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              <ArrowUpRight className="size-3" />
-              Ativos
-            </span>
-          </div>
-          <p className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-[28px]">
-            <CountUp value={activeStudents} />
-          </p>
-          <p className="text-xs font-medium text-muted-foreground">Alunos ativos</p>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            {totalStudents} alunos cadastrados no total
-          </p>
+      <dl className="gp-overview-metrics" aria-label="Indicadores da academia">
+        <div className="gp-metric">
+          <dt><Users size={19} aria-hidden="true" />Alunos ativos</dt>
+          <dd><CountUp value={activeStudents} duration={500} /><p>{totalStudents} alunos na base consultada</p></dd>
         </div>
-
-        {/* Card 2: Assinaturas Ativas */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs transition-shadow duration-200 hover:shadow-md">
-          <div className="flex items-start justify-between">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Wallet className="size-5" />
-            </span>
-            <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
-              Vigentes
-            </span>
-          </div>
-          <p className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-[28px]">
-            <CountUp value={activeSubscriptions} />
-          </p>
-          <p className="text-xs font-medium text-muted-foreground">Assinaturas ativas</p>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            {data.subscriptions?.length || 0} planos associados
-          </p>
+        <div className="gp-metric">
+          <dt><Layers size={19} aria-hidden="true" />Assinaturas ativas</dt>
+          <dd><CountUp value={activeSubscriptions} duration={500} /><p>{data.subscriptions?.length || 0} assinaturas cadastradas</p></dd>
         </div>
-
-        {/* Card 3: Receita Realizada */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs transition-shadow duration-200 hover:shadow-md">
-          <div className="flex items-start justify-between">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <CreditCard className="size-5" />
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-              Liquidado
-            </span>
-          </div>
-          <p className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-[28px]">
-            <CountUp value={totalRevenue} prefix="R$ " decimals={2} />
-          </p>
-          <p className="text-xs font-medium text-muted-foreground">Receita realizada</p>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            {data.payments?.length || 0} lançamentos registrados
-          </p>
+        <div className="gp-metric gp-metric-revenue">
+          <dt><Wallet size={19} aria-hidden="true" />Receita realizada</dt>
+          <dd><CountUp value={totalRevenue} prefix="R$ " decimals={2} duration={500} /><p>Pagamentos liquidados · {data.payments?.length || 0} lançamentos na base</p></dd>
         </div>
-
-        {/* Card 4: Inadimplentes */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs transition-shadow duration-200 hover:shadow-md">
-          <div className="flex items-start justify-between">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
-              <AlertTriangle className="size-5" />
-            </span>
-            <span className="inline-flex items-center rounded-md bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-destructive">
-              {overdueRate}% taxa
-            </span>
-          </div>
-          <p className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-[28px]">
-            <CountUp value={overdueCount} />
-          </p>
-          <p className="text-xs font-medium text-muted-foreground">Alunos inadimplentes</p>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            {overdueCount === 0
-              ? "Nenhuma pendência financeira"
-              : "Requer atenção do financeiro"}
-          </p>
+        <div className="gp-metric gp-metric-overdue">
+          <dt><AlertTriangle size={19} aria-hidden="true" />Alunos inadimplentes</dt>
+          <dd><CountUp value={overdueCount} duration={500} /><span>{overdueRate}% da base</span><p>{overdueCount === 0 ? "Nenhuma pendência financeira" : "Requer atenção do financeiro"}</p></dd>
         </div>
-      </div>
+      </dl>
 
-      {/* Gráficos Reais: Receita Mensal + Distribuição por Plano */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        {/* Gráfico de Receita */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs xl:col-span-2">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-            <div>
-              <h3 className="text-base font-semibold text-foreground">Receita mensal</h3>
-              <p className="text-xs text-muted-foreground">
-                Faturamento acumulado por mês baseado em pagamentos reais
-              </p>
-            </div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="size-2.5 rounded-full bg-primary" />
-              <span className="font-semibold text-foreground">
-                Total: {fmtCurrency(totalRevenue)}
-              </span>
-            </div>
+      <div className="gp-overview-grid">
+        <section className="gp-overview-panel gp-overview-chart" aria-labelledby="overview-revenue-title">
+          <div className="gp-panel-heading">
+            <div><h2 id="overview-revenue-title">Receita mensal</h2><p>Pagamentos agrupados nos últimos seis meses.</p></div>
+            <span className="gp-overview-total">Liquidado na base<strong>{fmtCurrency(totalRevenue)}</strong></span>
           </div>
           <AdminRevenueChart data={monthlyRevenueSeries} />
-        </div>
+        </section>
 
-        {/* Distribuição por Plano */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-base font-semibold text-foreground">Receita por plano</h3>
-            <Layers className="size-4 text-muted-foreground" />
-          </div>
-          <p className="text-xs text-muted-foreground mb-4">
-            Estimativa de participação com base em assinaturas ativas
-          </p>
-
-          {planRevenueShare.length === 0 ? (
-            <p className="py-12 text-center text-xs text-muted-foreground">
-              Nenhum plano cadastrado.
-            </p>
-          ) : (
-            <ul className="space-y-4">
-              {planRevenueShare.map((p) => (
-                <li key={p.id}>
-                  <div className="flex items-baseline justify-between text-xs sm:text-sm">
-                    <span className="font-medium text-foreground">{p.nome}</span>
-                    <span className="text-muted-foreground font-mono">
-                      {fmtCurrency(p.receita)} · {p.share}%
-                    </span>
-                  </div>
-                  <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
-                      style={{ width: `${Math.max(p.share, 4)}%` }}
-                    />
-                  </div>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">
-                    {p.subsCount} aluno(s) vinculados · {fmtCurrency(p.price)}/plano
-                  </p>
-                </li>
-              ))}
-            </ul>
+        <section className="gp-overview-panel" aria-labelledby="overview-plans-title">
+          <div className="gp-panel-heading"><div><h2 id="overview-plans-title">Receita por plano</h2><p>Estimativa de participação por assinaturas vinculadas.</p></div><Layers size={19} aria-hidden="true" /></div>
+          {planRevenueShare.length === 0 ? <p className="gp-overview-empty">Nenhum plano cadastrado.</p> : (
+            <ul className="gp-plan-shares">{planRevenueShare.map((plan) => (
+              <li key={plan.id}>
+                <div><strong>{plan.nome}</strong><span>{fmtCurrency(plan.receita)}</span></div>
+                <div className="gp-plan-meter" role="meter" aria-label={`Participação estimada de ${plan.nome}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={plan.share}><span style={{ transform: `scaleX(${Math.min(100, Math.max(0, plan.share)) / 100})` }} /></div>
+                <p><span>{plan.subsCount} {plan.subsCount === 1 ? "aluno vinculado" : "alunos vinculados"} · {fmtCurrency(plan.price)}/plano</span><strong>{plan.share}%</strong></p>
+              </li>
+            ))}</ul>
           )}
-        </div>
-      </div>
+        </section>
 
-      {/* Grid Inferior: Pagamentos/Personal Trainers + Atividades Recentes */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        {/* Tabela Tabbed: Pagamentos Recentes x Personal Trainers */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs overflow-hidden xl:col-span-2">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div className="flex gap-1 rounded-lg bg-muted p-1">
-              <button
-                onClick={() => setTab("pagamentos")}
-                className={cn(
-                  "rounded-md px-3 py-1 text-xs font-medium transition-all duration-200",
-                  tab === "pagamentos"
-                    ? "bg-card text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Pagamentos recentes
-              </button>
-              <button
-                onClick={() => setTab("trainers")}
-                className={cn(
-                  "rounded-md px-3 py-1 text-xs font-medium transition-all duration-200",
-                  tab === "trainers"
-                    ? "bg-card text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Personal trainers ({data.personalTrainers?.length || 0})
-              </button>
+        <section className="gp-overview-panel gp-overview-records" aria-label="Pagamentos e personal trainers">
+          <div className="gp-panel-heading gp-records-heading">
+            <div className="gp-overview-tabs" role="tablist" aria-label="Registros recentes" onKeyDown={(event) => {
+              if (event.altKey || event.ctrlKey || event.metaKey) return;
+              if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+              event.preventDefault();
+              const nextTab = event.key === "Home" ? "pagamentos" : event.key === "End" ? "trainers" : tab === "pagamentos" ? "trainers" : "pagamentos";
+              setTab(nextTab);
+              event.currentTarget.querySelector<HTMLButtonElement>(`#overview-tab-${nextTab}`)?.focus();
+            }}>
+              <button type="button" role="tab" id="overview-tab-pagamentos" aria-selected={tab === "pagamentos"} aria-controls="overview-records-panel" tabIndex={tab === "pagamentos" ? 0 : -1} onClick={() => setTab("pagamentos")} className={cn("gp-overview-tab", tab === "pagamentos" && "gp-overview-tab-active")}>Pagamentos recentes</button>
+              <button type="button" role="tab" id="overview-tab-trainers" aria-selected={tab === "trainers"} aria-controls="overview-records-panel" tabIndex={tab === "trainers" ? 0 : -1} onClick={() => setTab("trainers")} className={cn("gp-overview-tab", tab === "trainers" && "gp-overview-tab-active")}>Personal trainers <span>{data.personalTrainers?.length || 0}</span></button>
             </div>
-            {onNavigate && (
-              <button
-                onClick={() => onNavigate(tab === "pagamentos" ? 35 : 33)}
-                className="text-xs font-medium text-primary hover:underline"
-              >
-                Ver todos
-              </button>
-            )}
+            {onNavigate && <button type="button" className="gp-overview-link" onClick={() => onNavigate(tab === "pagamentos" ? 35 : 33)} aria-label={tab === "pagamentos" ? "Ver todos os pagamentos" : "Ver todos os personal trainers"}>Ver todos<ArrowUpRight size={16} aria-hidden="true" /></button>}
           </div>
-
-          <div className="overflow-x-auto">
-            {tab === "pagamentos" ? (
-              recentPayments.length === 0 ? (
-                <div className="py-12 text-center text-xs text-muted-foreground">
-                  Nenhum pagamento registrado ainda.
-                </div>
-              ) : (
-                <table className="w-full min-w-[520px] text-xs">
-                  <thead>
-                    <tr className="border-b border-border text-left uppercase tracking-wider text-muted-foreground">
-                      <th className="pb-2 font-semibold">Aluno / Assinatura</th>
-                      <th className="pb-2 font-semibold">Método</th>
-                      <th className="pb-2 font-semibold">Valor</th>
-                      <th className="pb-2 font-semibold">Data</th>
-                      <th className="pb-2 font-semibold">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {recentPayments.map((p) => (
-                      <tr key={p.id} className="transition-colors hover:bg-muted/50">
-                        <td className="py-2.5 font-medium text-foreground">
-                          {p.subscriptionLabel || "Assinatura"}
-                        </td>
-                        <td className="py-2.5 text-muted-foreground">{p.method || "—"}</td>
-                        <td className="py-2.5 font-semibold text-foreground">
-                          {fmtCurrency(p.amount)}
-                        </td>
-                        <td className="py-2.5 text-muted-foreground">
-                          {fmtDate(p.paidAt || p.createdAt)}
-                        </td>
-                        <td className="py-2.5">
-                          <StatusBadge status={p.status || "Pago"} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )
-            ) : recentTrainers.length === 0 ? (
-              <div className="py-12 text-center text-xs text-muted-foreground">
-                Nenhum personal trainer cadastrado.
-              </div>
-            ) : (
-              <table className="w-full min-w-[500px] text-xs">
-                <thead>
-                  <tr className="border-b border-border text-left uppercase tracking-wider text-muted-foreground">
-                    <th className="pb-2 font-semibold">Profissional</th>
-                    <th className="pb-2 font-semibold">Especialidade</th>
-                    <th className="pb-2 font-semibold">Contato</th>
-                    <th className="pb-2 font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {recentTrainers.map((t) => (
-                    <tr key={t.id} className="transition-colors hover:bg-muted/50">
-                      <td className="py-2.5 flex items-center gap-2">
-                        <Avatar name={t.name} photoUrl={t.photoUrl} size="sm" />
-                        <span className="font-medium text-foreground">{t.name}</span>
-                      </td>
-                      <td className="py-2.5 text-muted-foreground">{t.specialty || "—"}</td>
-                      <td className="py-2.5 text-muted-foreground">{t.phone || t.email || "—"}</td>
-                      <td className="py-2.5">
-                        <StatusBadge status={t.active !== false ? "Ativo" : "Inativo"} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+          <div role="tabpanel" id="overview-records-panel" aria-labelledby={`overview-tab-${tab}`} tabIndex={0} className="gp-overview-table-wrapper">
+            {tab === "pagamentos" ? recentPayments.length === 0 ? <p className="gp-overview-empty">Nenhum pagamento registrado ainda.</p> : (
+              <table className="gp-overview-table"><caption className="sr-only">Pagamentos recentes</caption>
+                <thead><tr><th scope="col">Aluno / Assinatura</th><th scope="col">Método</th><th scope="col" className="gp-number">Valor</th><th scope="col">Data</th><th scope="col">Situação</th></tr></thead>
+                <tbody>{recentPayments.map((payment) => <tr key={payment.id}>
+                  <td data-label="Aluno / Assinatura"><strong>{payment.subscriptionLabel || "Assinatura"}</strong></td>
+                  <td data-label="Método">{payment.method || "—"}</td>
+                  <td data-label="Valor" className="gp-number"><strong>{fmtCurrency(payment.amount)}</strong></td>
+                  <td data-label="Data">{fmtDate(payment.paidAt || payment.createdAt)}</td>
+                  <td data-label="Situação"><StatusBadge status={payment.status || "Pago"} /></td>
+                </tr>)}</tbody>
+              </table>
+            ) : recentTrainers.length === 0 ? <p className="gp-overview-empty">Nenhum personal trainer cadastrado.</p> : (
+              <table className="gp-overview-table"><caption className="sr-only">Personal trainers</caption>
+                <thead><tr><th scope="col">Profissional</th><th scope="col">Especialidade</th><th scope="col">Contato</th><th scope="col">Situação</th></tr></thead>
+                <tbody>{recentTrainers.map((trainer) => <tr key={trainer.id}>
+                  <td data-label="Profissional"><div className="gp-trainer-name"><Avatar name={trainer.name} photoUrl={trainer.photoUrl} size="sm" /><strong>{trainer.name}</strong></div></td>
+                  <td data-label="Especialidade">{trainer.specialty || "—"}</td>
+                  <td data-label="Contato">{trainer.phone || trainer.email || "—"}</td>
+                  <td data-label="Situação"><StatusBadge status={trainer.active !== false ? "Ativo" : "Inativo"} /></td>
+                </tr>)}</tbody>
               </table>
             )}
           </div>
-        </div>
+        </section>
 
-        {/* Atividades Recentes Reais */}
-        <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-base font-semibold text-foreground">Atividades recentes</h3>
-            <UserPlus className="size-4 text-muted-foreground" />
-          </div>
-          <p className="text-xs text-muted-foreground mb-4">
-            Histórico recente de alunos e movimentações financeiras
-          </p>
-
-          {recentActivities.length === 0 ? (
-            <div className="py-12 text-center text-xs text-muted-foreground">
-              Nenhuma atividade registrada ainda.
-            </div>
-          ) : (
-            <ul className="space-y-3">
-              {recentActivities.map((act, i) => {
-                const dotColor =
-                  act.type === "pagamento"
-                    ? "bg-emerald-500"
-                    : act.type === "aluno"
-                    ? "bg-primary"
-                    : act.type === "assinatura"
-                    ? "bg-blue-500"
-                    : "bg-destructive";
-
-                return (
-                  <li key={act.id} className="flex gap-3 rounded-lg p-2 transition-colors hover:bg-muted/60">
-                    <span className="mt-1 flex flex-col items-center">
-                      <span className={cn("size-2 rounded-full", dotColor)} />
-                      {i < recentActivities.length - 1 && (
-                        <span className="mt-1 h-6 w-px bg-border" />
-                      )}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-foreground">{act.title}</p>
-                      <p className="truncate text-xs text-muted-foreground">{act.desc}</p>
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">{act.time}</p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+        <section className="gp-overview-panel" aria-labelledby="overview-activity-title">
+          <div className="gp-panel-heading"><div><h2 id="overview-activity-title">Atividades recentes</h2><p>Cadastros e movimentações da academia.</p></div><UserPlus size={19} aria-hidden="true" /></div>
+          {recentActivities.length === 0 ? <p className="gp-overview-empty">Nenhuma atividade registrada ainda.</p> : (
+            <ol className="gp-overview-activity">{recentActivities.map((activity) => <li key={activity.id}>
+              <span className={cn("gp-activity-icon", `gp-activity-${activity.type}`)} aria-hidden="true">{activity.type === "pagamento" ? <CreditCard size={15} /> : activity.type === "cancelamento" ? <AlertTriangle size={15} /> : <UserPlus size={15} />}</span>
+              <div><h3>{activity.title}</h3><p>{activity.desc}</p><time>{activity.time}</time></div>
+            </li>)}</ol>
           )}
-        </div>
+        </section>
       </div>
     </div>
   );

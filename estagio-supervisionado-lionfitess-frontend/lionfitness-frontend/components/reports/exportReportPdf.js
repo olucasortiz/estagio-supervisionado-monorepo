@@ -285,7 +285,16 @@ export function drawChart(doc, {
       doc.setFontSize(6.8);
       doc.setTextColor(...PDF_THEME.colors.textPrimary);
       const label = item.label || "Não informado";
-      doc.text(label, margin + 4, rowY);
+      // Keep chart labels inside their column; the full reason remains in the table.
+      let chartLabel = String(label);
+      const labelWidth = 47;
+      if (doc.getTextWidth(chartLabel) > labelWidth) {
+        while (chartLabel.length && doc.getTextWidth(chartLabel + "…") > labelWidth) {
+          chartLabel = chartLabel.slice(0, -1);
+        }
+        chartLabel += "…";
+      }
+      doc.text(chartLabel, margin + 4, rowY);
 
       // Quantidade e percentual à direita
       doc.setFont("helvetica", "bold");

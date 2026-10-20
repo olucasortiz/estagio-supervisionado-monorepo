@@ -1,0 +1,29 @@
+.gp-finance-metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:16px; margin-bottom:24px; }
+.gp-finance-metrics > div { padding:24px; border:1px solid var(--border); border-radius:12px; background:var(--card); }
+.gp-finance-metrics dt { font-size:13px; color:var(--muted-foreground); }
+.gp-finance-metrics dd { margin-top:12px; font-size:28px; line-height:1.25; font-weight:700; letter-spacing:-.04em; overflow-wrap:anywhere; }
+.gp-finance .table td:last-child > div { flex-wrap:wrap; }
+.gp-finance .table td[data-label="Aluno"], .gp-finance .table td[data-label="Nome"] { font-weight:600; }
+.gp-finance .table td[data-label="Início"], .gp-finance .table td[data-label="Término"], .gp-finance .table td[data-label="Data"] { white-space:nowrap; }
+.gp-finance .table td[data-label="Valor"] { white-space:nowrap; font-variant-numeric:tabular-nums; }
+.gp-finance .alert { border-radius:8px; padding:16px; line-height:1.6; font-size:13px; }
+.gp-cancellation-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; align-items:start; }
+.gp-cancellation-grid > * { min-width:0; }
+.gp-finance [role="combobox"] { min-height:44px !important; }
+.gp-finance [role="combobox"]:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+.gp-finance [role="listbox"] { max-height:180px !important; }
+.gp-finance .modal-body { overflow-x:hidden; }
+.gp-finance .btn-danger { background:var(--destructive); color:var(--destructive-foreground); }
+.gp-finance .btn-danger:disabled { opacity:.5; }
+@media(max-width:1023px) { .gp-finance-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }.gp-cancellation-grid { grid-template-columns:1fr; } }
+@media(max-width:639px) {
+ .gp-finance-metrics { gap:12px; }
+ .gp-finance-metrics > div { padding:16px; }
+ .gp-finance-metrics dt { font-size:12px; }
+ .gp-finance-metrics dd { font-size:22px; }
+ .gp-finance .table td:last-child > div > button { flex:1 1 42%; }
+ .gp-finance .gp-registry-panel .table .data-row td:last-child[data-label] { grid-column:auto; }
+ .gp-finance .gp-registry-panel .table .data-row td:last-child[data-label]::before { content:attr(data-label); display:block; font-size:11px; color:var(--muted-foreground); margin-bottom:6px; }
+ .gp-finance [role="combobox"] input { min-width:0; font-size:16px !important; }
+}
+.gp-cancellation-grid .search-wrapper { width:100%; }

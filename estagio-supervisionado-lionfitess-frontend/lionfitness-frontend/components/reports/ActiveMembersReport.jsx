@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import PageHeader from "../ui/PageHeader";
-import DashboardCard from "../ui/DashboardCard";
+import { ReportMetrics, ReportState } from "./ReportPresentation";
 import DataTable from "../ui/DataTable";
 import StatusBadge from "../ui/StatusBadge";
 
@@ -114,16 +114,16 @@ export default function ActiveMembersReport({ members = [] }) {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="gp-registry gp-report">
       <PageHeader
         title="Ativos e Inativos"
         subtitle="Situação cadastral de todos os alunos"
         breadcrumb={<><span>Relatórios</span><span style={{ opacity: 0.4 }}>›</span><span>Ativos e Inativos</span></>}
         action={
-          <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+          <div className="gp-report-actions">
             {generated && filtered.length > 0 && (
               <button className="btn btn-outline" onClick={exportToPdf} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
                 Exportar PDF
@@ -137,57 +137,56 @@ export default function ActiveMembersReport({ members = [] }) {
       />
 
       {/* Filtro */}
-      <div className="card card-md" style={{ marginBottom: 20 }}>
+      <section className="card gp-report-filters" aria-label="Filtros do relatório">
+        <h2>Filtros da consulta</h2>
         <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
           <div className="form-field" style={{ flex: 1, minWidth: 200 }}>
-            <label className="label">Situação</label>
-            <select className="select" value={filtro} onChange={(e) => setFiltro(e.target.value)}>
+            <label className="label" htmlFor="report-situation">Situação</label>
+            <select id="report-situation" name="situation" className="select" value={filtro} onChange={(e) => setFiltro(e.target.value)}>
               <option value="todos">Todos os alunos</option>
               <option value="ativos">Somente ativos</option>
               <option value="inativos">Somente inativos / cancelados</option>
             </select>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* KPI cards */}
       {generated && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 20 }}>
-          <DashboardCard value={members.length} label="Total de alunos" accentColor="#3B82F6" icon="👥" />
-          <DashboardCard value={ativos.length} label="Alunos ativos" accentColor="#22C55E" icon="✅" />
-          <DashboardCard value={inativos.length} label="Inativos / Cancelados" accentColor="#EF4444" icon="❌" />
-          <DashboardCard value={`${pctAtivo}%`} label="Taxa de retenção" accentColor="#C0392B" icon="📊" />
-        </div>
+        <ReportMetrics items={[{label:"Total de alunos",value:members.length},{label:"Alunos ativos",value:ativos.length},{label:"Inativos / cancelados",value:inativos.length},{label:"Taxa de retenção",value:`${pctAtivo}%`}]} />
       )}
 
       {/* Barra de proporção */}
       {generated && members.length > 0 && (
-        <div className="card card-md" style={{ marginBottom: 20 }}>
+        <div className="card gp-report-chart">
           <p style={{ fontSize: "var(--font-xs)", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
             Distribuição geral
           </p>
           <div style={{ height: 14, borderRadius: 999, overflow: "hidden", background: "var(--bg-subtle)", display: "flex" }}>
-            <div style={{ width: `${pctAtivo}%`, background: "linear-gradient(90deg, #22C55E, #16A34A)", transition: "width 0.6s ease", borderRadius: 999 }} />
+            <div style={{ width: `${pctAtivo}%`, background: "var(--success-text)", borderRadius: 999 }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: "#22C55E", display: "inline-block" }} />
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--success-text)", display: "inline-block" }} />
               <span style={{ fontSize: "var(--font-xs)", color: "var(--success-text)", fontWeight: 600 }}>Ativos {pctAtivo}%</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: "#E2E8F0", display: "inline-block" }} />
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: "var(--border-strong)", display: "inline-block" }} />
               <span style={{ fontSize: "var(--font-xs)", color: "var(--text-muted)", fontWeight: 500 }}>Inativos {100 - pctAtivo}%</span>
             </div>
           </div>
         </div>
       )}
 
+      {!generated && <ReportState busy={false} failed={false} />}
       {/* Tabela */}
       {generated && (
-        <div className="card card-md">
+        <section className="card gp-registry-panel gp-report-results" aria-label="Resultado do relatório">
+          <div className="gp-registry-panel-heading"><h2>Resultado detalhado</h2><p>Use a busca para localizar registros nesta consulta.</p></div>
           <DataTable
             data={filtered}
             keyField="id"
+            caption="Alunos ativos e inativos"
             searchPlaceholder="Buscar por nome ou CPF..."
             searchFields={["nome", "name", "cpf"]}
             emptyTitle="Nenhum aluno encontrado"
@@ -197,7 +196,7 @@ export default function ActiveMembersReport({ members = [] }) {
               { key: "situacao", label: "Situação", render: (r) => <StatusBadge status={isInactive(r) ? "Inativo" : "Ativo"} /> },
             ]}
           />
-        </div>
+        </section>
       )}
     </div>
   );

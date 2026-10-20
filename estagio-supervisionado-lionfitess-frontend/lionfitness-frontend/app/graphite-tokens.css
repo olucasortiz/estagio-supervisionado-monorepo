@@ -1,0 +1,31 @@
+/* Shared Graphite Performance tokens. Portal chrome stays locally scoped. */
+:is(.graphite-admin, .graphite-personal, .graphite-aluno, .graphite-auth) {
+  --background: #f5f6f7; --foreground: #171a1e; --card: #fff; --card-foreground: #171a1e;
+  --popover: #fff; --popover-foreground: #171a1e; --muted: #edf0f3; --muted-foreground: #596372;
+  --primary: #b4232d; --primary-foreground: #fff; --border: #d7dce2; --input: #7b8796; --ring: #335cbb;
+  --secondary: #edf0f3; --secondary-foreground: #171a1e; --accent: #f9e9eb; --accent-foreground: #8f1c26;
+  --destructive: #b4232d; --destructive-foreground: #fff;
+  --bg-root: var(--background); --bg-card: var(--card); --bg-subtle: #edf0f3; --bg-hover: #f2f4f6;
+  --text-primary: var(--foreground); --text-secondary: #46515e; --text-muted: #596372; --text-disabled: #7b8796;
+  --border-default: var(--border); --border-strong: #b7c0ca; --border-focus: var(--ring);
+  --brand-primary: var(--primary); --brand-primary-dark: #951e27; --brand-primary-bg: #f9e9eb;
+  --success-text: #1b6348; --success-bg: #edf5f1; --error-text: #b4232d; --error-bg: #fcebed;
+  --warning-text: #805a12; --warning-bg: #fff4d9; --info-text: #2858a1; --info-bg: #eaf1fc;
+  --error: #b4232d; --sidebar: #191c20; --sidebar-foreground: #f4f5f6; --sidebar-muted: #a7afba;
+  --sidebar-border: #343b45; --sidebar-accent: #292e35; --shadow-card: 0 1px 2px #171a1e06;
+  --font-display: var(--font-plus-jakarta), var(--font-inter), system-ui, sans-serif;
+  color: var(--foreground); color-scheme: light;
+  font-family: var(--font-inter), system-ui, sans-serif; font-variant-numeric: tabular-nums;
+}
+:is(.dark, [data-theme="dark"]) :is(.graphite-admin, .graphite-personal, .graphite-aluno, .graphite-auth) {
+  --background: #111315; --foreground: #f4f5f6; --card: #191c20; --card-foreground: #f4f5f6;
+  --popover: #22262b; --popover-foreground: #f4f5f6; --muted: #22262b; --muted-foreground: #a7afba;
+  --primary: #c9343d; --border: #343b45; --input: #697586; --ring: #b7c9ff;
+  --secondary: #22262b; --secondary-foreground: #f4f5f6; --accent: #352126; --accent-foreground: #ffd9dc;
+  --destructive: #a62636; --bg-subtle: #22262b; --bg-hover: #242930; --text-secondary: #c1c8d1;
+  --text-muted: #a7afba; --text-disabled: #8993a1; --border-strong: #697586;
+  --brand-primary-dark: #b62c36; --brand-primary-bg: #352126;
+  --success-text: #a7f3d0; --success-bg: #182620; --error-text: #ff9ba2; --error-bg: #3c222a;
+  --warning-text: #f2c66d; --warning-bg: #392f1c; --info-text: #b7c9ff; --info-bg: #202c44;
+  --error: #ff9ba2; --shadow-card: none; color-scheme: dark;
+}

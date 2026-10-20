@@ -2,7 +2,7 @@
 
 import PageHeader from "../../ui/PageHeader";
 import DataTable from "../../ui/DataTable";
-import DashboardCard from "../../ui/DashboardCard";
+import FinanceMetrics from "../../admin/FinanceMetrics";
 import StatusBadge from "../../ui/StatusBadge";
 
 const maskCPF = (v) => { if (!v) return "—"; const d = String(v).replace(/\D/g, ""); return d.length === 11 ? d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : v; };
@@ -13,7 +13,7 @@ export default function OverdueSection({ data }) {
   const taxa  = total > 0 ? Math.round((overdue.length / total) * 100) : 0;
 
   return (
-    <div className="animate-fade-in">
+    <div className="gp-registry gp-finance">
       <PageHeader
         title="Inadimplência"
         subtitle="Gestão operacional de alunos com pagamento pendente ou vencido"
@@ -33,11 +33,10 @@ export default function OverdueSection({ data }) {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 20 }}>
-        <DashboardCard value={overdue.length} label="Inadimplentes" accentColor="#EF4444" icon="⚠️" />
-        <DashboardCard value={total}          label="Total de alunos" accentColor="#3B82F6" icon="👥" />
-        <DashboardCard value={`${taxa}%`}     label="Taxa de inadimplência" accentColor="#F59E0B" icon="📊" />
-      </div>
+      <FinanceMetrics items={[
+        {label:"Inadimplentes",value:overdue.length}, {label:"Total de alunos",value:total},
+        {label:"Taxa de inadimplência",value:`${taxa}%`},
+      ]} />
 
       {/* Barra */}
       {total > 0 && (
@@ -45,8 +44,8 @@ export default function OverdueSection({ data }) {
           <p style={{ fontSize: "var(--font-xs)", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
             Proporção de inadimplência
           </p>
-          <div style={{ height: 10, borderRadius: 999, overflow: "hidden", background: "var(--bg-subtle)" }}>
-            <div style={{ width: `${taxa}%`, height: "100%", background: "linear-gradient(90deg, #EF4444, #DC2626)", transition: "width 0.5s ease" }} />
+          <div role="meter" aria-label="Proporção de inadimplência" aria-valuenow={taxa} aria-valuemin={0} aria-valuemax={100} style={{ height: 10, borderRadius: 999, overflow: "hidden", background: "var(--bg-subtle)" }}>
+            <div style={{ width: `${taxa}%`, height: "100%", background: "var(--error-text)" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
             <span style={{ fontSize: "var(--font-xs)", color: "var(--error-text)", fontWeight: 600 }}>Inadimplentes: {taxa}%</span>
@@ -55,14 +54,16 @@ export default function OverdueSection({ data }) {
         </div>
       )}
 
-      <div className="card card-md">
+      <div className="card gp-registry-panel">
+        <div className="gp-registry-panel-heading"><h2>Alunos com pendências</h2><p>Consulte os alunos identificados na base de inadimplência.</p></div>
         <DataTable
           data={overdue}
           keyField="id"
+          caption="Alunos inadimplentes"
           searchPlaceholder="Buscar por nome, CPF ou plano..."
           searchFields={["nome", "name", "cpf", "plano"]}
           emptyTitle="Nenhum aluno inadimplente"
-          emptyDescription="Todos os alunos estão em dia com os pagamentos. 🎉"
+          emptyDescription="Nenhum aluno com pendência na base consultada."
           columns={[
             { key: "nome",       label: "Nome", render: (r) => r.nome || r.name || "—" },
             { key: "cpf",        label: "CPF",  render: (r) => <span style={{ fontFamily: "monospace", fontSize: 12 }}>{maskCPF(r.cpf)}</span> },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import RegistrySummary from "../../admin/RegistrySummary";
 import PageHeader from "../../ui/PageHeader";
 import DataTable from "../../ui/DataTable";
 import Modal from "../../ui/Modal";
@@ -15,44 +16,47 @@ function PTFormModal({ open, onClose, form, onChange, onSubmit, saving, feedback
     <Modal
       open={open}
       onClose={onClose}
+      preventClose={!!saving}
       title={isEditing ? "Editar Personal Trainer" : "Novo Personal Trainer"}
       subtitle={isEditing ? "Atualize as informações" : "Cadastre um novo personal trainer"}
       footer={
         <>
-          <button className="btn btn-ghost" onClick={onClose} type="button">Cancelar</button>
-          <button className="btn btn-primary" onClick={onSubmit} disabled={saving} type="button">
+          <button className="btn btn-ghost" onClick={onClose} disabled={saving} type="button">Cancelar</button>
+          <button className="btn btn-primary" disabled={saving} type="submit" form="trainer-form">
             {saving ? "Salvando..." : isEditing ? "Salvar" : "Cadastrar"}
           </button>
         </>
       }
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      <form id="trainer-form" className="gp-registry-form" onSubmit={(event) => { event.preventDefault(); onSubmit(); }} aria-busy={!!saving}>
+        <fieldset disabled={saving} className="gp-registry-fields">
         <div className="form-field">
-          <label className="label">Nome *</label>
-          <input className="input" type="text" value={form.name} onChange={(e) => onChange("name", e.target.value)} placeholder="Nome completo" required />
+          <label className="label" htmlFor="trainer-name">Nome *</label>
+          <input id="trainer-name" className="input" type="text" value={form.name} onChange={(e) => onChange("name", e.target.value)} placeholder="Nome completo" required />
         </div>
         <div className="form-grid">
           <div className="form-field">
-            <label className="label">CPF *</label>
-            <input className="input" type="text" value={form.cpf} onChange={(e) => onChange("cpf", e.target.value)} placeholder="000.000.000-00" maxLength={14} required />
+            <label className="label" htmlFor="trainer-cpf">CPF *</label>
+          <input id="trainer-cpf" className="input" type="text" value={form.cpf} onChange={(e) => onChange("cpf", e.target.value)} placeholder="000.000.000-00" maxLength={14} required />
           </div>
           <div className="form-field">
-            <label className="label">Telefone</label>
-            <input className="input" type="text" value={form.phone} onChange={(e) => onChange("phone", e.target.value)} placeholder="(00) 00000-0000" maxLength={15} />
+            <label className="label" htmlFor="trainer-phone">Telefone</label>
+          <input id="trainer-phone" className="input" type="text" value={form.phone} onChange={(e) => onChange("phone", e.target.value)} placeholder="(00) 00000-0000" maxLength={15} />
           </div>
         </div>
         <div className="form-field">
-          <label className="label">E-mail *</label>
-          <input className="input" type="email" value={form.email} onChange={(e) => onChange("email", e.target.value)} placeholder="personal@lionfitness.com" required />
+          <label className="label" htmlFor="trainer-email">E-mail *</label>
+          <input id="trainer-email" className="input" type="email" value={form.email} onChange={(e) => onChange("email", e.target.value)} placeholder="personal@lionfitness.com" required />
         </div>
         <div className="form-field">
-          <label className="label">Especialidade *</label>
-          <input className="input" type="text" value={form.specialty} onChange={(e) => onChange("specialty", e.target.value)} placeholder="Ex: Musculação, Funcional..." required />
+          <label className="label" htmlFor="trainer-specialty">Especialidade *</label>
+          <input id="trainer-specialty" className="input" type="text" value={form.specialty} onChange={(e) => onChange("specialty", e.target.value)} placeholder="Ex: Musculação, Funcional..." required />
         </div>
         {feedback && (
-          <p className={feedback.includes("sucesso") ? "feedback-success" : "feedback-error"}>{feedback}</p>
+          <p role="status" className={feedback.includes("sucesso") ? "feedback-success" : "feedback-error"}>{feedback}</p>
         )}
-      </div>
+        </fieldset>
+      </form>
     </Modal>
   );
 }
@@ -73,12 +77,12 @@ export default function PersonalSection({
 
   const handleSubmit = async () => {
     if (saving?.personalTrainers) return;
-    await onSubmitForm("personalTrainers", null, forms.personalTrainers);
-    if (!feedback.personalTrainers?.includes("Falha")) setModalOpen(false);
+    const saved = await onSubmitForm("personalTrainers", null, forms.personalTrainers);
+    if (saved) setModalOpen(false);
   };
 
   return (
-    <div className="animate-fade-in">
+    <div className="gp-registry">
       <PageHeader
         title="Personal Trainers"
         subtitle="Gerencie os personal trainers da academia"
@@ -93,16 +97,19 @@ export default function PersonalSection({
         }
       />
 
-      <div className="card card-md">
+      <RegistrySummary items={data.personalTrainers} label="personal trainers" />
+      {!modalOpen && feedback.personalTrainers && !feedback.personalTrainers.includes("sucesso") && <p role="status" className="gp-registry-notice">{feedback.personalTrainers}</p>}
+      <div className="card gp-registry-panel">
+        <div className="gp-registry-panel-heading"><h2>Equipe de personal trainers</h2><p>Consulte os cadastros e mantenha as informações atualizadas.</p></div>
         <DataTable
           data={data.personalTrainers}
           keyField="id"
+          caption="Personal trainers cadastrados"
           searchPlaceholder="Buscar por nome, especialidade ou e-mail..."
           searchFields={["name", "specialty", "email", "cpf"]}
           emptyTitle="Nenhum personal trainer cadastrado"
           columns={[
-            { key: "photoUrl", label: "Foto", sortable: false, render: (r) => <Avatar name={r.name} photoUrl={r.photoUrl} size="sm" /> },
-            { key: "name",      label: "Nome" },
+            { key: "name", label: "Personal trainer", sortValue: (r) => r.name, render: (r) => <div className="gp-registry-person"><Avatar name={r.name} photoUrl={r.photoUrl} size="md" /><strong>{r.name}</strong></div> },
             { key: "cpf",       label: "CPF",      render: (r) => <span style={{ fontFamily: "monospace", fontSize: 12 }}>{maskCPF(r.cpf)}</span> },
             { key: "phone",     label: "Telefone", render: (r) => maskPhone(r.phone) },
             { key: "specialty", label: "Especialidade" },

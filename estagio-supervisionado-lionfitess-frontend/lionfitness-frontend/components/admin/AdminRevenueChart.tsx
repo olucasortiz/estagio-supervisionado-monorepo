@@ -15,10 +15,11 @@ interface AdminRevenueChartProps {
 
 export function AdminRevenueChart({ data, className }: AdminRevenueChartProps) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const titleId = React.useId();
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex h-[240px] items-center justify-center text-sm text-muted-foreground">
+      <div className="gp-overview-empty">
         Nenhum dado de receita registrado no período.
       </div>
     );
@@ -69,125 +70,32 @@ export function AdminRevenueChart({ data, className }: AdminRevenueChartProps) {
     val: Math.round(ratio * yMax),
   }));
 
-  const activePt = hoveredIdx !== null ? points[hoveredIdx] : null;
+  const activeIndex = hoveredIdx !== null && points[hoveredIdx] ? hoveredIdx : points.length - 1;
+  const activePt = points[activeIndex];
+  const formatRevenue = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   return (
-    <div className={cn("relative w-full overflow-hidden select-none", className)}>
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="w-full h-auto overflow-visible"
-        style={{ maxHeight: 260 }}
-      >
-        <defs>
-          <linearGradient id="adminRevGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.28} />
-            <stop offset="100%" stopColor="var(--primary)" stopOpacity={0.01} />
-          </linearGradient>
-        </defs>
-
-        {/* Grid lines */}
-        {gridLines.map((gl, i) => (
-          <g key={i}>
-            <line
-              x1={padLeft}
-              y1={gl.y}
-              x2={width - padRight}
-              y2={gl.y}
-              stroke="var(--border)"
-              strokeDasharray="3 4"
-              strokeWidth="1"
-            />
-            <text
-              x={padLeft - 10}
-              y={gl.y + 4}
-              textAnchor="end"
-              className="text-[10px] fill-muted-foreground font-medium"
-            >
-              {gl.val >= 1000 ? `${(gl.val / 1000).toFixed(1)}k` : gl.val}
-            </text>
-          </g>
-        ))}
-
-        {/* Area fill */}
-        <path d={areaD} fill="url(#adminRevGradient)" />
-
-        {/* Line stroke */}
-        <path
-          d={pathD}
-          fill="none"
-          stroke="var(--primary)"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-
-        {/* Points and hover zones */}
-        {points.map((pt, i) => (
-          <g key={i} className="cursor-pointer">
-            {/* Invisible large hover target */}
-            <circle
-              cx={pt.x}
-              cy={pt.y}
-              r={16}
-              fill="transparent"
-              onMouseEnter={() => setHoveredIdx(i)}
-              onMouseLeave={() => setHoveredIdx(null)}
-            />
-            {/* Real dot */}
-            <circle
-              cx={pt.x}
-              cy={pt.y}
-              r={hoveredIdx === i ? 6 : 4}
-              fill="var(--card)"
-              stroke="var(--primary)"
-              strokeWidth={hoveredIdx === i ? 3 : 2}
-              className="transition-all duration-150"
-            />
-            {/* X Axis label */}
-            <text
-              x={pt.x}
-              y={height - 8}
-              textAnchor="middle"
-              className="text-[11px] fill-muted-foreground font-medium"
-            >
-              {pt.mes}
-            </text>
-          </g>
-        ))}
-
-        {/* Tooltip marker vertical line */}
-        {activePt && (
-          <line
-            x1={activePt.x}
-            y1={padTop}
-            x2={activePt.x}
-            y2={padTop + chartH}
-            stroke="var(--primary)"
-            strokeWidth="1"
-            strokeDasharray="2 2"
-            opacity={0.7}
-          />
-        )}
+    <figure className={cn("gp-revenue-chart", className)}>
+      <figcaption className="gp-chart-readout" aria-live="polite"><span>{activePt.mes}</span><strong>{formatRevenue(activePt.receita)}</strong></figcaption>
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby={titleId}>
+        <title id={titleId}>Receita mensal. Consulte os valores pelos botões de mês abaixo.</title>
+        {gridLines.map((line, index) => <g key={index} aria-hidden="true">
+          <line x1={padLeft} y1={line.y} x2={width - padRight} y2={line.y} stroke="var(--border)" strokeDasharray="3 5" strokeWidth="1" />
+          <text x={padLeft - 10} y={line.y + 4} textAnchor="end" fill="var(--muted-foreground)" fontSize="10">{line.val.toLocaleString("pt-BR", { notation: "compact", maximumFractionDigits: 1 })}</text>
+        </g>)}
+        <path d={areaD} fill="var(--primary)" fillOpacity={0.07} aria-hidden="true" />
+        <path d={pathD} fill="none" stroke="var(--primary)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" />
+        <line x1={activePt.x} x2={activePt.x} y1={padTop} y2={padTop + chartH} stroke="var(--input)" strokeWidth="1" strokeDasharray="3 5" aria-hidden="true" />
+        {points.map((point, index) => <g key={`${point.mes}-${index}`} onPointerEnter={() => setHoveredIdx(index)} aria-hidden="true">
+          <circle cx={point.x} cy={point.y} r={18} fill="transparent" />
+          <circle cx={point.x} cy={point.y} r={activeIndex === index ? 5 : 3.5} fill={activeIndex === index ? "var(--primary)" : "var(--card)"} stroke="var(--primary)" strokeWidth="2" pointerEvents="none" />
+          <text x={point.x} y={height - 8} textAnchor="middle" fill="var(--muted-foreground)" fontSize="11">{point.mes}</text>
+        </g>)}
       </svg>
-
-      {/* Floating HTML tooltip */}
-      {activePt && (
-        <div
-          className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-md"
-          style={{
-            left: `${(activePt.x / width) * 100}%`,
-            top: `${(activePt.y / height) * 100 - 8}%`,
-          }}
-        >
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {activePt.mes}
-          </p>
-          <p className="mt-0.5 text-sm font-bold text-foreground">
-            R$ {activePt.receita.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-          </p>
-        </div>
-      )}
-    </div>
+      <div className="gp-chart-months" style={{ "--chart-months": points.length } as React.CSSProperties} role="group" aria-label="Consultar receita por mês">
+        {points.map((point, index) => <button type="button" key={`${point.mes}-${index}`} className="gp-chart-month" aria-pressed={activeIndex === index} aria-label={`${point.mes}: ${formatRevenue(point.receita)}`} onFocus={() => setHoveredIdx(index)} onClick={() => setHoveredIdx(index)}>{point.mes}</button>)}
+      </div>
+    </figure>
   );
 }
 

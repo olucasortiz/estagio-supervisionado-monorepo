@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import RegistrySummary from "../../admin/RegistrySummary";
 import PageHeader from "../../ui/PageHeader";
 import DataTable from "../../ui/DataTable";
 import Modal from "../../ui/Modal";
@@ -13,21 +14,23 @@ function UserFormModal({ open, onClose, form, onChange, onSubmit, saving, feedba
     <Modal
       open={open}
       onClose={onClose}
+      preventClose={!!saving}
       title={isEditing ? "Editar Administrador" : "Novo Administrador"}
       subtitle={isEditing ? "Atualize as informações do administrador" : "Cadastre um novo usuário administrador no sistema"}
       footer={
         <>
-          <button className="btn btn-ghost" onClick={onClose} type="button">Cancelar</button>
-          <button className="btn btn-primary" onClick={onSubmit} disabled={saving} type="button">
+          <button className="btn btn-ghost" onClick={onClose} disabled={saving} type="button">Cancelar</button>
+          <button className="btn btn-primary" disabled={saving} type="submit" form="admin-form">
             {saving ? "Salvando..." : isEditing ? "Salvar" : "Cadastrar Administrador"}
           </button>
         </>
       }
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      <form id="admin-form" className="gp-registry-form" onSubmit={(event) => { event.preventDefault(); onSubmit(); }} aria-busy={!!saving}>
+        <fieldset disabled={saving} className="gp-registry-fields">
         <div className="form-field">
-          <label className="label">Nome *</label>
-          <input
+          <label className="label" htmlFor="admin-name">Nome *</label>
+          <input id="admin-name"
             className="input"
             type="text"
             value={form.name}
@@ -37,8 +40,8 @@ function UserFormModal({ open, onClose, form, onChange, onSubmit, saving, feedba
           />
         </div>
         <div className="form-field">
-          <label className="label">E-mail *</label>
-          <input
+          <label className="label" htmlFor="admin-email">E-mail *</label>
+          <input id="admin-email"
             className="input"
             type="email"
             value={form.email}
@@ -48,8 +51,8 @@ function UserFormModal({ open, onClose, form, onChange, onSubmit, saving, feedba
           />
         </div>
         <div className="form-field">
-          <label className="label">{isEditing ? "Nova senha (opcional)" : "Senha *"}</label>
-          <input
+          <label className="label" htmlFor="admin-password">{isEditing ? "Nova senha (opcional)" : "Senha *"}</label>
+          <input id="admin-password"
             className="input"
             type="password"
             value={form.password}
@@ -76,9 +79,10 @@ function UserFormModal({ open, onClose, form, onChange, onSubmit, saving, feedba
         </div>
 
         {feedback && (
-          <p className={feedback.includes("sucesso") ? "feedback-success" : "feedback-error"}>{feedback}</p>
+          <p role="status" className={feedback.includes("sucesso") ? "feedback-success" : "feedback-error"}>{feedback}</p>
         )}
-      </div>
+        </fieldset>
+      </form>
     </Modal>
   );
 }
@@ -109,8 +113,8 @@ export default function UsersSection({
     if (saving?.users) return;
     // Garante role: ADMIN no envio
     const formWithAdmin = { ...forms.users, role: "ADMIN" };
-    await onSubmitForm("users", null, formWithAdmin);
-    if (!feedback.users?.includes("Falha")) setModalOpen(false);
+    const saved = await onSubmitForm("users", null, formWithAdmin);
+    if (saved) setModalOpen(false);
   };
 
   // Exibe usuários cadastrados (filtrando preferencialmente administradores se houver distinção)
@@ -120,7 +124,7 @@ export default function UsersSection({
   const displayUsers = adminUsers.length > 0 ? adminUsers : data.users;
 
   return (
-    <div className="animate-fade-in space-y-4">
+    <div className="gp-registry">
       <PageHeader
         title="Usuários"
         subtitle="Gerencie os usuários administradores do sistema"
@@ -135,29 +139,27 @@ export default function UsersSection({
         }
       />
 
-      <div className="alert alert-info flex items-center gap-2 text-xs">
-        <span>ℹ️</span>
+      <div className="gp-registry-notice">
+        <ShieldCheck size={18} aria-hidden="true" />
         <span>
           Esta seção é dedicada exclusivamente à gestão de <strong>Administradores</strong>.
           Para cadastrar <strong>Personal Trainers</strong>, acesse o menu <strong>Cadastros → Personal Trainers</strong>.
         </span>
       </div>
 
-      <div className="card card-md">
+      <RegistrySummary items={displayUsers} label="administradores" />
+      {!modalOpen && feedback.users && !feedback.users.includes("sucesso") && <p role="status" className="gp-registry-notice">{feedback.users}</p>}
+      <div className="card gp-registry-panel">
+        <div className="gp-registry-panel-heading"><h2>Equipe administrativa</h2><p>Consulte os cadastros e mantenha as informações atualizadas.</p></div>
         <DataTable
           data={displayUsers}
           keyField="id"
+          caption="Administradores cadastrados"
           searchPlaceholder="Buscar por nome ou e-mail..."
           searchFields={["name", "email"]}
           emptyTitle="Nenhum administrador cadastrado"
           columns={[
-            {
-              key: "photoUrl",
-              label: "Foto",
-              sortable: false,
-              render: (r) => <Avatar name={r.name} photoUrl={r.photoUrl} size="sm" />,
-            },
-            { key: "name",  label: "Nome" },
+            { key: "name", label: "Administrador", sortValue: (r) => r.name, render: (r) => <div className="gp-registry-person"><Avatar name={r.name} photoUrl={r.photoUrl} size="md" /><strong>{r.name}</strong></div> },
             { key: "email", label: "E-mail" },
             {
               key: "role",

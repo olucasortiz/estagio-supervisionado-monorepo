@@ -8,9 +8,12 @@ import java.util.UUID;
 import com.lionfitness.backend.auth.EmailService;
 import com.lionfitness.backend.member.model.Member;
 import com.lionfitness.backend.member.repository.MemberRepository;
+import com.lionfitness.backend.notification.dto.ChatMessageResponse;
+import com.lionfitness.backend.notification.dto.ConversationResponse;
 import com.lionfitness.backend.notification.dto.MarkAllNotificationsReadResponse;
 import com.lionfitness.backend.notification.dto.NotificationReplyRequest;
 import com.lionfitness.backend.notification.dto.NotificationResponse;
+import com.lionfitness.backend.notification.dto.SendChatMessageRequest;
 import com.lionfitness.backend.notification.dto.StudentNotificationCreateRequest;
 import com.lionfitness.backend.notification.dto.UnreadNotificationCountResponse;
 import com.lionfitness.backend.notification.model.Notification;
@@ -164,6 +167,154 @@ public class NotificationService {
                 logger.warn("Falha ao enviar e-mail de notificação para userId={}", recipientUserId, exception);
             }
         });
+    }
+
+    @Transactional(readOnly = true)
+    public ConversationResponse getConversation(String authenticatedEmail, UUID requestedMemberId) {
+        User user = currentUser(authenticatedEmail);
+        var trainerOpt = personalTrainerRepository.findActiveByUserId(user.id());
+
+        if (trainerOpt.isPresent()) {
+            PersonalTrainer trainer = trainerOpt.get();
+            if (requestedMemberId == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Identificador do aluno é obrigatório.");
+            }
+            Member member = memberRepository.findActiveById(requestedMemberId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aluno não encontrado."));
+            if (member.personalTrainerId() == null || !member.personalTrainerId().equals(trainer.id())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso não autorizado ao aluno informado.");
+            }
+            User studentUser = userRepository.findActiveById(member.userId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário do aluno não encontrado."));
+
+            List<Notification> notifications = notificationRepository.findConversation(user.id(), studentUser.id());
+            List<ChatMessageResponse> messages = notifications.stream()
+                    .map(n -> toChatMessageResponse(n, user.id()))
+                    .toList();
+            return new ConversationResponse(studentUser.id(), member.name(), "ALUNO", member.id(), messages);
+        } else {
+            Member member = memberRepository.findByUserId(user.id())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN,
+                            "Somente alunos vinculados podem acessar esta conversa."));
+            if (member.personalTrainerId() == null) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Você ainda não possui um personal trainer vinculado.");
+            }
+            PersonalTrainer trainer = personalTrainerRepository.findActiveById(member.personalTrainerId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                            "O personal trainer vinculado não está disponível."));
+            User trainerUser = userRepository.findActiveById(trainer.userId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Usuário do personal trainer não encontrado."));
+
+            List<Notification> notifications = notificationRepository.findConversation(user.id(), trainerUser.id());
+            List<ChatMessageResponse> messages = notifications.stream()
+                    .map(n -> toChatMessageResponse(n, user.id()))
+                    .toList();
+            return new ConversationResponse(trainerUser.id(), trainerUser.name(), "PERSONAL", member.id(), messages);
+        }
+    }
+
+    @Transactional
+    public ChatMessageResponse sendChatMessage(String authenticatedEmail, SendChatMessageRequest request) {
+        User user = currentUser(authenticatedEmail);
+        var trainerOpt = personalTrainerRepository.findActiveByUserId(user.id());
+
+        if (trainerOpt.isPresent()) {
+            PersonalTrainer trainer = trainerOpt.get();
+            if (request.memberId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Identificador do aluno é obrigatório.");
+            }
+            Member member = memberRepository.findActiveById(request.memberId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aluno não encontrado."));
+            if (member.personalTrainerId() == null || !member.personalTrainerId().equals(trainer.id())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso não autorizado ao aluno informado.");
+            }
+            User studentUser = userRepository.findActiveById(member.userId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário do aluno não encontrado."));
+
+            Notification notification = notificationRepository.save(
+                    studentUser.id(), user.id(), NotificationType.PERSONAL_TRAINER_REPLY,
+                    "Resposta do seu personal", request.message().trim(), LocalDateTime.now(clock));
+            deliverEmailSafely(studentUser.id(), notification.title(), notification.message());
+            return toChatMessageResponse(notification, user.id(), user.name());
+        } else {
+            Member member = memberRepository.findByUserId(user.id())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN,
+                            "Somente alunos vinculados podem enviar mensagens ao personal."));
+            if (member.personalTrainerId() == null) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Você ainda não possui um personal trainer vinculado.");
+            }
+            PersonalTrainer trainer = personalTrainerRepository.findActiveById(member.personalTrainerId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                            "O personal trainer vinculado não está disponível."));
+
+            NotificationType type = request.type() != null ? request.type() : NotificationType.OTHER;
+            if (type == NotificationType.PERSONAL_TRAINER_REPLY) {
+                type = NotificationType.OTHER;
+            }
+            Notification notification = notificationRepository.save(
+                    trainer.userId(), user.id(), type, titleFor(type),
+                    request.message().trim(), LocalDateTime.now(clock));
+            deliverEmailSafely(trainer.userId(), notification.title(), notification.message());
+            return toChatMessageResponse(notification, user.id(), user.name());
+        }
+    }
+
+    @Transactional
+    public MarkAllNotificationsReadResponse markConversationRead(String authenticatedEmail, UUID requestedMemberId) {
+        User user = currentUser(authenticatedEmail);
+        var trainerOpt = personalTrainerRepository.findActiveByUserId(user.id());
+
+        if (trainerOpt.isPresent()) {
+            PersonalTrainer trainer = trainerOpt.get();
+            if (requestedMemberId == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Identificador do aluno é obrigatório.");
+            }
+            Member member = memberRepository.findActiveById(requestedMemberId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Aluno não encontrado."));
+            if (member.personalTrainerId() == null || !member.personalTrainerId().equals(trainer.id())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso não autorizado ao aluno informado.");
+            }
+            User studentUser = userRepository.findActiveById(member.userId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário do aluno não encontrado."));
+            int updated = notificationRepository.markConversationAsRead(user.id(), studentUser.id(), LocalDateTime.now(clock));
+            return new MarkAllNotificationsReadResponse(updated);
+        } else {
+            Member member = memberRepository.findByUserId(user.id())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN,
+                            "Somente alunos vinculados podem atualizar esta conversa."));
+            if (member.personalTrainerId() == null) {
+                return new MarkAllNotificationsReadResponse(0);
+            }
+            PersonalTrainer trainer = personalTrainerRepository.findActiveById(member.personalTrainerId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                            "O personal trainer vinculado não está disponível."));
+            int updated = notificationRepository.markConversationAsRead(user.id(), trainer.userId(), LocalDateTime.now(clock));
+            return new MarkAllNotificationsReadResponse(updated);
+        }
+    }
+
+    private ChatMessageResponse toChatMessageResponse(Notification notification, UUID currentUserId) {
+        return toChatMessageResponse(notification, currentUserId, notification.senderName());
+    }
+
+    private ChatMessageResponse toChatMessageResponse(Notification notification, UUID currentUserId, String senderName) {
+        boolean fromMe = notification.senderUserId() != null && notification.senderUserId().equals(currentUserId);
+        return new ChatMessageResponse(
+                notification.id(),
+                notification.senderUserId(),
+                senderName,
+                notification.recipientUserId(),
+                notification.type().name(),
+                notification.title(),
+                notification.message(),
+                notification.read(),
+                notification.createdAt(),
+                notification.readAt(),
+                fromMe
+        );
     }
 
     private NotificationResponse toResponse(Notification notification) {

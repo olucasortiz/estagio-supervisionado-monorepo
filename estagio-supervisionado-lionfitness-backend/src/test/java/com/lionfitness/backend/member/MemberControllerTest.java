@@ -145,4 +145,27 @@ class MemberControllerTest {
         mvc.perform(get("/members/" + someId))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @WithMockUser(username = "student@example.test", roles = "USER")
+    void memberCanReadOnlyOwnLinkedTrainerPublicIdentity() throws Exception {
+        UUID userId = UUID.randomUUID(), trainerId = UUID.randomUUID();
+        when(userRepository.findByEmail("student@example.test")).thenReturn(Optional.of(
+                new User(userId, "Student", "student@example.test", "hash", "USER", true, LocalDateTime.now(), false)));
+        when(memberService.findMyPersonalTrainer(userId)).thenReturn(
+                new com.lionfitness.backend.member.dto.LinkedPersonalTrainerResponse(trainerId, "Own trainer", null));
+        mvc.perform(get("/members/me/personal-trainer").param("userId", UUID.randomUUID().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(trainerId.toString()))
+                .andExpect(jsonPath("$.name").value("Own trainer"))
+                .andExpect(jsonPath("$.email").doesNotExist())
+                .andExpect(jsonPath("$.cpf").doesNotExist());
+        org.mockito.Mockito.verify(memberService).findMyPersonalTrainer(userId);
+    }
+
+    @Test
+    @WithMockUser(roles = "PERSONAL_TRAINER")
+    void personalRoleCannotUseStudentTrainerLookup() throws Exception {
+        mvc.perform(get("/members/me/personal-trainer")).andExpect(status().isForbidden());
+    }
 }

@@ -72,4 +72,31 @@ public class NotificationController {
                                                        @Valid @RequestBody NotificationReplyRequest request) {
         return ResponseEntity.ok(notificationService.replyAsPersonal(authentication.getName(), notificationId, request));
     }
+
+    @GetMapping("/conversation")
+    @PreAuthorize("hasAnyRole('OPERATIONAL', 'USER', 'PERSONAL_TRAINER')")
+    public ResponseEntity<com.lionfitness.backend.notification.dto.ConversationResponse> getConversation(
+            Authentication authentication,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) UUID memberId
+    ) {
+        return ResponseEntity.ok(notificationService.getConversation(authentication.getName(), memberId));
+    }
+
+    @PostMapping("/conversation/send")
+    @PreAuthorize("hasAnyRole('OPERATIONAL', 'USER', 'PERSONAL_TRAINER')")
+    public ResponseEntity<com.lionfitness.backend.notification.dto.ChatMessageResponse> sendChatMessage(
+            Authentication authentication,
+            @Valid @RequestBody com.lionfitness.backend.notification.dto.SendChatMessageRequest request
+    ) {
+        return ResponseEntity.ok(notificationService.sendChatMessage(authentication.getName(), request));
+    }
+
+    @PatchMapping("/conversation/read")
+    @PreAuthorize("hasAnyRole('OPERATIONAL', 'USER', 'PERSONAL_TRAINER')")
+    public ResponseEntity<MarkAllNotificationsReadResponse> markConversationRead(
+            Authentication authentication,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) UUID memberId
+    ) {
+        return ResponseEntity.ok(notificationService.markConversationRead(authentication.getName(), memberId));
+    }
 }

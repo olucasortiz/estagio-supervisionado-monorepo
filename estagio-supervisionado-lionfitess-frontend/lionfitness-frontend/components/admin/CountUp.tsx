@@ -24,10 +24,15 @@ export function CountUp({
 
   useEffect(() => {
     let start: number | null = null;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     const timer = window.setTimeout(() => {
+      if (reducedMotion.matches || duration <= 0) {
+        setDisplay(value);
+        return;
+      }
       const step = (t: number) => {
         if (start === null) start = t;
-        const p = Math.min((t - start) / duration, 1);
+        const p = reducedMotion.matches ? 1 : Math.min((t - start) / duration, 1);
         const eased = 1 - Math.pow(1 - p, 3);
         setDisplay(value * eased);
         if (p < 1) frame.current = requestAnimationFrame(step);

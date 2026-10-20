@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export default function SearchInput({
   value,
@@ -9,9 +9,11 @@ export default function SearchInput({
   className = "",
   style = {},
   debounce = 0,
+  label = "Buscar registros",
 }) {
   const [localValue, setLocalValue] = useState(value || "");
   const timerRef = useRef(null);
+  useEffect(() => () => clearTimeout(timerRef.current), []);
 
   const handleChange = useCallback((e) => {
     const val = e.target.value;
@@ -25,6 +27,7 @@ export default function SearchInput({
   }, [onChange, debounce]);
 
   const handleClear = () => {
+    clearTimeout(timerRef.current);
     setLocalValue("");
     onChange("");
   };
@@ -38,7 +41,8 @@ export default function SearchInput({
         </svg>
       </span>
       <input
-        type="text"
+        type="search"
+        aria-label={label}
         value={localValue}
         onChange={handleChange}
         placeholder={placeholder}

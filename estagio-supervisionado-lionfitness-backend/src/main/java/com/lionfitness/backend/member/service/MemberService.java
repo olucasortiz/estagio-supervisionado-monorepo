@@ -205,6 +205,15 @@ public class MemberService {
                 .toList();
     }
 
+    public com.lionfitness.backend.member.dto.LinkedPersonalTrainerResponse findMyPersonalTrainer(UUID userId) {
+        Member member = findByUserId(userId);
+        if (member.personalTrainerId() == null) return null;
+        return personalTrainerRepository.findActiveById(member.personalTrainerId())
+                .map(trainer -> new com.lionfitness.backend.member.dto.LinkedPersonalTrainerResponse(
+                        trainer.id(), trainer.name(), trainer.photoUrl()))
+                .orElse(null);
+    }
+
     public Member findByUserId(UUID userId) {
         return memberRepository.findByUserId(userId)
                 .orElseThrow(() -> new MemberNotFoundException("Perfil de aluno não encontrado para o usuário: " + userId));

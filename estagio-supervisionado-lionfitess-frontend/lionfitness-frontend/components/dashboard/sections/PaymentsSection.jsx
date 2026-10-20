@@ -4,7 +4,7 @@ import { useState } from "react";
 import PageHeader from "../../ui/PageHeader";
 import DataTable from "../../ui/DataTable";
 import Modal from "../../ui/Modal";
-import DashboardCard from "../../ui/DashboardCard";
+import FinanceMetrics from "../../admin/FinanceMetrics";
 import StatusBadge from "../../ui/StatusBadge";
 import PixPaymentModal from "../../ui/PixPaymentModal";
 import CardPaymentModal from "../../ui/CardPaymentModal";
@@ -49,21 +49,22 @@ function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, fee
     <Modal
       open={open}
       onClose={onClose}
+      preventClose={!!saving}
       title={isEditing ? "Editar Pagamento" : "Registrar Pagamento"}
       subtitle={isEditing ? "Atualize os dados do pagamento" : "Registre um novo pagamento"}
       footer={
         <>
-          <button className="btn btn-ghost" onClick={onClose} type="button">Cancelar</button>
+          <button className="btn btn-ghost" onClick={onClose} disabled={saving} type="button">Cancelar</button>
           <button className="btn btn-primary" onClick={onSubmit} disabled={saving} type="button">
-            {saving ? "Salvando..." : isEditing ? "Salvar" : isPixMethod ? "Registrar com Pix ✨" : isCardMethod ? "Pagar com Cartão 💳" : "Registrar"}
+            {saving ? "Salvando..." : isEditing ? "Salvar" : isPixMethod ? "Registrar com Pix" : isCardMethod ? "Pagar com Cartão" : "Registrar"}
           </button>
         </>
       }
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      <fieldset disabled={saving} className="gp-registry-fields" aria-busy={!!saving}>
         <div className="form-field">
-          <label className="label">Assinatura *</label>
-          <Combobox
+          <span className="label">Assinatura *</span>
+          <Combobox ariaLabel="Assinatura" disabled={saving}
             items={data.subscriptions}
             value={form.subscriptionId}
             onChange={(id) => onChange("subscriptionId", id)}
@@ -88,9 +89,9 @@ function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, fee
               borderRadius: "6px",
               fontSize: "12px",
               lineHeight: 1.4,
-              backgroundColor: renewalNotice.blocked ? "rgba(239, 68, 68, 0.1)" : "rgba(16, 185, 129, 0.1)",
-              border: `1px solid ${renewalNotice.blocked ? "rgba(239, 68, 68, 0.3)" : "rgba(16, 185, 129, 0.3)"}`,
-              color: renewalNotice.blocked ? "#ef4444" : "#10b981",
+              backgroundColor: renewalNotice.blocked ? "var(--error-bg)" : "var(--success-bg)",
+              border: "1px solid var(--border)",
+              color: renewalNotice.blocked ? "var(--error-text)" : "var(--success-text)",
             }}
           >
             {renewalNotice.blocked ? "⚠️ " : "✅ "}
@@ -99,28 +100,28 @@ function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, fee
         )}
         <div className="form-grid">
           <div className="form-field">
-            <label className="label">Valor (R$) *</label>
-            <input className="input" type="number" step="0.01" min="0" value={form.amount} onChange={(e) => onChange("amount", e.target.value)} placeholder="0,00" required />
+            <label className="label" htmlFor="payments-amount">Valor (R$) *</label>
+            <input id="payments-amount" className="input" type="number" step="0.01" min="0" value={form.amount} onChange={(e) => onChange("amount", e.target.value)} placeholder="0,00" required />
           </div>
           <div className="form-field">
-            <label className="label">Data do pagamento *</label>
-            <input className="input" type="date" value={form.paidAt} onChange={(e) => onChange("paidAt", e.target.value)} required />
+            <label className="label" htmlFor="payments-paidAt">Data do pagamento *</label>
+            <input id="payments-paidAt" className="input" type="date" value={form.paidAt} onChange={(e) => onChange("paidAt", e.target.value)} required />
           </div>
         </div>
         <div className="form-grid">
           <div className="form-field">
-            <label className="label">Método *</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            <span id="payment-method-label" className="label">Método *</span>
+            <div role="group" aria-labelledby="payment-method-label" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {["Dinheiro", "Cartão", "Pix", "Boleto"].map((m) => (
-                <button key={m} type="button" className={`btn btn-sm ${form.method === m ? "btn-primary" : "btn-ghost"}`} onClick={() => onChange("method", m)}>
+                <button key={m} aria-pressed={form.method === m} type="button" className={`btn btn-sm ${form.method === m ? "btn-primary" : "btn-ghost"}`} onClick={() => onChange("method", m)}>
                   {m}
                 </button>
               ))}
             </div>
           </div>
           <div className="form-field">
-            <label className="label">Status *</label>
-            <select className="select" value={form.status} onChange={(e) => onChange("status", e.target.value)} required>
+            <label className="label" htmlFor="payments-status">Status *</label>
+            <select id="payments-status" className="select" value={form.status} onChange={(e) => onChange("status", e.target.value)} required>
               <option value="Pago">Pago</option>
               <option value="Pendente">Pendente</option>
               <option value="Atrasado">Atrasado</option>
@@ -132,9 +133,9 @@ function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, fee
           <p className="feedback-error" role="alert">{error}</p>
         )}
         {feedback && (
-          <p className={feedback.includes("sucesso") ? "feedback-success" : "feedback-error"}>{feedback}</p>
+          <p role="status" className={feedback.includes("sucesso") ? "feedback-success" : "feedback-error"}>{feedback}</p>
         )}
-      </div>
+      </fieldset>
     </Modal>
   );
 }
@@ -237,8 +238,8 @@ export default function PaymentsSection({
       return;
     }
 
-    await onSubmitForm("payments", null, forms.payments);
-    if (!feedback.payments?.includes("Falha")) setModalOpen(false);
+    const saved = await onSubmitForm("payments", null, forms.payments);
+    if (saved) setModalOpen(false);
   };
 
   // KPI financeiro
@@ -255,7 +256,7 @@ export default function PaymentsSection({
     .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
   return (
-    <div className="animate-fade-in">
+    <div className="gp-registry gp-finance">
       <PageHeader
         title="Pagamentos"
         subtitle="Controle financeiro dos pagamentos"
@@ -270,18 +271,19 @@ export default function PaymentsSection({
         }
       />
 
-      {/* KPI cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 20 }}>
-        <DashboardCard value={fmtCurrency(totalRecebido)} label="Total recebido" accentColor="#22C55E" icon="💰" />
-        <DashboardCard value={fmtCurrency(totalPendente)} label="Pendente" accentColor="#F59E0B" icon="⏳" />
-        <DashboardCard value={fmtCurrency(totalAtrasado)} label="Em atraso" accentColor="#EF4444" icon="⚠️" />
-        <DashboardCard value={data.payments.length} label="Total de lançamentos" accentColor="#3B82F6" icon="📊" />
-      </div>
+      {!modalOpen && feedback.payments && !feedback.payments.includes("sucesso") && <p className="gp-registry-notice" role="status">{feedback.payments}</p>}
+      {/* Indicadores da base consultada */}
+      <FinanceMetrics items={[
+        {label:"Total recebido",value:fmtCurrency(totalRecebido)}, {label:"Pendente",value:fmtCurrency(totalPendente)},
+        {label:"Em atraso",value:fmtCurrency(totalAtrasado)}, {label:"Total de lançamentos",value:data.payments.length},
+      ]} />
 
-      <div className="card card-md">
+      <div className="card gp-registry-panel">
+        <div className="gp-registry-panel-heading"><h2>Histórico de pagamentos</h2><p>Consulte valores, métodos e situação dos lançamentos.</p></div>
         <DataTable
           data={data.payments}
           keyField="id"
+          caption="Histórico de pagamentos"
           searchPlaceholder="Buscar por aluno, status ou método..."
           searchFields={["subscriptionLabel", "method", "status"]}
           emptyTitle="Nenhum pagamento registrado"
@@ -298,24 +300,24 @@ export default function PaymentsSection({
                 <>
                   <button
                     className="btn btn-ghost btn-sm"
-                    style={{ color: "#10B981", fontWeight: 700 }}
+                    style={{ color: "var(--success-text)", fontWeight: 600 }}
                     onClick={() => {
                       setPixModalAmount(item.amount ? Number(item.amount) : null);
                       setPixModalSubId(item.subscriptionId);
                       resolvePixContext(item.subscriptionId);
                     }}
                   >
-                    ✨ Pix
+                    Pix
                   </button>
                   <button
                     className="btn btn-ghost btn-sm"
-                    style={{ color: "#3B82F6", fontWeight: 700 }}
+                    style={{ color: "var(--info-text)", fontWeight: 600 }}
                     onClick={() => {
                       setCardModalSubId(item.subscriptionId);
                       resolveCardContext(item.subscriptionId);
                     }}
                   >
-                    💳 Cartão
+                    Cartão
                   </button>
                 </>
               )}

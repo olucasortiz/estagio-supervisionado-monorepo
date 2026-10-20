@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   API_BASE_URL,
+  ApiError,
   cancelMember,
   createPayment,
   createSubscription,
@@ -55,6 +56,7 @@ import PaymentsSection   from "./sections/PaymentsSection";
 import OverdueSection    from "./sections/OverdueSection";
 import CancellationSection from "./sections/CancellationSection";
 import AdminDashboardView from "../admin/AdminDashboardView";
+import { Toast } from "../ui/Toast";
 
 // ─── Utilitários (mantidos idênticos ao original) ─────────────────────────
 
@@ -320,7 +322,7 @@ const initialForms = {
 export const moduleConfig = {
   members: {
     create: createMember, update: updateMember, remove: deleteMember,
-    successName: "membro",
+    successName: "aluno",
     fields: (data) => [
       { key: "name", label: "Nome", required: true },
       { key: "email", label: "E-mail", type: "email", required: true },
@@ -528,7 +530,7 @@ export default function DashboardContent({ activeReport, styles } = {}) {
 
   const submitForm = async (moduleKey, event, overrideForm) => {
     if (event?.preventDefault) event.preventDefault();
-    if (submittingModulesRef.current[moduleKey]) return;
+    if (submittingModulesRef.current[moduleKey]) return false;
     submittingModulesRef.current[moduleKey] = true;
 
     const config = moduleConfig[moduleKey];
@@ -552,28 +554,32 @@ export default function DashboardContent({ activeReport, styles } = {}) {
       resetForm(moduleKey);
       await loadDashboardData();
     } catch (err) {
-      console.error(err);
+      if (!(err instanceof ApiError && [400, 409, 422].includes(err.status))) console.error(err);
       setModuleFeedback(moduleKey, `Falha ao salvar ${config.successName}: ${err?.message || "Não foi possível salvar o registro."}`);
+      return false;
     } finally {
       submittingModulesRef.current[moduleKey] = false;
       setModuleSaving(moduleKey, false);
     }
+    return true;
   };
 
-  const removeItem = async (moduleKey, item) => {
+  const removeItem = async (moduleKey, item, confirmed = false) => {
     const config = moduleConfig[moduleKey];
-    if (!item?.id) { setModuleFeedback(moduleKey, "Registro sem identificador para excluir."); return; }
-    if (!window.confirm("Deseja inativar / excluir este registro?")) return;
+    if (!item?.id) { setModuleFeedback(moduleKey, "Registro sem identificador para excluir."); return false; }
+    if (!confirmed && !window.confirm("Deseja inativar / excluir este registro?")) return false;
     try {
       setModuleFeedback(moduleKey, "Processando...");
       await config.remove(item.id);
       resetForm(moduleKey);
-      setModuleFeedback(moduleKey, `${config.successName} inativado / excluído com sucesso.`);
+      setModuleFeedback(moduleKey, moduleKey === "members" ? "Aluno inativado com sucesso." : `${config.successName} inativado / excluído com sucesso.`);
       await loadDashboardData();
     } catch (err) {
       console.error(err);
       setModuleFeedback(moduleKey, "Não foi possível inativar / excluir o registro.");
+      return false;
     }
+    return true;
   };
 
   const submitCancellation = async (event) => {
@@ -711,9 +717,12 @@ export default function DashboardContent({ activeReport, styles } = {}) {
     37: <CancellationSection  {...sectionProps} onSubmitCancellation={submitCancellation} />,
   };
 
-  return sections[currentActiveReport] || sections[Number(currentActiveReport)] || (
+  const section = sections[currentActiveReport] || sections[Number(currentActiveReport)] || (
     <div className="card card-md" style={{ textAlign: "center", padding: "48px 0" }}>
       <p style={{ color: "var(--text-muted)" }}>Painel</p>
     </div>
   );
+  const feedbackModule = { 30: "members", 31: "plans", 32: "users", 33: "personalTrainers", 34: "subscriptions", 35: "payments", 37: "cancellation" }[currentActiveReport];
+  const successMessage = feedbackModule && feedback[feedbackModule]?.includes("sucesso") ? feedback[feedbackModule] : "";
+  return <><Toast open={Boolean(successMessage)} message={successMessage || ""} onClose={() => setModuleFeedback(feedbackModule, "")} />{section}</>;
 }

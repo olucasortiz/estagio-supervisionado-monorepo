@@ -16,6 +16,9 @@ export type AuthSession = {
 
 const AUTH_CHANGE_EVENT = "lionfitness-auth-change";
 
+/* Token emitido apenas pela API fictícia usada em QA visual. Uma sessão assim nunca é válida no backend real. */
+const FIXTURE_SESSION_TOKEN = "local-visual-fixture";
+
 /* =========================
    CACHE (resolve loop infinito)
 ========================= */
@@ -25,8 +28,6 @@ let cachedSession: AuthSession | null = null;
    REDIRECIONAMENTO POR ROLE
 ========================= */
 export function getDefaultRouteByRole(role?: string | null) {
-  // Console log para você debugar se a role está vindo certinha
-  console.log("Verificando rota para a role:", role);
 
   if (role === "ADMIN") {
     return "/dashboard";
@@ -110,6 +111,12 @@ export function getStoredAuthSession(): AuthSession | null {
     const parsed = JSON.parse(rawSession) as Partial<AuthSession>;
 
     if (!parsed?.token || !parsed?.user) {
+      cachedSession = null;
+      return null;
+    }
+
+    if (parsed.token === FIXTURE_SESSION_TOKEN) {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
       cachedSession = null;
       return null;
     }

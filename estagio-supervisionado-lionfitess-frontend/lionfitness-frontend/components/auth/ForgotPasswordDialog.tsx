@@ -10,12 +10,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import "@/app/graphite-tokens.css";
+import "@/app/auth.css";
 import { forgotPassword } from "@/services/api";
-import { cn } from "@/lib/utils";
 
 interface ForgotPasswordDialogProps {
   open: boolean;
@@ -58,7 +55,7 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
       setError(null);
       const response = await forgotPassword(cleanEmail);
       setFeedback(
-        response?.message || "Enviamos as instruções para redefinir sua senha."
+        response?.message || "Se o e-mail estiver cadastrado e ativo, você receberá as instruções de recuperação."
       );
       setIsSuccess(true);
     } catch (err) {
@@ -78,11 +75,11 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-md rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)]">
+      <DialogContent className="graphite-auth w-full max-w-md rounded-xl border border-border bg-card p-6 sm:p-8 shadow-none">
         {!isSuccess ? (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <form onSubmit={handleSubmit} className="gp-auth-form">
             <DialogHeader className="text-center sm:text-center">
-              <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">
+              <DialogTitle className="text-2xl font-extrabold tracking-tight text-foreground">
                 Recuperar senha
               </DialogTitle>
               <DialogDescription className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
@@ -91,26 +88,24 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
             </DialogHeader>
 
             {error && (
-              <Alert variant="destructive" className="border-lion-red-light/30 bg-lion-red-light/10 text-lion-red-dark py-2.5">
-                <AlertCircle className="h-4 w-4 text-lion-red" />
-                <AlertDescription className="text-xs font-medium text-lion-red-dark">
-                  {error}
-                </AlertDescription>
-              </Alert>
+              <div className="gp-auth-alert" role="alert">
+                <AlertCircle size={16} aria-hidden="true" />
+                <span>{error}</span>
+              </div>
             )}
 
-            <div className="flex flex-col gap-1.5 text-left">
-              <Label htmlFor="forgot-email" className="text-sm font-medium text-foreground">
-                E-mail
-              </Label>
-              <div className="relative">
-                <Mail className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-muted-foreground" />
-                <Input
+            <div className="gp-auth-field">
+              <label htmlFor="forgot-email" className="gp-auth-label">E-mail</label>
+              <div className="gp-auth-input-wrap">
+                <Mail size={18} aria-hidden="true" />
+                <input
                   id="forgot-email"
                   name="email"
                   type="email"
                   autoComplete="email"
                   placeholder="seu@email.com"
+                  className="gp-auth-input"
+                  data-icon="true"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
@@ -118,70 +113,46 @@ export function ForgotPasswordDialog({ open, onOpenChange }: ForgotPasswordDialo
                   }}
                   disabled={isLoading}
                   required
-                  className="h-11 w-full rounded-xl border-border bg-lion-slate-100 dark:bg-card pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground/60 transition-colors focus-visible:ring-2 focus-visible:ring-lion-red/20 focus-visible:border-lion-red disabled:cursor-not-allowed disabled:opacity-60"
                 />
               </div>
             </div>
 
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className={cn(
-                "h-12 w-full items-center justify-center gap-2 rounded-xl bg-lion-red px-6 text-sm font-semibold text-white shadow-soft transition-all duration-200 hover:bg-lion-red-dark active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70 cursor-pointer",
-                isLoading && "opacity-80"
-              )}
-            >
+            <button type="submit" disabled={isLoading} className="gp-auth-primary">
               {isLoading ? (
                 <>
-                  <Loader2 className="size-4 animate-spin" />
+                  <Loader2 size={16} className="gp-auth-spin" aria-hidden="true" />
                   Enviando...
                 </>
               ) : (
                 "Enviar instruções"
               )}
-            </Button>
+            </button>
 
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
-              >
+            <div className="gp-auth-center">
+              <button type="button" onClick={handleClose} className="gp-auth-link gp-auth-link-muted">
                 Voltar para o login
               </button>
             </div>
           </form>
         ) : (
-          <div className="flex flex-col items-center gap-5 text-center py-2">
-            <div className="flex size-14 items-center justify-center rounded-full bg-emerald-500/12 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
-              <CheckCircle2 className="size-7 animate-check-pop" />
+          <div className="gp-auth-success">
+            <div className="gp-auth-success-icon">
+              <CheckCircle2 size={28} aria-hidden="true" />
             </div>
 
             <div>
-              <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-                Verifique seu e-mail
-              </h2>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                {feedback || "Enviamos as instruções para redefinir sua senha."}
-              </p>
+              <h2>Verifique seu e-mail</h2>
+              <p role="status">{feedback || "Se o e-mail estiver cadastrado e ativo, você receberá as instruções de recuperação."}</p>
             </div>
 
-            <div className="w-full rounded-xl border border-border bg-muted/40 p-3.5 text-left">
-              <p className="text-xs text-muted-foreground">
-                E-mail de destino:
-              </p>
-              <p className="mt-0.5 break-all text-sm font-medium text-foreground">
-                {email}
-              </p>
+            <div className="gp-auth-recipient">
+              <span>E-mail de destino:</span>
+              <strong>{email}</strong>
             </div>
 
-            <Button
-              type="button"
-              onClick={handleClose}
-              className="h-12 w-full items-center justify-center rounded-xl bg-lion-red px-6 text-sm font-semibold text-white shadow-soft transition-all duration-200 hover:bg-lion-red-dark active:scale-[0.99] cursor-pointer"
-            >
+            <button type="button" onClick={handleClose} className="gp-auth-primary">
               Voltar para o login
-            </Button>
+            </button>
           </div>
         )}
       </DialogContent>

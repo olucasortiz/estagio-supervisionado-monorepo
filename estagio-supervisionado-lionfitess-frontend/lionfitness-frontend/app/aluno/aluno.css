@@ -1,0 +1,1263 @@
+/* ==========================================================================
+   Lion Fitness — Portal do Aluno (Graphite Performance)
+   Escopo: .graphite-aluno / #aluno-root
+   ========================================================================== */
+
+.graphite-aluno {
+  --font-display: var(--font-archivo), "Archivo", system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font-inter-aluno), var(--font-inter), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
+  background-color: var(--background);
+  color: var(--foreground);
+  min-height: 100dvh;
+}
+
+.graphite-aluno :is(h1, h2, h3, h4) {
+  font-family: var(--font-display);
+  letter-spacing: -0.025em;
+  text-wrap: pretty;
+}
+
+.graphite-aluno button {
+  cursor: pointer;
+}
+
+.graphite-aluno button:disabled {
+  cursor: not-allowed;
+}
+
+/* MicroKit Focus Field & Acessibilidade de Teclado */
+.graphite-aluno :is(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.graphite-aluno :is(button, a) {
+  touch-action: manipulation;
+}
+
+/* Skip link de acessibilidade */
+.gp-aluno-skip {
+  position: fixed;
+  top: 12px;
+  left: 16px;
+  z-index: 100;
+  padding: 10px 18px;
+  background: var(--card);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  transform: translateY(-200%);
+  transition: transform 160ms ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.gp-aluno-skip:focus {
+  transform: translateY(0);
+}
+
+/* Shell & Container */
+.gp-aluno-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.gp-aluno-container {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-inline: 24px;
+}
+
+/* ─── Top Navbar ─────────────────────────────────────────────────────────── */
+.gp-aluno-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+}
+
+.gp-aluno-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 72px;
+  gap: 16px;
+}
+
+.gp-aluno-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.gp-aluno-brand-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: transparent;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.gp-aluno-brand-text {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--foreground);
+  white-space: nowrap;
+}
+
+.gp-aluno-brand-text span {
+  color: var(--primary);
+}
+
+.gp-aluno-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.gp-aluno-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gp-aluno-profile-info {
+  text-align: right;
+  line-height: 1.25;
+}
+
+.gp-aluno-profile-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--foreground);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gp-aluno-profile-role {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.gp-aluno-nav .gp-aluno-icon-btn,
+.gp-aluno-nav button[aria-label="Abrir notificações"] {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  padding: 0;
+  border-radius: 8px;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: background-color 150ms, color 150ms, border-color 150ms;
+}
+
+.gp-aluno-nav .gp-aluno-icon-btn:hover,
+.gp-aluno-nav button[aria-label="Abrir notificações"]:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.gp-aluno-logout-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: background-color 150ms, color 150ms, border-color 150ms;
+}
+
+.gp-aluno-logout-btn:hover {
+  background: var(--error-bg);
+  color: var(--error-text);
+  border-color: rgba(180, 35, 45, 0.2);
+}
+
+/* ─── Hero / Boas-vindas ─────────────────────────────────────────────────── */
+.gp-aluno-hero {
+  padding: 28px 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.gp-aluno-greeting-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+
+.gp-aluno-hero h1 {
+  font-size: clamp(26px, 3.2vw, 36px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--foreground);
+  line-height: 1.15;
+}
+
+.gp-aluno-hero p {
+  font-size: 15px;
+  color: var(--muted-foreground);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+.gp-aluno-hero-badge {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  background: var(--brand-primary-bg);
+  color: var(--primary);
+  flex-shrink: 0;
+  border: 1px solid rgba(180, 35, 45, 0.15);
+}
+
+/* ─── Grid Superior (Plano & Progresso) ─────────────────────────────────── */
+.gp-aluno-grid {
+  display: grid;
+  grid-template-columns: 1.12fr 0.88fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.gp-aluno-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: var(--shadow-card);
+}
+
+/* Card 1: Seu Plano */
+.gp-aluno-card-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.gp-aluno-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.gp-aluno-card-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.gp-aluno-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  background: var(--muted);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.gp-aluno-status-badge[data-status="active"] {
+  background: var(--muted);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.gp-aluno-status-badge[data-status="active"] .gp-aluno-status-dot {
+  background-color: #10b981;
+}
+
+.gp-aluno-status-badge[data-status="overdue"],
+.gp-aluno-status-badge[data-status="inactive"],
+.gp-aluno-status-badge[data-status="canceled"] {
+  background: var(--muted);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+}
+
+.gp-aluno-status-badge[data-status="overdue"] .gp-aluno-status-dot,
+.gp-aluno-status-badge[data-status="inactive"] .gp-aluno-status-dot,
+.gp-aluno-status-badge[data-status="canceled"] .gp-aluno-status-dot {
+  background-color: var(--destructive);
+}
+
+.gp-aluno-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+.gp-aluno-plan-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+
+.gp-aluno-plan-expiry {
+  font-size: 13px;
+  color: var(--muted-foreground);
+  margin-top: 6px;
+}
+
+.gp-aluno-plan-expiry strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.gp-aluno-card-body {
+  padding: 20px 24px;
+}
+
+.gp-aluno-renewal-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.gp-aluno-renewal-head h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.gp-aluno-renewal-head p {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  margin-top: 2px;
+}
+
+.gp-aluno-price-tag {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.gp-aluno-price-tag strong {
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-aluno-banner-eligible {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  background: var(--success-bg);
+  color: var(--success-text);
+  border: 1px solid rgba(20, 125, 82, 0.2);
+}
+
+.gp-aluno-pay-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.gp-aluno-pay-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 110px;
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  text-align: left;
+  transition: border-color 150ms, background-color 150ms, transform 150ms;
+}
+
+.gp-aluno-pay-option:hover:not(:disabled) {
+  border-color: var(--input);
+  background: var(--bg-hover);
+  transform: translateY(-1px);
+}
+
+.gp-aluno-pay-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.gp-aluno-pay-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.gp-aluno-pay-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.gp-aluno-pay-icon[data-pix="true"] {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.gp-aluno-pay-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--muted);
+  color: var(--text-secondary);
+}
+
+.gp-aluno-pay-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--foreground);
+  display: block;
+}
+
+.gp-aluno-pay-desc {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--muted-foreground);
+  margin-top: 4px;
+  display: block;
+}
+
+.gp-aluno-info-box {
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  font-size: 13px;
+  color: var(--muted-foreground);
+  line-height: 1.5;
+}
+
+.gp-aluno-info-box strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+/* Card 2: Seu Progresso */
+.gp-aluno-progress-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.gp-aluno-progress-title {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+  margin-top: 4px;
+}
+
+.gp-aluno-progress-sub {
+  font-size: 13px;
+  color: var(--muted-foreground);
+  margin-top: 4px;
+}
+
+.gp-aluno-progress-sub strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.gp-aluno-progress-ring {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
+}
+
+.gp-aluno-progress-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.gp-aluno-progress-ring-bg {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 8;
+}
+
+.gp-aluno-progress-ring-val {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 600ms ease;
+}
+
+.gp-aluno-progress-ring-text {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--foreground);
+}
+
+/* Seletor Semanal de 7 Dias */
+.gp-aluno-weekdays {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.gp-aluno-day-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 2px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  min-height: 44px;
+  transition: background-color 150ms, border-color 150ms;
+}
+
+.gp-aluno-day-btn:hover {
+  background: var(--muted);
+}
+
+.gp-aluno-day-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+}
+
+.gp-aluno-day-btn[data-today="true"] .gp-aluno-day-label {
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.gp-aluno-day-bubble {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 150ms;
+}
+
+.gp-aluno-day-btn[data-has-workout="true"] .gp-aluno-day-bubble {
+  border-color: rgba(180, 35, 45, 0.3);
+  background: var(--brand-primary-bg);
+  color: var(--primary);
+}
+
+.gp-aluno-day-btn[aria-pressed="true"] .gp-aluno-day-bubble {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(180, 35, 45, 0.35);
+}
+
+.gp-aluno-progress-bar-wrap {
+  margin-top: 20px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--muted);
+  overflow: hidden;
+}
+
+.gp-aluno-progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+  transition: width 600ms ease;
+}
+
+.gp-aluno-session-footer {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.gp-aluno-session-footer svg {
+  color: #d97706;
+  flex-shrink: 0;
+}
+
+/* ─── Seção Treino do Dia ─────────────────────────────────────────────────── */
+.gp-aluno-workout-section {
+  margin-bottom: 40px;
+}
+
+.gp-aluno-section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.gp-aluno-section-tag {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.gp-aluno-section-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+
+.gp-aluno-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Card do Personal Trainer */
+.gp-aluno-pt-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.gp-aluno-pt-avatar {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--brand-primary-bg);
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.gp-aluno-pt-info {
+  line-height: 1.25;
+}
+
+.gp-aluno-pt-role {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.gp-aluno-pt-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--foreground);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gp-aluno-badge-active-session {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--brand-primary-bg);
+  color: var(--primary);
+  border: 1px solid rgba(180, 35, 45, 0.2);
+}
+
+.gp-aluno-badge-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--primary);
+  animation: gp-aluno-pulse 1.8s infinite;
+}
+
+@keyframes gp-aluno-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* Card Principal de Treino */
+.gp-aluno-workout-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+
+/* Estados de Carregamento e Vazio */
+.gp-aluno-state-box {
+  padding: 48px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.gp-aluno-state-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 12px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  margin-bottom: 16px;
+}
+
+.gp-aluno-state-icon[data-error="true"] {
+  background: var(--error-bg);
+  color: var(--error-text);
+}
+
+.gp-aluno-state-box h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.gp-aluno-state-box p {
+  font-size: 13px;
+  color: var(--muted-foreground);
+  max-width: 440px;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+/* Visão Pré-treino (2 Colunas) */
+.gp-aluno-pre-workout {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+}
+
+.gp-aluno-pre-aside {
+  padding: 28px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.gp-aluno-pre-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.gp-aluno-pre-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+  margin-top: 12px;
+}
+
+.gp-aluno-pre-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-aluno-pre-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gp-aluno-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--primary);
+  color: #fff;
+  border: 1px solid transparent;
+  transition: background-color 150ms, transform 150ms, box-shadow 150ms;
+  margin-top: 24px;
+  box-shadow: 0 2px 8px rgba(180, 35, 45, 0.25);
+}
+
+.gp-aluno-cta-btn:hover {
+  background: var(--brand-primary-dark);
+  transform: translateY(-1px);
+}
+
+.gp-aluno-pre-list {
+  padding: 24px 28px;
+}
+
+.gp-aluno-list-head {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  margin-bottom: 12px;
+}
+
+.gp-aluno-exercise-ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.gp-aluno-exercise-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+}
+
+.gp-aluno-exercise-idx {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-aluno-exercise-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.gp-aluno-exercise-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.gp-aluno-exercise-meta {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  display: block;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Treino em Andamento (Execução da Sessão) */
+.gp-aluno-session-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+}
+
+.gp-aluno-session-main {
+  padding: 28px;
+}
+
+.gp-aluno-back-summary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: 0;
+  padding: 6px 0;
+  margin-bottom: 18px;
+  transition: color 150ms;
+}
+
+.gp-aluno-back-summary-btn:hover {
+  color: var(--foreground);
+}
+
+.gp-aluno-step-tag {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--primary);
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-aluno-current-title {
+  font-size: clamp(22px, 2.5vw, 28px);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--foreground);
+  margin-top: 6px;
+}
+
+.gp-aluno-current-muscle {
+  font-size: 13px;
+  color: var(--muted-foreground);
+  margin-top: 4px;
+}
+
+.gp-aluno-current-muscle strong {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.gp-aluno-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.gp-aluno-metric-box {
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+}
+
+.gp-aluno-metric-box span {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
+}
+
+.gp-aluno-metric-box strong {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--foreground);
+  margin-top: 4px;
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-aluno-session-progress {
+  margin-top: 20px;
+}
+
+.gp-aluno-session-progress-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  margin-bottom: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gp-aluno-session-progress-head strong {
+  color: var(--foreground);
+}
+
+.gp-aluno-session-progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--muted);
+  overflow: hidden;
+}
+
+.gp-aluno-session-progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--primary);
+  transition: width 300ms ease;
+}
+
+.gp-aluno-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--primary);
+  color: #fff;
+  border: 1px solid transparent;
+  margin-top: 24px;
+  transition: background-color 150ms, transform 150ms;
+}
+
+.gp-aluno-action-btn:hover {
+  background: var(--brand-primary-dark);
+}
+
+/* Painel de Descanso / Timer */
+.gp-aluno-timer-panel {
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: var(--bg-subtle);
+  border-left: 1px solid var(--border);
+  text-align: center;
+}
+
+.gp-aluno-timer-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  margin-bottom: 16px;
+}
+
+.gp-aluno-timer-ring-wrap {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  margin: 0 auto;
+}
+
+.gp-aluno-timer-ring-wrap svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.gp-aluno-timer-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.gp-aluno-timer-digits {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.gp-aluno-timer-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.gp-aluno-timer-msg {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  max-width: 240px;
+  margin-top: 16px;
+  line-height: 1.5;
+}
+
+/* ─── Responsividade ─────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .gp-aluno-grid {
+    grid-template-columns: 1fr;
+  }
+  .gp-aluno-pre-workout {
+    grid-template-columns: 1fr;
+  }
+  .gp-aluno-pre-aside {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .gp-aluno-session-grid {
+    grid-template-columns: 1fr;
+  }
+  .gp-aluno-timer-panel {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 768px) {
+  .gp-aluno-container {
+    padding-inline: 16px;
+  }
+  .gp-aluno-nav-inner {
+    height: 64px;
+  }
+  .gp-aluno-profile-info {
+    display: none;
+  }
+  .gp-aluno-hero {
+    padding: 20px 0 16px;
+  }
+  .gp-aluno-hero-badge {
+    display: none;
+  }
+  .gp-aluno-card-header,
+  .gp-aluno-card-body,
+  .gp-aluno-pre-aside,
+  .gp-aluno-pre-list,
+  .gp-aluno-session-main,
+  .gp-aluno-timer-panel {
+    padding: 16px;
+  }
+  .gp-aluno-pay-grid {
+    grid-template-columns: 1fr;
+  }
+  .gp-aluno-exercise-ol {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .gp-aluno-brand-text {
+    font-size: 13px;
+    letter-spacing: 0.08em;
+  }
+  .gp-aluno-weekdays {
+    gap: 4px;
+  }
+  .gp-aluno-day-bubble {
+    width: 32px;
+    height: 32px;
+    font-size: 11px;
+  }
+  .gp-aluno-day-label {
+    font-size: 10px;
+  }
+  .gp-aluno-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ─── Redução de Movimento ───────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .gp-aluno-skip,
+  .gp-aluno-pay-option,
+  .gp-aluno-progress-ring-val,
+  .gp-aluno-progress-bar-fill,
+  .gp-aluno-day-btn,
+  .gp-aluno-cta-btn,
+  .gp-aluno-action-btn,
+  .gp-aluno-session-progress-bar-fill {
+    transition: none !important;
+    animation: none !important;
+  }
+  .gp-aluno-badge-pulse-dot {
+    animation: none !important;
+  }
+}

@@ -2,7 +2,6 @@
 
 import React from "react";
 import { Dumbbell, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { NotificationBell } from "@/components/notification/NotificationBell";
 
@@ -26,38 +25,18 @@ export function PersonalHeader({
   }, [userName]);
 
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-card/85 backdrop-blur-md">
-      <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
-        <div className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-brand">
-            <Dumbbell className="size-5" />
-          </span>
-          <div className="leading-tight">
-            <p className="text-sm font-bold tracking-tight text-foreground">Lion Fitness</p>
-            <p className="text-xs text-muted-foreground">Área do Personal</p>
-          </div>
+    <header className="gp-personal-header">
+      <div className="gp-personal-header-inner">
+        <div className="gp-personal-brand">
+          <Dumbbell size={28} aria-hidden="true" />
+          <div><strong>Lion Fitness</strong><span>Área do Personal</span></div>
         </div>
-
-        <div className="flex items-center gap-3">
-          <div className="hidden text-right sm:block">
-            <p className="text-sm font-semibold text-foreground">{userName}</p>
-            <p className="text-xs text-muted-foreground">Personal Trainer</p>
-          </div>
-          <span className="flex size-9 items-center justify-center rounded-full bg-ink text-xs font-semibold text-background">
-            {initials}
-          </span>
-          <ThemeToggle />
+        <div className="gp-personal-header-actions">
+          <div className="gp-personal-account"><strong>{userName}</strong><span>Personal Trainer</span></div>
+          <span className="gp-personal-avatar" aria-label={userName}>{initials}</span>
+          <ThemeToggle className="gp-personal-icon-button" />
           <NotificationBell canReply />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onLogout}
-            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 ml-1 h-8 px-2.5"
-            title="Sair do sistema"
-          >
-            <LogOut className="size-4" />
-            <span className="hidden md:inline text-xs font-medium">Sair</span>
-          </Button>
+          <button type="button" onClick={onLogout} className="gp-personal-icon-button" aria-label="Sair do sistema" title="Sair do sistema"><LogOut size={18} aria-hidden="true" /></button>
         </div>
       </div>
     </header>

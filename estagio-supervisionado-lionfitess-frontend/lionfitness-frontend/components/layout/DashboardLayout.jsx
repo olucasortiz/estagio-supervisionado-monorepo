@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AdminShell } from "../admin/AdminShell";
+import { GraphiteAdminShell as AdminShell } from "../admin/GraphiteAdminShell";
 
 /* ──────────────────────────────────────────────
    Context de navegação

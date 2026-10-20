@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import Drawer from "./Drawer";
 import PersonalTrainerPickerModal from "./PersonalTrainerPickerModal";
 import Avatar from "./Avatar";
@@ -49,6 +49,7 @@ export default function MemberWizardDrawer({
   const [photoPreview, setPhotoPreview] = useState(initialForm.photoUrl || "");
   const [dateError, setDateError] = useState("");
   const fileInputRef = useRef(null);
+  const fieldId = useId();
 
   useEffect(() => {
     if (open) {
@@ -91,7 +92,7 @@ export default function MemberWizardDrawer({
     }
     
     if (parsedDate > new Date()) {
-      return "Informe uma data de nascimento válida.";
+      return "A data de nascimento não pode ser futura.";
     }
     
     return "";
@@ -114,7 +115,7 @@ export default function MemberWizardDrawer({
     return true;
   };
 
-  const handleClose = () => { setStep(1); setDateError(""); onClose(); };
+  const handleClose = () => { if (saving) return; setStep(1); setDateError(""); onClose(); };
 
   const handleSubmit = () => {
     if (saving) return;
@@ -138,13 +139,13 @@ export default function MemberWizardDrawer({
           <div style={{ display: "flex", gap: "var(--space-3)", width: "100%", justifyContent: "space-between" }}>
             <div style={{ display: "flex", gap: "var(--space-2)" }}>
               {step > 1 && (
-                <button className="btn btn-ghost" type="button" onClick={() => setStep((s) => s - 1)}>
+                <button className="btn btn-ghost" type="button" disabled={saving} onClick={() => setStep((s) => s - 1)}>
                   ← Voltar
                 </button>
               )}
             </div>
             <div style={{ display: "flex", gap: "var(--space-2)" }}>
-              <button className="btn btn-ghost" type="button" onClick={handleClose}>Cancelar</button>
+              <button className="btn btn-ghost" type="button" disabled={saving} onClick={handleClose}>Cancelar</button>
               {step < 4 ? (
                 <button
                   className="btn btn-primary"
@@ -164,7 +165,7 @@ export default function MemberWizardDrawer({
         }
       >
         {/* Stepper */}
-        <div className="stepper" style={{ marginBottom: "var(--space-6)" }}>
+        <div className="stepper" aria-label={`Etapa ${step} de ${STEPS.length}: ${STEPS[step - 1].label}`} style={{ marginBottom: "var(--space-6)" }}>
           {STEPS.map((s) => (
             <Step key={s.id} number={s.id} label={s.label} active={step === s.id} done={step > s.id} />
           ))}
@@ -172,7 +173,7 @@ export default function MemberWizardDrawer({
 
         {/* Feedback */}
         {feedback && (
-          <div className={`${feedback.includes("sucesso") ? "feedback-success" : "feedback-error"}`}
+          <div role="status" className={`${saving ? "feedback-warning" : feedback.includes("sucesso") ? "feedback-success" : "feedback-error"}`}
             style={{ marginBottom: "var(--space-4)" }}>
             {feedback}
           </div>
@@ -182,26 +183,26 @@ export default function MemberWizardDrawer({
         {step === 1 && (
           <div className="animate-slide-up" style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
             <div className="form-field">
-              <label className="label">Nome completo *</label>
-              <input className="input" type="text" placeholder="Nome do aluno"
+              <label className="label" htmlFor={`${fieldId}-name`}>Nome completo *</label>
+              <input id={`${fieldId}-name`} name="name" autoComplete="name" className="input" type="text" placeholder="Nome do aluno"
                 value={form.name} onChange={(e) => set("name", e.target.value)} maxLength={100} required />
             </div>
             <div className="form-grid">
               <div className="form-field">
-                <label className="label">CPF *</label>
-                <input className="input" type="text" placeholder="000.000.000-00"
+                <label className="label" htmlFor={`${fieldId}-cpf`}>CPF *</label>
+                <input id={`${fieldId}-cpf`} name="cpf" inputMode="numeric" className="input" type="text" placeholder="000.000.000-00"
                   value={form.cpf} onChange={(e) => set("cpf", maskCPF(e.target.value))} maxLength={14} required />
               </div>
               <div className="form-field">
-                <label className="label">Data de Nascimento *</label>
-                <input className="input" type="date" value={form.birthDate}
+                <label className="label" htmlFor={`${fieldId}-birth`}>Data de nascimento *</label>
+                <input id={`${fieldId}-birth`} name="birthDate" autoComplete="bday" aria-invalid={!!dateError} aria-describedby={dateError ? `${fieldId}-birth-error` : undefined} className="input" type="date" max={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`} value={form.birthDate}
                   onChange={(e) => {
                     const val = e.target.value;
                     set("birthDate", val);
                     const err = validateBirthDate(val);
                     setDateError(err);
                   }} required />
-                {dateError && <span style={{ color: "var(--error)", fontSize: 12, marginTop: 4, display: "block" }}>{dateError}</span>}
+                {dateError && <span id={`${fieldId}-birth-error`} role="status" style={{ color: "var(--error)", fontSize: 12, marginTop: 4, display: "block" }}>{dateError}</span>}
               </div>
             </div>
           </div>
@@ -211,13 +212,13 @@ export default function MemberWizardDrawer({
         {step === 2 && (
           <div className="animate-slide-up" style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
             <div className="form-field">
-              <label className="label">E-mail *</label>
-              <input className="input" type="email" placeholder="email@exemplo.com"
+              <label className="label" htmlFor={`${fieldId}-email`}>E-mail *</label>
+              <input id={`${fieldId}-email`} name="email" autoComplete="email" spellCheck={false} className="input" type="email" placeholder="email@exemplo.com"
                 value={form.email} onChange={(e) => set("email", e.target.value)} required />
             </div>
             <div className="form-field">
-              <label className="label">{isEditing ? "Nova senha (deixe em branco para manter)" : "Senha inicial *"}</label>
-              <input className="input" type="password" placeholder="••••••••"
+              <label className="label" htmlFor={`${fieldId}-password`}>{isEditing ? "Nova senha (deixe em branco para manter)" : "Senha inicial *"}</label>
+              <input id={`${fieldId}-password`} name="password" autoComplete="new-password" className="input" type="password" placeholder="••••••••"
                 value={form.password} onChange={(e) => set("password", e.target.value)}
                 required={!isEditing} />
             </div>
@@ -244,7 +245,7 @@ export default function MemberWizardDrawer({
                 </button>
               </div>
             ) : (
-              <div
+              <button type="button"
                 className="photo-upload-area"
                 onClick={() => fileInputRef.current?.click()}
                 onDragOver={(e) => e.preventDefault()}
@@ -256,7 +257,7 @@ export default function MemberWizardDrawer({
                 </svg>
                 <p style={{ fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4 }}>Clique ou arraste a foto aqui</p>
                 <p style={{ fontSize: "var(--font-xs)", color: "var(--text-muted)" }}>PNG, JPG ou WEBP — recomendado 400×400px</p>
-              </div>
+              </button>
             )}
             <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp"
               style={{ display: "none" }} onChange={(e) => handlePhoto(e.target.files?.[0])} />

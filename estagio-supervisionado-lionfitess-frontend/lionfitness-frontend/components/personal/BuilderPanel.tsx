@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
-import { Plus, Search, Repeat2, Timer, FileText, Dumbbell, Loader2, Check, Sparkles, CheckCircle2 } from "lucide-react";
+import { Plus, Search, Repeat2, Timer, FileText, Dumbbell, Loader2, Check, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Toast } from "@/components/ui/Toast";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,7 @@ interface BuilderPanelProps {
     success: boolean;
     catalogUpdated: boolean;
   }>;
+  onClearSuccess?: () => void;
 }
 
 export function BuilderPanel({
@@ -65,6 +67,7 @@ export function BuilderPanel({
   onSearchCatalog,
   onSaveExercise,
   onCreateCustomExercise,
+  onClearSuccess,
 }: BuilderPanelProps) {
   const [draftTitle, setDraftTitle] = useState(sheet.title);
   const [draftWeekDay, setDraftWeekDay] = useState(sheet.weekDay);
@@ -226,11 +229,11 @@ export function BuilderPanel({
   };
 
   return (
-    <section className="space-y-5 animate-slide-in">
+    <section className="gp-workout gp-builder">
       {/* Top Banner Card */}
-      <div className="surface-card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="surface-card gp-workout-banner">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="text-xs font-semibold  text-muted-foreground">
             Montando Treino de {student.name}
           </p>
           <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground">
@@ -247,14 +250,14 @@ export function BuilderPanel({
             onSearchCatalog({ name: catalogQuery, muscle: selectedMuscle, category: selectedCategory, equipment: selectedEquipment });
           }}
           disabled={savingExercise}
-          className="h-10 rounded-lg bg-primary hover:bg-primary-strong text-primary-foreground font-semibold text-xs shadow-brand gap-2"
+          className="h-10 rounded-lg bg-primary hover:bg-primary-strong text-primary-foreground font-semibold text-xs  gap-2"
         >
-          <Plus className="size-4" /> Adicionar Exercício
+          <Plus aria-hidden="true" className="size-4" /> Adicionar Exercício
         </Button>
       </div>
 
       {editing && (
-        <form id="sheet-edit" onSubmit={saveSheet} className="surface-card space-y-4 p-5">
+        <form id="sheet-edit" onSubmit={saveSheet} className="surface-card gp-sheet-edit space-y-4 p-5">
           <p className="text-sm font-semibold">Editar ficha · versão {sheet.version}</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -273,39 +276,32 @@ export function BuilderPanel({
             <Textarea id="edit-reason" value={changeReason} onChange={(event) => setChangeReason(event.target.value)} required maxLength={2000} disabled={savingExercise} placeholder="Descreva o motivo da atualização." />
           </div>
           <p className="text-xs text-muted-foreground">As alterações dos exercícios abaixo serão salvas junto com a ficha. A versão anterior ficará disponível no histórico.</p>
-          <div className="flex justify-end gap-2">
+          <div className="gp-workout-form-actions">
             <Button type="button" variant="outline" onClick={onCancelEdit} disabled={savingExercise}>Cancelar edição</Button>
-            <Button type="submit" disabled={savingExercise}>{savingExercise ? "Salvando..." : "Salvar ficha e histórico"}</Button>
+            <Button type="submit" disabled={savingExercise}>{savingExercise ? "Salvando…" : "Salvar ficha e histórico"}</Button>
           </div>
         </form>
       )}
 
       {/* Messages */}
       {error && (
-        <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive font-medium">
+        <div role="alert" className="rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive font-medium">
           {error}
-        </div>
-      )}
-      {successMessage && (
-        <div className="rounded-xl border border-success/20 bg-success/10 p-4 text-sm text-success font-medium flex items-center gap-2">
-          <CheckCircle2 className="size-4 text-success" />
-          {successMessage}
         </div>
       )}
 
       {/* Exercises List in Sheet */}
       {loadingExercises ? (
         <div className="surface-card flex flex-col items-center justify-center p-16 text-center text-muted-foreground">
-          <Loader2 className="size-8 animate-spin text-primary mb-2" />
-          <p className="text-sm font-semibold">Carregando exercícios da ficha...</p>
+          <Loader2 aria-hidden="true" className="size-8 animate-spin text-primary mb-2" />
+          <p className="text-sm font-semibold">Carregando exercícios da ficha…</p>
         </div>
       ) : visibleExercises.length > 0 ? (
         <div className="space-y-3">
           {visibleExercises.map((ex, i) => (
             <div
               key={ex.id}
-              style={{ animationDelay: `${i * 30}ms` }}
-              className="surface-card animate-rise row-raise flex flex-wrap items-center gap-4 p-4"
+              className="surface-card gp-exercise-row"
             >
               {/* Index number badge */}
               <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-ink text-sm font-semibold text-background">
@@ -313,7 +309,7 @@ export function BuilderPanel({
               </div>
               {editing && (
                 <div className="order-last w-full space-y-3 border-t border-border pt-3">
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="gp-prescription-fields">
                     {([['sets', 'Séries', 1], ['reps', 'Repetições', 1], ['restSeconds', 'Descanso (seg)', 0]] as const).map(([field, label, min]) => (
                       <div key={field} className="space-y-1.5">
                         <Label htmlFor={`edit-${ex.id}-${field}`}>{label}</Label>
@@ -340,7 +336,7 @@ export function BuilderPanel({
 
               {/* Exercise info */}
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold text-sm text-foreground">{ex.exerciseName}</p>
+                <p className="font-semibold text-sm text-foreground gp-workout-wrap">{ex.exerciseName}</p>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-xs text-muted-foreground">{ex.muscle}</span>
                   {ex.equipment && (
@@ -353,15 +349,15 @@ export function BuilderPanel({
               </div>
 
               {/* Metrics */}
-              <div className="hidden gap-6 text-sm sm:flex items-center">
+              <div className="gp-exercise-metrics">
                 <Metric icon={Repeat2} label="Séries x Reps" value={`${ex.sets} x ${ex.reps}`} />
                 <Metric icon={Timer} label="Descanso" value={`${ex.restSeconds}s`} />
                 {ex.notes && (
-                  <div className="max-w-[150px]">
-                    <p className="flex items-center gap-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-                      <FileText className="size-3 text-primary" /> Notas
+                  <div className="gp-exercise-notes">
+                    <p className="flex items-center gap-1 text-[11px]  text-muted-foreground">
+                      <FileText aria-hidden="true" className="size-3 text-primary" /> Notas
                     </p>
-                    <p className="mt-0.5 font-medium text-foreground truncate text-xs">{ex.notes}</p>
+                    <p className="mt-0.5 font-medium text-foreground text-xs gp-workout-wrap">{ex.notes}</p>
                   </div>
                 )}
               </div>
@@ -370,7 +366,7 @@ export function BuilderPanel({
         </div>
       ) : (
         <div className="surface-card flex flex-col items-center justify-center py-16 text-center space-y-3">
-          <Dumbbell className="size-10 text-muted-foreground/50" />
+          <Dumbbell aria-hidden="true" className="size-10 text-muted-foreground/50" />
           <p className="font-semibold text-base text-foreground">Nenhum exercício nesta ficha</p>
           <p className="text-xs text-muted-foreground max-w-sm">
             Clique em &quot;Adicionar Exercício&quot; para consultar o catálogo e prescrever a rotina de treinos.
@@ -381,7 +377,7 @@ export function BuilderPanel({
       {/* Dialog: Biblioteca de Exercícios */}
       <Dialog open={openLibrary} onOpenChange={setOpenLibrary}>
         <DialogContent
-          className="max-h-[calc(100dvh-1.5rem)] sm:max-w-3xl sm:max-h-[calc(100dvh-2rem)] flex flex-col"
+          className="graphite-personal gp-workout-dialog gp-library-dialog max-h-[calc(100dvh-1.5rem)] sm:max-w-3xl sm:max-h-[calc(100dvh-2rem)] flex flex-col"
           preventClose={savingExercise}
         >
           <DialogHeader>
@@ -399,9 +395,9 @@ export function BuilderPanel({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowCustomModal(true)}
-                className="text-xs font-semibold gap-1.5 border-dashed border-primary/50 text-primary hover:bg-primary-soft/50"
+                className="text-xs font-semibold gap-1.5"
               >
-                <Sparkles className="size-3.5" />
+                <Plus aria-hidden="true" className="size-3.5" />
                 Criar Personalizado
               </Button>
             </div>
@@ -410,9 +406,9 @@ export function BuilderPanel({
           {successMessage ? (
             <div
               role="status"
-              className="flex items-center gap-2 rounded-xl border border-success/25 bg-success/10 p-3 text-xs font-semibold text-success"
+              className="flex items-center gap-2 rounded-xl border border-border bg-muted/60 p-3 text-xs font-semibold text-foreground"
             >
-              <CheckCircle2 className="size-4 shrink-0" />
+              <CheckCircle2 aria-hidden="true" className="size-4 shrink-0 text-emerald-500" />
               {successMessage}
             </div>
           ) : null}
@@ -422,7 +418,7 @@ export function BuilderPanel({
             /* Formulário de Prescrição */
             <form onSubmit={handleConfirmPrescription} className="space-y-4 py-2">
               <div className="rounded-xl border border-primary/30 bg-primary-soft/30 p-3.5">
-                <p className="text-xs font-bold uppercase tracking-wider text-primary">Exercício Selecionado</p>
+                <p className="text-xs font-bold  text-primary">Exercício Selecionado</p>
                 <h4 className="text-base font-extrabold text-foreground mt-0.5">{selectedCatalogItem.name}</h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Músculo: {selectedCatalogItem.muscle} · Categoria: {selectedCatalogItem.category}
@@ -435,7 +431,7 @@ export function BuilderPanel({
                 </div>
               ) : null}
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="gp-prescription-fields">
                 <div className="grid gap-1.5">
                   <Label htmlFor="sets">Séries</Label>
                   <Input
@@ -484,7 +480,7 @@ export function BuilderPanel({
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="gp-workout-form-actions">
                 <Button
                   type="button"
                   variant="outline"
@@ -500,8 +496,8 @@ export function BuilderPanel({
                 >
                   {savingExercise ? (
                     <>
-                      <Loader2 className="size-4 animate-spin mr-2" />
-                      Salvando...
+                      <Loader2 aria-hidden="true" className="size-4 animate-spin mr-2" />
+                      Salvando…
                     </>
                   ) : (
                     "Salvar na Ficha"
@@ -511,19 +507,19 @@ export function BuilderPanel({
             </form>
           ) : (
             /* Lista do Catálogo */
-            <div className="space-y-3 flex-1 overflow-hidden flex flex-col">
+            <div className="gp-catalog-picker space-y-3 flex-1 flex flex-col">
               <form onSubmit={handleSearchSubmit} className="space-y-2">
                 <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    value={catalogQuery}
+                    id="workout-catalog-query" name="catalogSearch" aria-label="Buscar por nome ou músculo" autoComplete="off" value={catalogQuery}
                     onChange={(e) => setCatalogQuery(e.target.value)}
-                    placeholder="Buscar por nome ou músculo..."
+                    placeholder="Nome ou músculo…"
                     className="pl-9 h-10"
                   />
                 </div>
-                <Button type="submit" size="sm" className="h-10 px-4">
+                <Button type="submit" size="sm" className="h-10 px-4" disabled={loadingCatalog}>
                   Buscar
                 </Button>
                 </div>
@@ -542,11 +538,11 @@ export function BuilderPanel({
 
               {loadingCatalog ? (
                 <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
-                  <Loader2 className="size-6 animate-spin text-primary mb-2" />
-                  <p className="text-xs font-semibold">Buscando exercícios no catálogo...</p>
+                  <Loader2 aria-hidden="true" className="size-6 animate-spin text-primary mb-2" />
+                  <p className="text-xs font-semibold">Buscando exercícios no catálogo…</p>
                 </div>
               ) : (
-                <div className="max-h-80 space-y-2 overflow-y-auto pr-1 flex-1">
+                <div className="gp-catalog-results space-y-2 overflow-y-auto pr-1 flex-1">
                   {filteredCatalog.map((item) => {
                     const alreadyAdded = addedExerciseNames.has(item.name.trim().toLocaleLowerCase("pt-BR"));
                     return (
@@ -556,14 +552,14 @@ export function BuilderPanel({
                       onClick={() => handleSelectToPrescribe(item)}
                       disabled={alreadyAdded}
                       className={cn(
-                        "animate-rise flex w-full items-center justify-between rounded-xl border p-3 text-left transition-all duration-200",
+                        " flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors duration-200",
                         alreadyAdded
                           ? "cursor-default border-success/25 bg-success/5"
                           : "cursor-pointer border-border hover:border-primary/50 hover:bg-primary-soft/30",
                       )}
                     >
                       <div className="min-w-0 pr-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <p className="text-sm font-bold text-foreground">{item.name}</p>
                           {item.isCustom && (
                             <Badge variant="outline" className="text-[10px] bg-primary-soft text-primary border-primary/20">
@@ -582,7 +578,7 @@ export function BuilderPanel({
                           alreadyAdded ? "h-7 gap-1 bg-success/10 px-2 text-success" : "size-7 bg-primary/10 text-primary",
                         )}
                       >
-                        {alreadyAdded ? <><Check className="size-3.5" /> Adicionado</> : <Plus className="size-4" />}
+                        {alreadyAdded ? <><Check aria-hidden="true" className="size-3.5" /> Adicionado</> : <Plus aria-hidden="true" className="size-4" />}
                       </span>
                     </button>
                     );
@@ -608,7 +604,7 @@ export function BuilderPanel({
 
       {/* Modal Secundário: Criar Exercício Personalizado */}
       <Dialog open={showCustomModal} onOpenChange={setShowCustomModal}>
-        <DialogContent className="sm:max-w-lg" overlay="subtle" preventClose={creatingCustom}>
+        <DialogContent className="graphite-personal gp-workout-dialog sm:max-w-lg" overlay="subtle" preventClose={creatingCustom}>
           <form onSubmit={handleCustomSubmit}>
             <DialogHeader>
               <DialogTitle>Novo Exercício Personalizado</DialogTitle>
@@ -697,8 +693,8 @@ export function BuilderPanel({
               >
                 {creatingCustom ? (
                   <>
-                    <Loader2 className="size-4 animate-spin mr-2" />
-                    Salvando...
+                    <Loader2 aria-hidden="true" className="size-4 animate-spin mr-2" />
+                    Salvando…
                   </>
                 ) : (
                   "Cadastrar Exercício"
@@ -708,6 +704,11 @@ export function BuilderPanel({
           </form>
         </DialogContent>
       </Dialog>
+      <Toast
+        open={Boolean(successMessage)}
+        message={successMessage || ""}
+        onClose={onClearSuccess || (() => {})}
+      />
     </section>
   );
 }
@@ -723,8 +724,8 @@ function Metric({
 }) {
   return (
     <div>
-      <p className="flex items-center gap-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-        <Icon className="size-3 text-primary" /> {label}
+      <p className="flex items-center gap-1 text-[11px]  text-muted-foreground">
+        <Icon aria-hidden="true" className="size-3 text-primary" /> {label}
       </p>
       <p className="mt-0.5 font-semibold tabular-nums text-foreground">{value}</p>
     </div>

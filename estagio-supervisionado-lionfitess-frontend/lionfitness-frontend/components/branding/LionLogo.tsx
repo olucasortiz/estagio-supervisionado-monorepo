@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 export interface LionLogoProps {
@@ -23,25 +24,24 @@ export function LionLogo({ className, variant = "dark", size = "md", layout = "h
     lg: "h-10 w-10",
   };
 
+  const dimensions = {
+    sm: 24,
+    md: 32,
+    lg: 40,
+  };
+
   if (layout === "vertical") {
+    const vertDim = size === "lg" ? 56 : dimensions[size];
     return (
       <div className={cn("flex flex-col items-center text-center font-semibold tracking-tight", textColor, className)}>
-        <svg
-          viewBox="0 0 32 32"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className={cn("shrink-0 mb-3", size === "lg" ? "h-14 w-14" : iconSizes[size])}
-          aria-hidden="true"
-        >
-          <rect width="32" height="32" rx="8" fill="currentColor" className={accentColor} />
-          <path
-            d="M8 24c0-4.418 3.582-8 8-8s8 3.582 8 8M10 13c0-2.209 1.791-4 4-4s4 1.791 4 4"
-            stroke="white"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-          />
-          <circle cx="22" cy="11" r="2.5" fill="white" />
-        </svg>
+        <Image
+          src="/03-LOGO-ORIGINAL-LION.png"
+          alt="Lion Fitness"
+          width={vertDim}
+          height={vertDim}
+          className={cn("shrink-0 mb-3 rounded-lg object-contain shadow-sm", size === "lg" ? "h-14 w-14" : iconSizes[size])}
+          priority
+        />
         <div className={cn("flex items-center justify-center", sizeClasses[size])}>
           <span>Lion</span>
           <span className={accentColor}>Fitness</span>
@@ -52,22 +52,14 @@ export function LionLogo({ className, variant = "dark", size = "md", layout = "h
 
   return (
     <div className={cn("flex items-center font-semibold tracking-tight", textColor, sizeClasses[size], className)}>
-      <svg
-        viewBox="0 0 32 32"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className={cn("shrink-0", iconSizes[size])}
-        aria-hidden="true"
-      >
-        <rect width="32" height="32" rx="8" fill="currentColor" className={accentColor} />
-        <path
-          d="M8 24c0-4.418 3.582-8 8-8s8 3.582 8 8M10 13c0-2.209 1.791-4 4-4s4 1.791 4 4"
-          stroke="white"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
-        <circle cx="22" cy="11" r="2.5" fill="white" />
-      </svg>
+      <Image
+        src="/03-LOGO-ORIGINAL-LION.png"
+        alt="Lion Fitness"
+        width={dimensions[size]}
+        height={dimensions[size]}
+        className={cn("shrink-0 rounded-lg object-contain shadow-sm", iconSizes[size])}
+        priority
+      />
       <span>Lion</span>
       <span className={accentColor}>Fitness</span>
     </div>

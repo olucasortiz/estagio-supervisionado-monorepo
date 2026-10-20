@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { getNewMembersReport } from "../../services/api";
 import PageHeader from "../ui/PageHeader";
-import DashboardCard from "../ui/DashboardCard";
+import { ReportMetrics, ReportState } from "./ReportPresentation";
 import DataTable from "../ui/DataTable";
 import StatusBadge from "../ui/StatusBadge";
 
@@ -145,60 +145,52 @@ export default function NewMembersReport() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="gp-registry gp-report">
       <PageHeader
         title="Novos Alunos"
         subtitle="Alunos cadastrados em um período específico"
         breadcrumb={<><span>Relatórios</span><span style={{ opacity: 0.4 }}>›</span><span>Novos Alunos</span></>}
         action={
-          <div style={{ display: "flex", gap: "var(--space-2)", alignItems: "center" }}>
+          <div className="gp-report-actions">
             {generated && members.length > 0 && (
               <button className="btn btn-outline" onClick={exportToPdf} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+                <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ flexShrink: 0 }}>
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
                 Exportar PDF
               </button>
             )}
             <button className="btn btn-primary" onClick={generate} disabled={loading} id="btn-gerar-novos-alunos">
-              {loading ? "Gerando..." : "Gerar Relatório"}
+              {loading ? "Gerando…" : "Gerar Relatório"}
             </button>
           </div>
         }
       />
 
       {/* Filtros */}
-      <div className="card card-md" style={{ marginBottom: 20 }}>
+      <section className="card gp-report-filters" aria-label="Filtros do relatório">
+        <h2>Filtros da consulta</h2>
         <div style={{ display: "flex", gap: 16, alignItems: "flex-end", flexWrap: "wrap" }}>
           <div className="form-field" style={{ flex: 1, minWidth: 160 }}>
-            <label className="label">Data inicial</label>
-            <input className="input" type="date" value={di} onChange={(e) => setDi(e.target.value)} />
+            <label className="label" htmlFor="newmembers-di">Data inicial</label>
+            <input id="newmembers-di" name="di" disabled={loading} autoComplete="off" className="input" type="date" value={di} onChange={(e) => setDi(e.target.value)} />
           </div>
           <div className="form-field" style={{ flex: 1, minWidth: 160 }}>
-            <label className="label">Data final</label>
-            <input className="input" type="date" value={df} onChange={(e) => setDf(e.target.value)} />
+            <label className="label" htmlFor="newmembers-df">Data final</label>
+            <input id="newmembers-df" name="df" disabled={loading} autoComplete="off" className="input" type="date" value={df} onChange={(e) => setDf(e.target.value)} />
           </div>
-          {error && <p className="feedback-error" style={{ flex: "100%", margin: 0 }}>{error}</p>}
+          {error && <p role="alert" className="feedback-error" style={{ flex: "100%", margin: 0 }}>{error}</p>}
         </div>
-      </div>
+      </section>
 
       {/* KPI cards */}
       {generated && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 20 }}>
-          <DashboardCard value={members.length} label="Novos alunos no período" accentColor="#22C55E" icon="👥" />
-          <DashboardCard value={avgPerDay} label="Média por dia" accentColor="#3B82F6" icon="📅" />
-          <DashboardCard
-            value={members.filter(m => m.active !== false).length}
-            label="Alunos ativos"
-            accentColor="#C0392B"
-            icon="✅"
-          />
-        </div>
+        <ReportMetrics items={[{label:"Novos alunos no período",value:members.length},{label:"Média por dia",value:avgPerDay},{label:"Alunos ativos",value:members.filter(m => m.active !== false).length}]} />
       )}
 
       {/* Barra visual de proporção */}
       {generated && members.length > 0 && (
-        <div className="card card-md" style={{ marginBottom: 20 }}>
+        <div className="card gp-report-chart">
           <p style={{ fontSize: "var(--font-xs)", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
             Distribuição por status
           </p>
@@ -209,8 +201,8 @@ export default function NewMembersReport() {
             return (
               <div>
                 <div style={{ display: "flex", height: 10, borderRadius: 999, overflow: "hidden", background: "var(--bg-subtle)" }}>
-                  <div style={{ width: `${pct}%`, background: "#22C55E", transition: "width 0.5s ease" }} />
-                  <div style={{ flex: 1, background: "#E2E8F0" }} />
+                  <div style={{ width: `${pct}%`, background: "var(--success-text)" }} />
+                  <div style={{ flex: 1, background: "var(--border-strong)" }} />
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
                   <span style={{ fontSize: "var(--font-xs)", color: "var(--success-text)", fontWeight: 600 }}>✓ Ativos: {ativos} ({pct}%)</span>
@@ -222,13 +214,16 @@ export default function NewMembersReport() {
         </div>
       )}
 
+      {!generated && <ReportState busy={loading} failed={!!error} />}
       {/* Tabela */}
       {generated && (
-        <div className="card card-md">
+        <section className="card gp-registry-panel gp-report-results" aria-label="Resultado do relatório">
+          <div className="gp-registry-panel-heading"><h2>Resultado detalhado</h2><p>Use a busca para localizar registros nesta consulta.</p></div>
           <DataTable
             data={members}
             loading={loading}
             keyField="memberId"
+            caption="Novos alunos"
             searchPlaceholder="Buscar por nome, CPF ou e-mail..."
             searchFields={["name", "cpf", "email"]}
             emptyTitle="Nenhum aluno novo no período"
@@ -241,7 +236,7 @@ export default function NewMembersReport() {
               { key: "active", label: "Status", render: (r) => <StatusBadge status={r.active === false ? "Inativo" : "Ativo"} /> },
             ]}
           />
-        </div>
+        </section>
       )}
     </div>
   );

@@ -4,7 +4,7 @@ import { useState } from "react";
 import PageHeader from "../../ui/PageHeader";
 import DataTable from "../../ui/DataTable";
 import Modal from "../../ui/Modal";
-import DashboardCard from "../../ui/DashboardCard";
+import FinanceMetrics from "../../admin/FinanceMetrics";
 import StatusBadge from "../../ui/StatusBadge";
 import Combobox from "../../ui/Combobox";
 
@@ -15,21 +15,22 @@ function SubscriptionFormModal({ open, onClose, form, onChange, onSubmit, saving
     <Modal
       open={open}
       onClose={onClose}
+      preventClose={!!saving}
       title={isEditing ? "Editar Assinatura" : "Nova Assinatura"}
       subtitle={isEditing ? "Atualize a assinatura" : "Vincule um aluno a um plano"}
       footer={
         <>
-          <button className="btn btn-ghost" onClick={onClose} type="button">Cancelar</button>
+          <button className="btn btn-ghost" onClick={onClose} disabled={saving} type="button">Cancelar</button>
           <button className="btn btn-primary" onClick={onSubmit} disabled={saving} type="button">
             {saving ? "Salvando..." : isEditing ? "Salvar" : "Criar assinatura"}
           </button>
         </>
       }
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
+      <fieldset disabled={saving} className="gp-registry-fields" aria-busy={!!saving}>
         <div className="form-field">
-          <label className="label">Aluno *</label>
-          <Combobox
+          <span className="label">Aluno *</span>
+          <Combobox ariaLabel="Aluno" disabled={saving}
             items={data.members}
             value={form.memberId}
             onChange={(id) => onChange("memberId", id)}
@@ -42,8 +43,8 @@ function SubscriptionFormModal({ open, onClose, form, onChange, onSubmit, saving
           />
         </div>
         <div className="form-field">
-          <label className="label">Plano *</label>
-          <Combobox
+          <span className="label">Plano *</span>
+          <Combobox ariaLabel="Plano" disabled={saving}
             items={data.plans}
             value={form.planId}
             onChange={(id) => onChange("planId", id)}
@@ -61,8 +62,8 @@ function SubscriptionFormModal({ open, onClose, form, onChange, onSubmit, saving
           />
         </div>
         <div className="form-field">
-          <label className="label">Data de início *</label>
-          <input className="input" type="date" value={form.startDate} onChange={(e) => onChange("startDate", e.target.value)} required />
+          <label className="label" htmlFor="subscriptions-startDate">Data de início *</label>
+            <input id="subscriptions-startDate" className="input" type="date" value={form.startDate} onChange={(e) => onChange("startDate", e.target.value)} required />
         </div>
 
         {/* Previsão de término */}
@@ -79,9 +80,9 @@ function SubscriptionFormModal({ open, onClose, form, onChange, onSubmit, saving
         )}
 
         {feedback && (
-          <p className={feedback.includes("sucesso") ? "feedback-success" : "feedback-error"}>{feedback}</p>
+          <p role="status" className={feedback.includes("sucesso") ? "feedback-success" : "feedback-error"}>{feedback}</p>
         )}
-      </div>
+      </fieldset>
     </Modal>
   );
 }
@@ -107,8 +108,8 @@ export default function SubscriptionsSection({
 
   const handleSubmit = async () => {
     if (saving?.subscriptions) return;
-    await onSubmitForm("subscriptions", null, forms.subscriptions);
-    if (!feedback.subscriptions?.includes("Falha")) setModalOpen(false);
+    const saved = await onSubmitForm("subscriptions", null, forms.subscriptions);
+    if (saved) setModalOpen(false);
   };
 
   // KPI
@@ -118,7 +119,7 @@ export default function SubscriptionsSection({
   const canceladas = data.subscriptions.filter((s) => (s.status || "").toUpperCase() === "CANCELED").length;
 
   return (
-    <div className="animate-fade-in">
+    <div className="gp-registry gp-finance">
       <PageHeader
         title="Assinaturas"
         subtitle="Gerencie os vínculos entre alunos e planos"
@@ -133,18 +134,19 @@ export default function SubscriptionsSection({
         }
       />
 
+      {!modalOpen && feedback.subscriptions && !feedback.subscriptions.includes("sucesso") && <p className="gp-registry-notice" role="status">{feedback.subscriptions}</p>}
       {/* KPI cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 16, marginBottom: 20 }}>
-        <DashboardCard value={total}     label="Total"     accentColor="#3B82F6" icon="📋" />
-        <DashboardCard value={ativas}    label="Ativas"    accentColor="#22C55E" icon="✅" />
-        <DashboardCard value={expiradas} label="Expiradas" accentColor="#F59E0B" icon="⏰" />
-        <DashboardCard value={canceladas} label="Canceladas" accentColor="#EF4444" icon="❌" />
-      </div>
+      <FinanceMetrics items={[
+        {label:"Total de assinaturas",value:total}, {label:"Ativas",value:ativas},
+        {label:"Expiradas",value:expiradas}, {label:"Canceladas",value:canceladas},
+      ]} />
 
-      <div className="card card-md">
+      <div className="card gp-registry-panel">
+        <div className="gp-registry-panel-heading"><h2>Assinaturas cadastradas</h2><p>Consulte vínculos, vigências e situação de cada assinatura.</p></div>
         <DataTable
           data={data.subscriptions}
           keyField="id"
+          caption="Assinaturas cadastradas"
           searchPlaceholder="Buscar por nome do aluno ou plano..."
           searchFields={["memberName", "planName", "status"]}
           emptyTitle="Nenhuma assinatura cadastrada"

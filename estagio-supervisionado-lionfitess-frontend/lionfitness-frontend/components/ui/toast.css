@@ -1,0 +1,12 @@
+.lf-toast { position:fixed; top:max(88px,calc(env(safe-area-inset-top) + 16px)); right:max(24px,env(safe-area-inset-right)); z-index:1500; display:flex; align-items:flex-start; gap:12px; width:min(380px,calc(100vw - 32px)); padding:16px 12px 16px 16px; color:var(--foreground); background:var(--card); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 32px #0002; font-family:var(--font-inter),system-ui,sans-serif; animation:lf-toast-enter 180ms ease-out; }
+.lf-toast-icon { display:grid; place-items:center; flex-shrink:0; width:28px; height:28px; border:1px solid var(--border); border-radius:50%; color:var(--foreground); background:var(--muted); }
+.lf-toast[data-kind="error"] .lf-toast-icon { color:var(--error-text,var(--destructive)); }
+.lf-toast-copy { flex:1; min-width:0; padding-top:2px; }
+.lf-toast-copy strong { display:block; font-size:14px; line-height:1.4; font-weight:600; letter-spacing:normal; }
+.lf-toast-copy p { margin:5px 0 0; color:var(--muted-foreground); font-size:14px; line-height:1.5; font-weight:400; overflow-wrap:anywhere; }
+.lf-toast-close { display:grid; place-items:center; flex-shrink:0; width:44px; height:44px; margin-top:-8px; color:var(--muted-foreground); border-radius:8px; cursor:pointer; touch-action:manipulation; transition:background-color 150ms,color 150ms; }
+.lf-toast-close:hover { background:var(--muted); color:var(--foreground); }
+.lf-toast-close:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
+@keyframes lf-toast-enter { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+@media(max-width:639px) { .lf-toast { right:16px; top:max(80px,calc(env(safe-area-inset-top) + 12px)); } }
+@media(prefers-reduced-motion:reduce) { .lf-toast { animation:none; }.lf-toast-close { transition:none; } }

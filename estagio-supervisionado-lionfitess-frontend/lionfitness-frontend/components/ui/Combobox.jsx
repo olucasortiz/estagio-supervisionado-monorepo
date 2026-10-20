@@ -25,6 +25,7 @@ export default function Combobox({
   getSubLabel,
   getId,
   placeholder = "Buscar...",
+  ariaLabel,
   required = false,
   disabled = false,
   emptyMessage = "Nenhum resultado encontrado.",
@@ -87,6 +88,7 @@ export default function Combobox({
 
   const selectItem = (item) => {
     onChange(getId(item));
+    requestAnimationFrame(() => containerRef.current?.querySelector(' [role="combobox"]')?.focus());
     setQuery("");
     setOpen(false);
     setHighlighted(-1);
@@ -101,6 +103,7 @@ export default function Combobox({
   };
 
   const handleKeyDown = (e) => {
+    if (e.target.closest("button")) return;
     if (!open) {
       if (["ArrowDown", "ArrowUp", "Enter", " "].includes(e.key)) {
         e.preventDefault();
@@ -125,6 +128,9 @@ export default function Combobox({
         }
         break;
       case "Escape":
+        e.stopPropagation();
+        e.preventDefault();
+        requestAnimationFrame(() => containerRef.current?.querySelector('[role="combobox"]')?.focus());
         setOpen(false);
         setQuery("");
         setHighlighted(-1);
@@ -145,6 +151,9 @@ export default function Combobox({
       {/* Trigger — mostra o item selecionado ou um campo de busca */}
       <div
         role="combobox"
+        tabIndex={disabled || open ? -1 : 0}
+        aria-label={ariaLabel || placeholder}
+        aria-disabled={disabled}
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-controls={listboxId}
@@ -191,6 +200,8 @@ export default function Combobox({
             }}
             placeholder={placeholder}
             disabled={disabled}
+            aria-label={ariaLabel || placeholder}
+            aria-activedescendant={highlighted >= 0 ? `${listboxId}-option-${highlighted}` : undefined}
             aria-autocomplete="list"
             aria-controls={listboxId}
             style={{
@@ -227,7 +238,7 @@ export default function Combobox({
             type="button"
             onClick={clearSelection}
             aria-label="Limpar seleção"
-            tabIndex={-1}
+            tabIndex={0}
             style={{
               flexShrink: 0,
               background: "none",

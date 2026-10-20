@@ -53,7 +53,7 @@ export function getStoredAuthToken() {
     }
 
     const parsed = JSON.parse(rawSession);
-    return typeof parsed?.token === "string" && parsed.token ? parsed.token : null;
+    return typeof parsed?.token === "string" && parsed.token && parsed.token !== "local-visual-fixture" ? parsed.token : null;
   } catch {
     return null;
   }
@@ -92,8 +92,35 @@ export async function replyToNotification(notificationId, payload) {
   return createResource(`/notifications/${notificationId}/reply`, payload, "Não foi possível enviar a resposta.");
 }
 
+// Preserve HTTP status so callers can pause unavailable endpoints without unsafe fallbacks.
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+export async function getConversation(memberId) {
+  const query = memberId ? `?memberId=${encodeURIComponent(memberId)}` : "";
+  return getResource(`/notifications/conversation${query}`, "Não foi possível carregar a conversa.");
+}
+
+export async function sendChatMessage(payload) {
+  return createResource("/notifications/conversation/send", payload, "Não foi possível enviar a mensagem.");
+}
+
+export async function markConversationRead(memberId) {
+  const query = memberId ? `?memberId=${encodeURIComponent(memberId)}` : "";
+  return patchResource(`/notifications/conversation/read${query}`, undefined, "Não foi possível atualizar a conversa.");
+}
+
 export async function getMyWorkouts() {
   return getResource("/workouts/me", "Não foi possível carregar seus treinos.");
+}
+
+export async function getMyPersonalTrainer() {
+  return getResource("/members/me/personal-trainer", "Não foi possível carregar o nome do seu personal.");
 }
 
 export async function getMemberProfile() {
@@ -206,7 +233,7 @@ async function requestResource(path, options, errorMessage) {
       }
     }
 
-    throw new Error(backendMessage || errorMessage);
+    throw new ApiError(backendMessage || errorMessage, response.status);
   }
 
   if (response.status === 204) {

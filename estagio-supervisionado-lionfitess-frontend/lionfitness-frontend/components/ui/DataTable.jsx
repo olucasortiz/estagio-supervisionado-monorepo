@@ -31,6 +31,7 @@ export default function DataTable({
   emptyTitle,
   emptyDescription,
   headerRight,
+  caption = "Registros",
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -53,8 +54,9 @@ export default function DataTable({
     }
     if (sortKey) {
       result = [...result].sort((a, b) => {
-        const va = a[sortKey] ?? "";
-        const vb = b[sortKey] ?? "";
+        const column = columns.find((item) => item.key === sortKey);
+        const va = column?.sortValue ? column.sortValue(a) : a[sortKey] ?? "";
+        const vb = column?.sortValue ? column.sortValue(b) : b[sortKey] ?? "";
         const cmp = String(va).localeCompare(String(vb), "pt-BR", { numeric: true });
         return sortDir === "asc" ? cmp : -cmp;
       });
@@ -78,7 +80,7 @@ export default function DataTable({
   const colCount = columns.length + (actions ? 1 : 0);
 
   return (
-    <div>
+    <div aria-busy={loading}>
       {/* Header bar */}
       {(searchable || headerRight) && (
         <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center", marginBottom: "var(--space-4)", flexWrap: "wrap" }}>
@@ -109,7 +111,7 @@ export default function DataTable({
 
       {/* Count */}
       {!loading && (
-        <p style={{ fontSize: "var(--font-xs)", color: "var(--text-muted)", marginBottom: "var(--space-2)", fontWeight: 500 }}>
+        <p role="status" style={{ fontSize: "var(--font-xs)", color: "var(--text-muted)", marginBottom: "var(--space-2)", fontWeight: 500 }}>
           {filtered.length} {filtered.length === 1 ? "registro" : "registros"}
           {search && ` para "${search}"`}
         </p>
@@ -118,26 +120,21 @@ export default function DataTable({
       {/* Table */}
       <div className="table-wrapper">
         <table className="table">
+          <caption className="sr-only">{caption}</caption>
           <thead>
             <tr>
-              <th style={{ width: 44 }}>#</th>
+              <th scope="col" style={{ width: 44 }}>#</th>
               {columns.map((col) => (
                 <th
                   key={col.key}
-                  onClick={col.sortable !== false && !col.render ? () => handleSort(col.key) : undefined}
-                  style={{ cursor: col.sortable !== false && !col.render ? "pointer" : "default", userSelect: "none", whiteSpace: "nowrap" }}
+                  scope="col"
+                  aria-sort={sortKey === col.key ? (sortDir === "asc" ? "ascending" : "descending") : undefined}
+                  style={{ whiteSpace: "nowrap" }}
                 >
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                    {col.label}
-                    {col.sortable !== false && !col.render && (
-                      <span style={{ opacity: sortKey === col.key ? 1 : 0.3, fontSize: 10 }}>
-                        {sortKey === col.key && sortDir === "desc" ? "▼" : "▲"}
-                      </span>
-                    )}
-                  </span>
+                  {col.sortable !== false && (!col.render || col.sortValue) ? <button type="button" onClick={() => handleSort(col.key)} aria-label={`Ordenar por ${col.label}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 0", font: "inherit", color: "inherit" }}>{col.label}<span aria-hidden="true" style={{ opacity: sortKey === col.key ? 1 : 0.4, fontSize: 10 }}>{sortKey === col.key && sortDir === "desc" ? "▼" : "▲"}</span></button> : col.label}
                 </th>
               ))}
-              {actions && <th style={{ textAlign: "right" }}>Ações</th>}
+              {actions && <th scope="col" style={{ textAlign: "right" }}>Ações</th>}
             </tr>
           </thead>
           <tbody>
@@ -147,19 +144,19 @@ export default function DataTable({
               <tr>
                 <td colSpan={colCount + 1}>
                   <EmptyState
-                    title={emptyTitle || (search ? "Nenhum resultado para sua busca" : "Nenhum registro encontrado")}
-                    description={emptyDescription || (search ? `Tente outros termos.` : undefined)}
+                    title={search ? "Nenhum resultado para sua busca" : emptyTitle || "Nenhum registro encontrado"}
+                    description={search ? "Tente outro termo ou ajuste os filtros." : emptyDescription}
                   />
                 </td>
               </tr>
             ) : (
               paginated.map((row, idx) => (
-                <tr key={row[keyField] ?? idx} className="animate-fade-in">
+                <tr key={row[keyField] ?? idx} className="data-row">
                   <td style={{ color: "var(--text-muted)", fontWeight: 500, fontSize: "var(--font-xs)" }}>
                     {(safePage - 1) * pageSize + idx + 1}
                   </td>
                   {columns.map((col) => (
-                    <td key={col.key}>
+                    <td key={col.key} data-label={col.label}>
                       {col.render ? col.render(row) : (row[col.key] ?? "—")}
                     </td>
                   ))}
@@ -179,9 +176,9 @@ export default function DataTable({
 
       {/* Pagination */}
       {!loading && totalPages > 1 && (
-        <div className="pagination">
-          <button className="page-btn" disabled={safePage === 1} onClick={() => setPage(1)}>«</button>
-          <button className="page-btn" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹</button>
+        <nav className="pagination" aria-label="Paginação da tabela">
+          <button type="button" className="page-btn" aria-label="Primeira página" disabled={safePage === 1} onClick={() => setPage(1)}>«</button>
+          <button type="button" className="page-btn" aria-label="Página anterior" disabled={safePage === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹</button>
           {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
             let p;
             if (totalPages <= 5) p = i + 1;
@@ -189,14 +186,14 @@ export default function DataTable({
             else if (safePage >= totalPages - 2) p = totalPages - 4 + i;
             else p = safePage - 2 + i;
             return (
-              <button key={p} className={`page-btn ${safePage === p ? "active" : ""}`} onClick={() => setPage(p)}>
+              <button type="button" key={p} aria-label={`Página ${p}`} aria-current={safePage === p ? "page" : undefined} className={`page-btn ${safePage === p ? "active" : ""}`} onClick={() => setPage(p)}>
                 {p}
               </button>
             );
           })}
-          <button className="page-btn" disabled={safePage === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>›</button>
-          <button className="page-btn" disabled={safePage === totalPages} onClick={() => setPage(totalPages)}>»</button>
-        </div>
+          <button type="button" className="page-btn" aria-label="Próxima página" disabled={safePage === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>›</button>
+          <button type="button" className="page-btn" aria-label="Última página" disabled={safePage === totalPages} onClick={() => setPage(totalPages)}>»</button>
+        </nav>
       )}
     </div>
   );

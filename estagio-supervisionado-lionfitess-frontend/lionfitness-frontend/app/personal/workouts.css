@@ -1,0 +1,82 @@
+/* Focus Field adapted from MicroKit, MIT. Source and license: frontend-design/references/microkit/. */
+.gp-workout { display:flex; flex-direction:column; gap:24px; min-width:0; }
+.gp-workout .surface-card { border:1px solid var(--border); border-radius:12px; background:var(--card); box-shadow:none; }
+.gp-workout-banner { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:24px; }
+.gp-workout-banner h2 { font-size:24px; line-height:1.4; font-weight:700; overflow-wrap:anywhere; }
+.gp-workout-banner > div:first-child { min-width:0; }
+.gp-workout-banner > div:last-child { flex-shrink:0; }
+.gp-sheets-grid { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(280px,1fr); gap:24px; }
+.gp-sheet-detail, .gp-sheet-list { padding:24px; min-width:0; }
+.gp-sheet-detail h3 { overflow-wrap:anywhere; }
+.gp-sheet-facts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; padding-block:20px; border-block:1px solid var(--border); }
+.gp-sheet-facts dt { font-size:12px; color:var(--muted-foreground); margin-bottom:6px; }
+.gp-sheet-facts dd { font-size:14px; font-weight:600; overflow-wrap:anywhere; }
+.gp-sheet-choice { width:100%; text-align:left; min-height:76px; box-shadow:none; }
+.gp-sheet-choice[aria-pressed="true"] { background:var(--muted); border-color:var(--input); }
+.gp-sheet-choice[aria-pressed="true"] p:first-child { color:var(--foreground); }
+.gp-sheet-choice p { white-space:normal; overflow-wrap:anywhere; }
+.gp-sheet-detail ul { flex-direction:column; }
+.gp-sheet-detail li { justify-content:flex-start; flex-wrap:wrap; }
+.gp-workout :is(button,input,select,textarea), .gp-workout-dialog :is(button,input,select,textarea) { min-height:44px; border-radius:8px; box-shadow:none; }
+.gp-workout button, .gp-workout-dialog button { transition:background-color 150ms,border-color 150ms,color 150ms; }
+.gp-workout-dialog { border-radius:12px; box-shadow:none; background:var(--card); color:var(--foreground); font-size:14px; overflow-wrap:anywhere; }
+.gp-workout-dialog :is(h2,h3,h4) { font-family:var(--font-display); font-weight:700; }
+.gp-workout-dialog h2 { padding-right:28px; font-size:20px; }
+.gp-workout-dialog [class*="absolute right-4"] { width:44px; height:44px; top:8px; right:8px; display:grid; place-items:center; }
+.gp-workout-dialog :is(input,textarea,select), .gp-workout :is(input,textarea,select) { width:100%; color:var(--foreground); background:var(--card); border-color:var(--input); font-size:14px; }
+.gp-workout-dialog label, .gp-workout label { color:var(--text-secondary); font-size:12px; font-weight:500; }
+.gp-workout-dialog :is(button,input,select,textarea,[tabindex]):focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+.gp-workout-dialog :is(button,a) { touch-action:manipulation; }
+.gp-workout-dialog button:disabled { cursor:not-allowed; }
+[data-dialog-layer]:has(> .gp-workout-dialog) > [aria-hidden="true"] { background:#0009; backdrop-filter:none; } /* taste-skill-ignore: this removes the inherited blur from these overlays. */
+.gp-workout-dialog :is(input,textarea), .gp-workout :is(input,textarea) { transition:border-color 160ms,box-shadow 160ms; }
+.gp-workout-dialog :is(input,textarea):focus-visible, .gp-workout :is(input,textarea):focus-visible { border-color:var(--ring); box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 20%,transparent); } /* taste-skill-ignore: MicroKit keyboard focus indicator, not a resting shadow. */
+.gp-workout-error, .gp-workout [role="alert"], .gp-workout-dialog [role="alert"] { color:var(--error-text); font-size:13px; line-height:1.6; }
+.gp-workout-dialog [role="alert"] { padding:12px; border:1px solid var(--border); border-radius:8px; background:var(--error-bg); }
+.gp-workout [role="status"], .gp-workout-dialog [role="status"] { color:var(--success-text); }
+.gp-sheet-edit > p:first-child { font-family:var(--font-display); font-size:18px; font-weight:600; }
+.gp-exercise-row { display:flex; flex-wrap:wrap; align-items:center; gap:20px; padding:20px 24px; }
+.gp-exercise-row > div:first-child { width:28px; height:28px; color:var(--muted-foreground); background:transparent; }
+.gp-exercise-metrics { display:flex; align-items:flex-start; gap:28px; }
+.gp-exercise-metrics > div { min-width:70px; }
+.gp-exercise-metrics .gp-exercise-notes { max-width:280px; min-width:0; }
+.gp-exercise-metrics svg { display:none; }
+.gp-workout-wrap { overflow-wrap:anywhere; white-space:pre-wrap; }
+.gp-prescription-fields { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.gp-workout-form-actions { display:flex; justify-content:flex-end; flex-wrap:wrap; gap:12px; padding-top:12px; }
+.gp-library-dialog { min-height:0; }
+.gp-catalog-picker { min-height:0; overflow-y:auto; overscroll-behavior:contain; }
+.gp-catalog-results { min-height:100px; max-height:320px; }
+.gp-workout-dialog button[class*="text-left"] { border-radius:8px; }
+.gp-workout-dialog button[class*="text-left"] p { overflow-wrap:anywhere; }
+@media(max-width:1023px) {
+ .gp-sheets-grid { grid-template-columns:minmax(0,1fr); }
+}
+@media(max-width:639px) {
+ .gp-workout { gap:20px; }
+ .gp-workout-banner { align-items:stretch; flex-direction:column; padding:20px 16px; gap:16px; }
+ .gp-workout-banner h2 { font-size:21px; }
+ .gp-workout-banner > div:last-child { flex-wrap:wrap; }
+ .gp-workout-banner > div:last-child > button { flex:1; }
+ .gp-sheet-detail, .gp-sheet-list { padding:20px 16px; }
+ .gp-sheet-facts { gap:16px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .gp-exercise-row { gap:12px; padding:20px 16px; }
+ .gp-exercise-metrics { width:100%; flex-wrap:wrap; gap:16px 24px; padding-top:12px; border-top:1px solid var(--border); }
+ .gp-exercise-metrics .gp-exercise-notes { max-width:none; flex-basis:100%; }
+ .gp-prescription-fields { grid-template-columns:1fr; gap:12px; }
+ .gp-workout-form-actions { flex-direction:column; align-items:stretch; }
+ .gp-workout-form-actions button { width:100%; white-space:normal; }
+ .gp-workout-dialog { padding:20px 16px; }
+ .gp-workout-dialog :is(input,textarea,select) { font-size:16px; }
+ .gp-workout-dialog form { min-width:0; }
+ .gp-workout-dialog button { white-space:normal; }
+ .gp-workout-dialog .flex-col-reverse { flex-direction:column; }
+ .gp-workout-dialog .flex-col-reverse > button { width:100%; }
+}
+@media(prefers-reduced-motion:reduce) {
+ .gp-workout :is(button,input,textarea), .gp-workout-dialog :is(button,input,textarea) { transition:none; }
+ .gp-workout .animate-spin, .gp-workout-dialog .animate-spin, .gp-workout-dialog { animation:none; }
+}
+
+:is(.gp-workout,.gp-workout-dialog) .text-success { color:var(--success-text); }
+:is(.gp-workout,.gp-workout-dialog) .text-destructive { color:var(--error-text); }

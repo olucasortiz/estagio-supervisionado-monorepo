@@ -142,6 +142,15 @@ public class MemberController {
         return memberService.cancel(id, request);
     }
 
+    @GetMapping("/me/personal-trainer")
+    @PreAuthorize("hasAnyRole('OPERATIONAL', 'USER')")
+    public ResponseEntity<com.lionfitness.backend.member.dto.LinkedPersonalTrainerResponse> getMyPersonalTrainer(Authentication authentication) {
+        User user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado."));
+        var trainer = memberService.findMyPersonalTrainer(user.id());
+        return trainer == null ? ResponseEntity.noContent().build() : ResponseEntity.ok(trainer);
+    }
+
     @GetMapping("/me")
     @PreAuthorize("hasAnyRole('OPERATIONAL', 'USER', 'ADMIN')")
     public ResponseEntity<Member> getMyProfile(Authentication authentication) {

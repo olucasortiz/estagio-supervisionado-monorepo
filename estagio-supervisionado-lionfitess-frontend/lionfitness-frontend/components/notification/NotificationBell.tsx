@@ -170,9 +170,17 @@ export function NotificationBell({ canReply = false }: { canReply?: boolean }) {
                   <time className="text-xs text-muted-foreground" dateTime={notification.createdAt}>{formatDateTime(notification.createdAt)}</time>
                   <div className="flex items-center gap-1">
                     {!notification.read ? <Button type="button" variant="ghost" size="sm" onClick={() => void markRead(notification.id)}><Check className="size-4" /> Lida</Button> : null}
-                    {canReply && notification.type !== "PERSONAL_TRAINER_REPLY" ? (
-                      <Button type="button" variant="ghost" size="sm" onClick={() => { setReplyTarget(notification); setReplyMessage(""); }}><MessageSquareReply className="size-4" /> Responder</Button>
-                    ) : null}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setOpen(false);
+                        window.dispatchEvent(new CustomEvent("open-lion-chat"));
+                      }}
+                    >
+                      <MessageSquareReply className="size-4" /> Conversar
+                    </Button>
                   </div>
                 </div>
               </article>

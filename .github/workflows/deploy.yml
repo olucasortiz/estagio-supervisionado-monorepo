@@ -3,23 +3,55 @@ name: Deploy to AWS
 on:
   push:
     branches: [ master ]
+  workflow_dispatch:
+
+concurrency:
+  group: lion-production-frontend
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Deploy to EC2 via SSH
-        uses: appleboy/ssh-action@master
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: estagio-supervisionado-lionfitess-frontend/lionfitness-frontend/package-lock.json
+      - name: Build frontend
+        working-directory: estagio-supervisionado-lionfitess-frontend/lionfitness-frontend
+        env:
+          NEXT_PUBLIC_API_URL: https://lionfitness-sa.duckdns.org/api
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: |
+          npm ci
+          npm run build
+          cp -r public .next/standalone/public
+          mkdir -p .next/standalone/.next
+          cp -r .next/static .next/standalone/.next/static
+          cp ../../.github/scripts/deploy-frontend.py .next/standalone/deploy-frontend.py
+          tar -czf "$GITHUB_WORKSPACE/frontend-release.tgz" -C .next/standalone .
+      - name: Upload built release
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          source: frontend-release.tgz
+          target: /home/ubuntu/lion-deploy-input
+      - name: Activate frontend with rollback
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.AWS_HOST }}
           username: ${{ secrets.AWS_USER }}
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
-            cd estagio-supervisionado-monorepo/estagio-supervisionado-lionfitess-frontend/lionfitness-frontend
-            git pull origin master
-            npm install
-            npm run build
-            pm2 restart lion-frontend || PORT=3000 nohup npm run start &
+            set -eu
+            release="/home/ubuntu/lion-frontend-releases/${{ github.sha }}"
+            mkdir -p "$release"
+            tar -xzf /home/ubuntu/lion-deploy-input/frontend-release.tgz -C "$release"
+            python3 "$release/deploy-frontend.py" "$release"

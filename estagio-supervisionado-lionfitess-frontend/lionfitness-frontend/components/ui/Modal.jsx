@@ -18,14 +18,18 @@ export default function Modal({
   const overlayRef = useRef(null);
   const panelRef = useRef(null);
   const onCloseRef = useRef(onClose);
+  const preventCloseRef = useRef(preventClose);
   const titleId = useId();
 
   // Os formulários atualizam o estado a cada tecla e, consequentemente,
   // costumam receber uma nova referência de onClose. Mantemos a referência
-  // atual sem reiniciar o efeito que controla o foco do modal.
+  // atual sem reiniciar o efeito que controla o foco do modal. O mesmo vale
+  // para preventClose, que muda durante o salvamento: reiniciar o efeito
+  // perderia o elemento original para o retorno de foco.
   useEffect(() => {
     onCloseRef.current = onClose;
-  }, [onClose]);
+    preventCloseRef.current = preventClose;
+  }, [onClose, preventClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -33,7 +37,7 @@ export default function Modal({
     const previousOverflow = document.body.style.overflow;
     const previousActiveElement = document.activeElement;
     const handleKey = (event) => {
-      if (event.key === "Escape" && !preventClose) onCloseRef.current?.();
+      if (event.key === "Escape" && !preventCloseRef.current && !event.defaultPrevented && !event.target.closest?.('[role="combobox"][aria-expanded="true"]')) onCloseRef.current?.();
 
       if (event.key === "Tab" && panelRef.current) {
         const focusable = panelRef.current.querySelectorAll(
@@ -61,7 +65,7 @@ export default function Modal({
       document.body.style.overflow = previousOverflow;
       previousActiveElement?.focus?.();
     };
-  }, [open, preventClose]);
+  }, [open]);
 
   if (!open) return null;
 

@@ -1,7 +1,9 @@
 import { Archivo, Inter } from "next/font/google";
 import type { ReactNode } from "react";
+import "../graphite-tokens.css";
+import "./aluno.css";
 
-/* ── Fontes do Design System Lovable ── */
+/* ── Fontes do Portal do Aluno (Graphite Performance) ── */
 const archivo = Archivo({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
@@ -22,38 +24,16 @@ export const metadata = {
 };
 
 /**
- * Layout isolado da rota /aluno.
- *
- * Objetivos:
- * - Injetar Archivo (--font-archivo → font-display) e Inter como fontes ativas.
- * - Definir --font-display e --font-sans em escopo CSS local (#aluno-root)
- *   para que os componentes usem as fontes corretas sem interferência do admin.
- * - Sobrescrever o background e foreground globais com os tokens Lovable.
+ * Layout isolado da rota /aluno com Graphite Performance.
  */
 export default function AlunoLayout({ children }: { children: ReactNode }) {
   return (
     <div
       id="aluno-root"
-      className={`${archivo.variable} ${inter.variable}`}
-      style={
-        {
-          /* Tokens de fonte do Design System Lovable aplicados em escopo local */
-          "--font-display": `var(--font-archivo), "Archivo", ui-sans-serif, system-ui, sans-serif`,
-          "--font-sans": `var(--font-inter-aluno), "Inter", ui-sans-serif, system-ui, sans-serif`,
-
-          /* Background e foreground corretos (Lovable) */
-          background: "var(--background, #F8F9FB)",
-          color: "var(--foreground, #1E293B)",
-
-          /* Fonte padrão do corpo = Inter */
-          fontFamily: `var(--font-inter-aluno), "Inter", ui-sans-serif, system-ui, sans-serif`,
-
-          /* Altura mínima de tela completa */
-          minHeight: "100dvh",
-        } as React.CSSProperties
-      }
+      className={`graphite-aluno ${archivo.variable} ${inter.variable}`}
     >
       {children}
     </div>
   );
 }
+

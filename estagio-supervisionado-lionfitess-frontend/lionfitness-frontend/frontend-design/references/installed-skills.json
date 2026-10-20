@@ -1,0 +1,32 @@
+[
+  {
+    "directory": "frontend-design",
+    "path": "C:\\Users\\lucas\\.codex\\skills\\frontend-design\\SKILL.md",
+    "sha256": "D91970639E9F5C37682AC7AB60094D35F1C7C1F38D731BD56396563AEE10C1D3",
+    "installedOn": "2026-10-19"
+  },
+  {
+    "directory": "taste-skill",
+    "path": "C:\\Users\\lucas\\.codex\\skills\\taste-skill\\SKILL.md",
+    "sha256": "F1578B7D2D5A2294019E27FB03FA759B38A5F0325CC76FC20A6C424A4473066A",
+    "installedOn": "2026-10-19"
+  },
+  {
+    "directory": "web-design-guidelines",
+    "path": "C:\\Users\\lucas\\.codex\\skills\\web-design-guidelines\\SKILL.md",
+    "sha256": "F4647CA866A3ACCF763777F83E7682954F0187CD6BEA7EEA0399796652414E8F",
+    "installedOn": "2026-10-19"
+  },
+  {
+    "directory": "image-to-code",
+    "path": "C:\\Users\\lucas\\.codex\\skills\\image-to-code\\SKILL.md",
+    "sha256": "4C060A8064A8B13380BC2EF3D6E6A1D0B1E316AA093CD9807D0CE9E4EEB037FA",
+    "installedOn": "2026-10-19"
+  },
+  {
+    "directory": "playwright-cli",
+    "path": "C:\\Users\\lucas\\.codex\\skills\\playwright-cli\\SKILL.md",
+    "sha256": "9BBA755285A4C9AD72A4A41B9C7BAEF6FB516D329C0B44ED0573715F4479B906",
+    "installedOn": "2026-10-19"
+  }
+]

@@ -1,0 +1,16 @@
+/* Adapted from MicroKit Focus Field, MIT (Henrique Barone, 2026).
+ * Source: https://microkit.co/components/focus-input
+ * Original and full license: frontend-design/references/microkit/
+ * Adaptation: Lion tokens, existing controls, 160ms, visible keyboard outline retained.
+ */
+:is(:is(.graphite-admin, .graphite-personal) .gp-registry :is(input.input, textarea.input), .graphite-personal .gp-students-search):not(.input-error) {
+  box-shadow: 0 0 0 0 transparent;
+  transition: border-color 160ms cubic-bezier(.22, 1, .36, 1), box-shadow 160ms cubic-bezier(.22, 1, .36, 1);
+}
+:is(:is(.graphite-admin, .graphite-personal) .gp-registry :is(input.input, textarea.input), .graphite-personal .gp-students-search):not(.input-error):focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 20%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(:is(.graphite-admin, .graphite-personal) .gp-registry :is(input.input, textarea.input), .graphite-personal .gp-students-search) { transition: none; }
+}

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import Image from "next/image";
 import {
   ArrowLeft,
   ArrowRight,
@@ -13,6 +14,8 @@ import {
   QrCode,
   ShieldCheck,
   Sparkles,
+  AlertCircle,
+  RotateCcw,
 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -22,13 +25,13 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { NotificationBell } from "@/components/notification/NotificationBell";
 import { ContactPersonalDialog } from "@/components/notification/ContactPersonalDialog";
+import { FloatingChat } from "@/components/chat/FloatingChat";
 import {
   getMySubscription,
   getMyWorkouts,
   getMemberProfile,
-  getPersonalTrainers,
+  getMyPersonalTrainer,
 } from "@/services/api";
-import { cn } from "@/lib/utils";
 
 // ─── Tipos alinhados com o backend ───────────────────────────────────────────
 
@@ -210,11 +213,11 @@ export default function PlanoAlunoPage({
 
   const [selectedDayKey, setSelectedDayKey] = useState<string>(todayKey);
 
-  // Treino em andamento (interatividade do protótipo)
+  // Treino em andamento (interatividade da sessão)
   const [isTraining, setIsTraining] = useState(false);
   const [currentExerciseIdx, setCurrentExerciseIdx] = useState(0);
   const [currentSet, setCurrentSet] = useState(1);
-  const [restSecondsLeft, setRestSecondsLeft] = useState(42);
+  const [restSecondsLeft, setRestSecondsLeft] = useState(45);
   const [isResting, setIsResting] = useState(false);
   const [completedWorkoutsSession, setCompletedWorkoutsSession] = useState(0);
 
@@ -262,6 +265,8 @@ export default function PlanoAlunoPage({
   }, [onSubscriptionLoaded]);
 
   // 3. Carregar treinos reais
+  const [retryKey, setRetryKey] = useState(0);
+
   useEffect(() => {
     let active = true;
 
@@ -292,7 +297,13 @@ export default function PlanoAlunoPage({
     return () => {
       active = false;
     };
-  }, [todayKey]);
+  }, [todayKey, retryKey]);
+
+  const handleRetryWorkouts = useCallback(() => {
+    setLoadingWorkouts(true);
+    setErrorWorkouts(null);
+    setRetryKey((k) => k + 1);
+  }, []);
 
   // 4. Carregar Personal Trainer do aluno (se houver associação real)
   useEffect(() => {
@@ -308,19 +319,16 @@ export default function PlanoAlunoPage({
       return;
     }
 
-    getPersonalTrainers()
-      .then((trainers: PersonalTrainerItem[] | unknown) => {
-        if (!active || !Array.isArray(trainers)) return;
-        const found = trainers.find((t: PersonalTrainerItem) => String(t.id) === String(ptId));
-        if (found) {
-          setPersonalTrainer(found);
-        } else {
-          setPersonalTrainer(null);
-        }
-      })
-      .catch(() => {
-        if (active) setPersonalTrainer(null);
-      });
+    queueMicrotask(() => {
+      if (active) setPersonalTrainer({ id: String(ptId), name: "Carregando nome…" });
+    });
+    getMyPersonalTrainer().then((trainer: PersonalTrainerItem | null) => {
+      if (!active) return;
+      setPersonalTrainer(trainer && String(trainer.id) === String(ptId)
+        ? trainer : { id: String(ptId), name: "Nome do personal indisponível" });
+    }).catch(() => {
+      if (active) setPersonalTrainer({ id: String(ptId), name: "Nome do personal indisponível" });
+    });
 
     return () => {
       active = false;
@@ -425,79 +433,88 @@ export default function PlanoAlunoPage({
   const strokeOffset = circumference - (percentualMeta / 100) * circumference;
 
   return (
-    <main className="min-h-screen bg-background pb-12 text-foreground">
-      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-        {/* ─── Top Navbar ─────────────────────────────────────────────────── */}
-        <nav
-          className="flex h-20 items-center justify-between border-b border-border/70"
-          aria-label="Principal"
-        >
-          <div className="flex items-center gap-2.5" aria-label="Lion Fitness">
-            <span className="grid size-9 place-items-center rounded-lg bg-lion-red text-white shadow-brand">
-              <Flame className="size-5" strokeWidth={2.5} />
+    <div className="gp-aluno-shell">
+      {/* Skip Link para Acessibilidade */}
+      <a className="gp-aluno-skip" href="#aluno-content">
+        Pular para o conteúdo principal
+      </a>
+
+      {/* ─── Top Navbar ─────────────────────────────────────────────────── */}
+      <nav className="gp-aluno-nav" aria-label="Navegação da área do aluno">
+        <div className="gp-aluno-container gp-aluno-nav-inner">
+          <div className="gp-aluno-brand" aria-label="Lion Fitness">
+            <span className="gp-aluno-brand-icon">
+              <Image
+                src="/03-LOGO-ORIGINAL-LION.png"
+                alt="Lion Fitness"
+                width={36}
+                height={36}
+                className="size-9 rounded-lg object-contain"
+                priority
+              />
             </span>
-            <span className="text-sm font-extrabold uppercase tracking-[0.16em] text-foreground">
-              Lion <span className="text-lion-red">Fitness</span>
+            <span className="gp-aluno-brand-text">
+              Lion <span>Fitness</span>
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold text-foreground">{studentFullName}</p>
-              <p className="text-xs text-muted-foreground">Aluno</p>
-            </div>
+          <div className="gp-aluno-nav-actions">
+            <div className="gp-aluno-profile">
+              <div className="gp-aluno-profile-info">
+                <p className="gp-aluno-profile-name">{studentFullName}</p>
+                <p className="gp-aluno-profile-role">Aluno</p>
+              </div>
 
-            <UserAvatar
-              initials={studentInitials}
-              photoUrl={memberProfile?.photoUrl}
-              className="size-10 border-2 border-card shadow-sm"
-              title={studentFullName}
-            />
+              <UserAvatar
+                initials={studentInitials}
+                photoUrl={memberProfile?.photoUrl}
+                className="size-9 border-2 border-border"
+                title={studentFullName}
+              />
+            </div>
 
             <ThemeToggle />
             <NotificationBell />
 
-            {/* Botão de Logout — Visualmente idêntico ao de /personal */}
-            <Button
-              variant="ghost"
-              size="sm"
+            <button
+              type="button"
               onClick={logout}
-              className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 ml-1 h-8 px-2.5 cursor-pointer"
+              className="gp-aluno-logout-btn"
               title="Sair do sistema"
+              aria-label="Sair da conta"
             >
-              <LogOut className="size-4" />
-              <span className="hidden md:inline text-xs font-medium">Sair</span>
-            </Button>
+              <LogOut className="size-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Sair</span>
+            </button>
           </div>
-        </nav>
+        </div>
+      </nav>
 
-        {/* ─── Header da Área do Aluno ────────────────────────────────────── */}
-        <header className="lift-in grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-8 sm:py-10">
-          <div className="min-w-0">
-            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-lion-red">
-              <Sparkles className="size-4" /> {greeting}
+      {/* ─── Conteúdo Principal ─────────────────────────────────────────── */}
+      <main id="aluno-content" tabIndex={-1} className="gp-aluno-container">
+        {/* Header / Boas-vindas */}
+        <header className="gp-aluno-hero">
+          <div>
+            <div className="gp-aluno-greeting-chip">
+              <Sparkles className="size-3.5" aria-hidden="true" /> {greeting}
             </div>
-            <h1 className="truncate text-3xl font-extrabold tracking-normal sm:text-4xl">
-              Olá, {studentFirstName}!
-            </h1>
-            <p className="mt-2 text-base text-muted-foreground sm:text-lg">
-              Vamos treinar hoje?
-            </p>
+            <h1>Olá, {studentFirstName}!</h1>
+            <p>Acompanhe sua rotina semanal, execute seus treinos e consulte sua assinatura.</p>
           </div>
 
-          <div className="hidden size-16 shrink-0 place-items-center rounded-2xl bg-lion-red/10 text-lion-red sm:grid">
-            <Dumbbell className="size-7" />
+          <div className="gp-aluno-hero-badge" aria-hidden="true">
+            <Dumbbell className="size-6" />
           </div>
         </header>
 
-        {/* ─── Cards Superiores (Grid 2 Colunas) ──────────────────────────── */}
-        <div className="grid gap-5 lg:grid-cols-[1.12fr_0.88fr]">
+        {/* ─── Grid Superior (Plano & Progresso) ────────────────────────── */}
+        <div className="gp-aluno-grid">
           {/* Card 1: Seu Plano */}
-          <section className="lift-in overflow-hidden rounded-xl border border-border bg-card shadow-card [animation-delay:80ms] flex flex-col justify-between">
-            <div className="flex items-start justify-between gap-4 border-b border-border p-5 sm:p-6">
-              <div className="min-w-0">
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
+          <section className="gp-aluno-card" aria-labelledby="heading-seu-plano">
+            <div className="gp-aluno-card-header">
+              <div>
+                <div className="gp-aluno-card-meta">
+                  <span id="heading-seu-plano" className="gp-aluno-card-label">
                     Seu plano
                   </span>
 
@@ -506,23 +523,13 @@ export default function PlanoAlunoPage({
                       Carregando…
                     </Badge>
                   ) : subscription ? (
-                    <Badge
-                      className={cn(
-                        subscription.status?.toUpperCase() === "ACTIVE"
-                          ? "border-emerald-500/25 bg-emerald-500/12 text-emerald-600 dark:bg-white dark:text-neutral-950 dark:border-white dark:hover:bg-white"
-                          : "border-destructive/25 bg-destructive/12 text-destructive"
-                      )}
+                    <span
+                      className="gp-aluno-status-badge"
+                      data-status={subscription.status?.toLowerCase() || "inactive"}
                     >
-                      <span
-                        className={cn(
-                          "mr-1.5 size-1.5 rounded-full",
-                          subscription.status?.toUpperCase() === "ACTIVE"
-                            ? "bg-emerald-500 dark:bg-emerald-600"
-                            : "bg-destructive"
-                        )}
-                      />
+                      <span className="gp-aluno-status-dot" aria-hidden="true" />
                       {labelStatus(subscription.status)}
-                    </Badge>
+                    </span>
                   ) : (
                     <Badge variant="outline" className="border-border text-muted-foreground">
                       SEM PLANO
@@ -531,26 +538,21 @@ export default function PlanoAlunoPage({
                 </div>
 
                 {loadingSubscription ? (
-                  <div className="h-8 w-44 rounded bg-muted animate-pulse my-1" />
+                  <div className="h-7 w-40 rounded bg-muted animate-pulse my-1" />
                 ) : subscription ? (
-                  <h2 className="text-2xl font-extrabold tracking-normal text-foreground">
+                  <h2 className="gp-aluno-plan-title">
                     {subscription.planName || "Plano Ativo"}
                   </h2>
                 ) : (
-                  <h2 className="text-2xl font-extrabold tracking-normal text-foreground">
-                    Nenhum plano ativo
-                  </h2>
+                  <h2 className="gp-aluno-plan-title">Nenhum plano ativo</h2>
                 )}
 
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="gp-aluno-plan-expiry">
                   {loadingSubscription ? (
                     <span className="inline-block h-4 w-32 rounded bg-muted animate-pulse" />
                   ) : subscription ? (
                     <>
-                      Válido até:{" "}
-                      <strong className="font-semibold text-foreground">
-                        {formatDate(subscription.endDate)}
-                      </strong>
+                      Válido até: <strong>{formatDate(subscription.endDate)}</strong>
                     </>
                   ) : (
                     "Regularize sua assinatura para continuar treinando."
@@ -559,240 +561,223 @@ export default function PlanoAlunoPage({
               </div>
 
               <ShieldCheck
-                className={cn(
-                  "size-7 shrink-0",
+                className={`size-7 shrink-0 ${
                   subscription && subscription.status?.toUpperCase() === "ACTIVE"
-                    ? "text-emerald-500"
+                    ? "text-emerald-600 dark:text-emerald-400"
                     : "text-muted-foreground"
-                )}
+                }`}
+                aria-hidden="true"
               />
             </div>
 
-            <div className="p-5 sm:p-6">
-              <div className="mb-4 flex items-end justify-between gap-3">
+            <div className="gp-aluno-card-body">
+              <div className="gp-aluno-renewal-head">
                 <div>
-                  <h3 className="font-bold text-foreground">Renovar mensalidade</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Escolha uma forma de pagamento
-                  </p>
+                  <h3>Renovar mensalidade</h3>
+                  <p>Escolha uma forma de pagamento</p>
                 </div>
 
                 {subscription && (
-                  <span className="text-xs font-semibold text-muted-foreground">
-                    Valor:{" "}
-                    <strong className="text-foreground">
-                      {formatCurrency(subscription.planPrice)}
-                    </strong>
+                  <span className="gp-aluno-price-tag">
+                    Valor: <strong>{formatCurrency(subscription.planPrice)}</strong>
                   </span>
                 )}
               </div>
 
               {subscription?.renewalEligible ? (
-              <>
-                {subscription.daysRemaining != null && subscription.daysRemaining > 0 ? (
-                  <div className="mb-4 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2.5 text-xs text-emerald-700 dark:text-emerald-300">
-                    Seu plano vence em {subscription.daysRemaining} {subscription.daysRemaining === 1 ? "dia" : "dias"}. Você já pode renovar sem perder os dias restantes.
-                  </div>
-                ) : null}
-              <div className="grid gap-3 min-[390px]:grid-cols-2">
-                {/* Botão Pix */}
-                <button
-                  type="button"
-                  id="btn-aluno-pagar-pix"
-                  onClick={onOpenPixModal}
-                  disabled={!subscription}
-                  className="group min-w-0 rounded-lg border border-border bg-background dark:bg-[#161618] p-4 text-left transition duration-200 hover:-translate-y-0.5 hover:border-lion-red/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <div className="mb-4 flex items-start justify-between gap-2">
-                    <span className="grid size-10 place-items-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                      <QrCode className="size-5" />
-                    </span>
-                    <Badge variant="secondary" className="border-0 text-[10px]">
-                      Rápido
-                    </Badge>
-                  </div>
-                  <span className="block font-bold text-foreground">Pix</span>
-                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                    Pagamento rápido e aprovação em poucos minutos
-                  </span>
-                </button>
+                <>
+                  {subscription.daysRemaining != null && subscription.daysRemaining > 0 ? (
+                    <div className="gp-aluno-banner-eligible">
+                      Seu plano vence em {subscription.daysRemaining}{" "}
+                      {subscription.daysRemaining === 1 ? "dia" : "dias"}. Você já pode renovar sem
+                      perder os dias restantes.
+                    </div>
+                  ) : null}
 
-                {/* Botão Cartão */}
-                <button
-                  type="button"
-                  id="btn-aluno-pagar-cartao"
-                  onClick={onOpenCardModal}
-                  disabled={!subscription}
-                  className="group min-w-0 rounded-lg border border-border bg-background dark:bg-[#161618] p-4 text-left transition duration-200 hover:-translate-y-0.5 hover:border-lion-red/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <div className="mb-4 flex items-start justify-between gap-2">
-                    <span className="grid size-10 place-items-center rounded-lg bg-muted text-foreground">
-                      <CreditCard className="size-5" />
-                    </span>
-                    <span className="mt-1 flex gap-1">
-                      <i className="size-2 rounded-full bg-lion-red" />
-                      <i className="size-2 rounded-full bg-amber-500" />
-                    </span>
+                  <div className="gp-aluno-pay-grid">
+                    {/* Botão Pix */}
+                    <button
+                      type="button"
+                      id="btn-aluno-pagar-pix"
+                      onClick={onOpenPixModal}
+                      disabled={!subscription}
+                      className="gp-aluno-pay-option"
+                    >
+                      <div className="gp-aluno-pay-top">
+                        <span className="gp-aluno-pay-icon" data-pix="true">
+                          <QrCode className="size-5" aria-hidden="true" />
+                        </span>
+                        <span className="gp-aluno-pay-badge">Rápido</span>
+                      </div>
+                      <span className="gp-aluno-pay-title">Pix</span>
+                      <span className="gp-aluno-pay-desc">
+                        Pagamento rápido e aprovação em poucos minutos
+                      </span>
+                    </button>
+
+                    {/* Botão Cartão */}
+                    <button
+                      type="button"
+                      id="btn-aluno-pagar-cartao"
+                      onClick={onOpenCardModal}
+                      disabled={!subscription}
+                      className="gp-aluno-pay-option"
+                    >
+                      <div className="gp-aluno-pay-top">
+                        <span className="gp-aluno-pay-icon">
+                          <CreditCard className="size-5" aria-hidden="true" />
+                        </span>
+                        <span className="flex gap-1" aria-hidden="true">
+                          <i className="size-2 rounded-full bg-lion-red" />
+                          <i className="size-2 rounded-full bg-amber-500" />
+                        </span>
+                      </div>
+                      <span className="gp-aluno-pay-title">Cartão</span>
+                      <span className="gp-aluno-pay-desc">
+                        Pague com cartão de crédito com segurança
+                      </span>
+                    </button>
                   </div>
-                  <span className="block font-bold text-foreground">Cartão</span>
-                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                    Pague com cartão de crédito
-                  </span>
-                </button>
-              </div>
-              </>
+                </>
               ) : subscription ? (
-                <div className="rounded-lg border border-border bg-muted/35 px-4 py-4 text-sm text-muted-foreground">
-                  <p className="font-semibold text-foreground">Seu plano está ativo até {formatDate(subscription.endDate)}.</p>
+                <div className="gp-aluno-info-box">
+                  <p>
+                    <strong>Seu plano está ativo até {formatDate(subscription.endDate)}.</strong>
+                  </p>
                   <p className="mt-1">
-                    A renovação estará disponível a partir de {formatDate(subscription.renewalAvailableFrom)}.
+                    A renovação estará disponível a partir de{" "}
+                    {formatDate(subscription.renewalAvailableFrom)}.
                     {subscription.daysUntilRenewal != null && subscription.daysUntilRenewal > 0
-                      ? ` Faltam ${subscription.daysUntilRenewal} ${subscription.daysUntilRenewal === 1 ? "dia" : "dias"} para você poder renovar.`
+                      ? ` Faltam ${subscription.daysUntilRenewal} ${
+                          subscription.daysUntilRenewal === 1 ? "dia" : "dias"
+                        } para a abertura da renovação.`
                       : ""}
                   </p>
                 </div>
               ) : (
-                <div className="rounded-lg border border-border bg-muted/35 px-4 py-4 text-sm text-muted-foreground">
-                  Não há assinatura disponível para renovação.
+                <div className="gp-aluno-info-box">
+                  Não há assinatura disponível para renovação no momento.
                 </div>
               )}
             </div>
           </section>
 
           {/* Card 2: Seu Progresso */}
-          <section className="lift-in rounded-xl border border-border bg-card p-5 shadow-card [animation-delay:160ms] sm:p-6 flex flex-col justify-between">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                  Seu progresso
-                </span>
-                <h2 className="mt-2 text-xl font-extrabold text-foreground">
-                  {totalTreinos > 0 ? "Sua rotina semanal" : "Rotina em montagem"}
-                </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {loadingWorkouts ? (
-                    <span className="inline-block h-4 w-28 rounded bg-muted animate-pulse" />
-                  ) : totalTreinos > 0 ? (
-                    <>
-                      <strong className="text-foreground">
-                        {treinosConcluidos}/{totalTreinos} treinos
-                      </strong>{" "}
-                      prescritos na semana
-                    </>
-                  ) : (
-                    "Aguardando prescrição do seu treinador."
-                  )}
-                </p>
+          <section className="gp-aluno-card" aria-labelledby="heading-seu-progresso">
+            <div className="gp-aluno-card-body" style={{ paddingBottom: 0 }}>
+              <div className="gp-aluno-progress-head">
+                <div>
+                  <span id="heading-seu-progresso" className="gp-aluno-card-label">
+                    Seu progresso
+                  </span>
+                  <h2 className="gp-aluno-progress-title">
+                    {totalTreinos > 0 ? "Sua rotina semanal" : "Rotina em montagem"}
+                  </h2>
+                  <p className="gp-aluno-progress-sub">
+                    {loadingWorkouts ? (
+                      <span className="inline-block h-4 w-28 rounded bg-muted animate-pulse" />
+                    ) : totalTreinos > 0 ? (
+                      <>
+                        <strong>
+                          {treinosConcluidos}/{totalTreinos} treinos
+                        </strong>{" "}
+                        prescritos concluídos nesta sessão
+                      </>
+                    ) : (
+                      "Aguardando prescrição do seu treinador."
+                    )}
+                  </p>
+                </div>
+
+                {/* Anel Circular SVG com Percentual Real */}
+                <div className="gp-aluno-progress-ring" aria-hidden="true">
+                  <svg viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="44" className="gp-aluno-progress-ring-bg" />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="44"
+                      className="gp-aluno-progress-ring-val"
+                      strokeDasharray={circumference}
+                      strokeDashoffset={strokeOffset}
+                    />
+                  </svg>
+                  <span className="gp-aluno-progress-ring-text">{percentualMeta}%</span>
+                </div>
               </div>
 
-              {/* Anel Circular SVG com Percentual Real */}
-              <div className="relative size-24 shrink-0">
-                <svg className="size-full -rotate-90" viewBox="0 0 100 100" aria-hidden="true">
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="44"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    className="text-muted"
-                  />
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="44"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray={circumference}
-                    strokeDashoffset={strokeOffset}
-                    className="text-lion-red transition-all duration-700 ease-out"
-                  />
-                </svg>
-                <span className="absolute inset-0 grid place-items-center text-lg font-extrabold text-foreground">
-                  {percentualMeta}%
-                </span>
+              {/* Seletor dos 7 dias da semana */}
+              <div className="gp-aluno-weekdays" role="group" aria-label="Dias da semana">
+                {weeklyDays.map((item, index) => {
+                  const isSelected = item.key === selectedDayKey;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setSelectedDayKey(item.key)}
+                      className="gp-aluno-day-btn"
+                      data-today={item.isToday ? "true" : undefined}
+                      data-has-workout={item.hasWorkout ? "true" : undefined}
+                      aria-pressed={isSelected}
+                      title={`${item.nome}: ${item.hasWorkout ? item.title : "Descanso"}${
+                        item.isToday ? " (Hoje)" : ""
+                      }`}
+                    >
+                      <span className="gp-aluno-day-label">{item.curto}</span>
+                      <span className="gp-aluno-day-bubble">
+                        {item.hasWorkout ? (
+                          <Dumbbell className="size-3.5" aria-hidden="true" />
+                        ) : (
+                          index + 1
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
-            </div>
 
-            {/* Linha dos 7 dias com indicação real de treinos cadastrados */}
-            <div className="mt-7 grid grid-cols-7 gap-1.5 sm:gap-2">
-              {weeklyDays.map((item, index) => {
-                const isSelected = item.key === selectedDayKey;
-                return (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setSelectedDayKey(item.key)}
-                    className="flex min-w-0 flex-col items-center gap-2 cursor-pointer focus:outline-none group"
-                    title={`${item.nome}: ${item.hasWorkout ? item.title : "Descanso"}`}
-                  >
-                    <span
-                      className={cn(
-                        "text-[10px] font-semibold transition-colors sm:text-xs",
-                        item.isToday
-                          ? "text-lion-red font-bold"
-                          : isSelected
-                          ? "text-foreground font-semibold"
-                          : "text-muted-foreground group-hover:text-foreground"
-                      )}
-                    >
-                      {item.curto}
-                    </span>
-
-                    <span
-                      className={cn(
-                        "grid aspect-square w-full max-w-10 place-items-center rounded-full border text-xs font-bold transition duration-200 group-hover:scale-105",
-                        item.hasWorkout
-                          ? isSelected
-                            ? "border-lion-red bg-lion-red text-white shadow-sm"
-                            : "border-lion-red/30 bg-lion-red/10 text-lion-red"
-                          : "border-border bg-muted/40 text-muted-foreground"
-                      )}
-                    >
-                      {item.hasWorkout ? (
-                        <Dumbbell className="size-3.5" />
-                      ) : (
-                        index + 1
-                      )}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Barra de Progresso Real */}
-            <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-muted">
+              {/* Barra de Progresso Real */}
               <div
-                className="h-full rounded-full bg-lion-red transition-all duration-700"
-                style={{ width: `${percentualMeta}%` }}
-              />
-            </div>
+                className="gp-aluno-progress-bar-wrap"
+                role="progressbar"
+                aria-valuenow={percentualMeta}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Progresso semanal da sessão"
+              >
+                <div
+                  className="gp-aluno-progress-bar-fill"
+                  style={{ width: `${percentualMeta}%` }}
+                />
+              </div>
 
-            <p className="mt-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-              <Flame className="size-4 text-amber-500 shrink-0" />
-              {totalTreinos === 0 ? (
-                "Nenhum treino programado para esta semana."
-              ) : treinosConcluidos >= totalTreinos && totalTreinos > 0 ? (
-                <strong className="text-emerald-600 dark:text-emerald-400">
-                  Meta semanal concluída! Parabéns!
-                </strong>
-              ) : (
-                `Continue com foco — ${totalTreinos - treinosConcluidos} de ${totalTreinos} treinos disponíveis nesta semana.`
-              )}
-            </p>
+              <div className="gp-aluno-session-footer">
+                <Flame className="size-4" aria-hidden="true" />
+                <span>
+                  {totalTreinos === 0 ? (
+                    "Nenhum treino programado para esta semana."
+                  ) : treinosConcluidos >= totalTreinos && totalTreinos > 0 ? (
+                    <strong className="text-emerald-600 dark:text-emerald-400">
+                      Meta semanal da sessão concluída! Parabéns!
+                    </strong>
+                  ) : (
+                    `Continue com foco — ${totalTreinos - treinosConcluidos} de ${totalTreinos} treinos disponíveis.`
+                  )}
+                </span>
+              </div>
+            </div>
+            <div style={{ height: "20px" }} />
           </section>
         </div>
 
-        {/* ─── Seção Treino de Hoje / Treino Selecionado ─────────────────────── */}
-        <section className="lift-in mt-5 [animation-delay:240ms]">
-          <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        {/* ─── Seção Treino do Dia / Treino Selecionado ─────────────────────── */}
+        <section className="gp-aluno-workout-section" aria-labelledby="heading-treino-dia">
+          <div className="gp-aluno-section-header">
             <div>
-              <span className="text-xs font-bold uppercase tracking-[0.12em] text-lion-red">
+              <span className="gp-aluno-section-tag">
                 {selectedDay.isToday ? "Hoje" : selectedDay.nome}
               </span>
-              <h2 className="mt-1 text-xl font-extrabold text-foreground">
+              <h2 id="heading-treino-dia" className="gp-aluno-section-title">
                 {isTraining
                   ? "Treino em andamento"
                   : selectedDay.isToday
@@ -801,122 +786,133 @@ export default function PlanoAlunoPage({
               </h2>
             </div>
 
-            <div className="flex items-center gap-3">
-              {/* Informação do Personal Trainer associado (se houver) */}
+            <div className="gp-aluno-section-actions">
               {personalTrainer && (
-                <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-1.5 shadow-sm">
-                  <div className="relative flex size-8 shrink-0 items-center justify-center rounded-full bg-lion-red/10 text-lion-red text-xs font-bold">
+                <div className="gp-aluno-pt-card">
+                  <div className="gp-aluno-pt-avatar" aria-hidden="true">
                     {getInitials(personalTrainer.name)}
                   </div>
-                  <div className="min-w-0 text-left">
-                    <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
-                      Seu Personal
-                    </p>
-                    <p className="truncate text-xs font-semibold text-foreground">
-                      {personalTrainer.name}
-                    </p>
+                  <div className="gp-aluno-pt-info">
+                    <p className="gp-aluno-pt-role">Seu Personal</p>
+                    <p className="gp-aluno-pt-name">{personalTrainer.name}</p>
                   </div>
                 </div>
               )}
-              {personalTrainer ? <ContactPersonalDialog personalName={personalTrainer.name} /> : null}
+
+              {personalTrainer ? (
+                <ContactPersonalDialog personalName={personalTrainer.name} />
+              ) : null}
 
               {isTraining && (
-                <Badge className="border-lion-red/20 bg-lion-red/10 text-lion-red hover:bg-lion-red/15">
-                  <span className="mr-1.5 size-1.5 animate-pulse rounded-full bg-lion-red" />{" "}
+                <span className="gp-aluno-badge-active-session">
+                  <span className="gp-aluno-badge-pulse-dot" aria-hidden="true" />
                   EM CURSO
-                </Badge>
+                </span>
               )}
             </div>
           </div>
 
           {/* Card Principal de Treino */}
-          <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
+          <div className="gp-aluno-workout-card">
             {loadingWorkouts ? (
-              <div className="p-8 text-center text-muted-foreground">
-                <p className="animate-pulse">Carregando treinos…</p>
+              <div className="gp-aluno-state-box">
+                <div className="gp-aluno-state-icon animate-pulse">
+                  <Dumbbell className="size-6" />
+                </div>
+                <h3>Carregando treinos…</h3>
+                <p>Buscando sua prescrição e seus exercícios atualizados.</p>
               </div>
             ) : errorWorkouts ? (
-              <div className="p-8 sm:p-12 text-center flex flex-col items-center justify-center">
-                <span className="flex size-14 items-center justify-center rounded-2xl bg-destructive/10 text-destructive mb-4">
-                  <Dumbbell className="size-7" />
-                </span>
-                <h3 className="text-lg font-bold text-foreground">
-                  Não foi possível carregar os treinos
-                </h3>
-                <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                  {errorWorkouts}
-                </p>
+              <div className="gp-aluno-state-box">
+                <div className="gp-aluno-state-icon" data-error="true">
+                  <AlertCircle className="size-6" />
+                </div>
+                <h3>Não foi possível carregar os treinos</h3>
+                <p>{errorWorkouts}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRetryWorkouts}
+                  className="mt-4 gap-2 cursor-pointer"
+                >
+                  <RotateCcw className="size-4" /> Tentar novamente
+                </Button>
               </div>
             ) : currentWorkoutExercises.length === 0 ? (
               /* Estado Vazio Amigável */
-              <div className="p-8 sm:p-12 text-center flex flex-col items-center justify-center">
-                <span className="flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground mb-4">
-                  <Dumbbell className="size-7" />
-                </span>
-                <h3 className="text-lg font-bold text-foreground">
+              <div className="gp-aluno-state-box">
+                <div className="gp-aluno-state-icon">
+                  <Dumbbell className="size-6" />
+                </div>
+                <h3>
                   {selectedDay.isToday
                     ? "Nenhum treino agendado para hoje"
                     : `Sem treino programado para ${selectedDay.nome}`}
                 </h3>
-                <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                <p>
                   {workouts.length === 0
                     ? "Nenhum treino disponível no momento. Seu treinador ainda está montando sua ficha de exercícios."
-                    : "Aproveite para descanso ativo ou selecione outro dia da semana acima para consultar seus treinos."}
+                    : "Aproveite para descanso ativo e recuperação, ou selecione outro dia da semana acima para consultar seus treinos."}
                 </p>
               </div>
             ) : !isTraining ? (
               /* Visualização do Treino (Pré-início) */
-              <div className="animate-in fade-in duration-200 lg:grid lg:grid-cols-[0.9fr_1.1fr]">
-                <div className="bg-foreground dark:bg-[#151518] p-5 text-background dark:text-foreground sm:p-7 flex flex-col justify-between">
+              <div className="gp-aluno-pre-workout">
+                <div className="gp-aluno-pre-aside">
                   <div>
-                    <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-lion-red">
-                      <Dumbbell className="size-4" /> {selectedDay.title || "Treino Principal"}
+                    <span className="gp-aluno-pre-tag">
+                      <Dumbbell className="size-4" aria-hidden="true" />{" "}
+                      {selectedDay.title || "Treino Principal"}
                     </span>
 
-                    <h3 className="mt-4 text-2xl font-extrabold tracking-normal">
+                    <h3 className="gp-aluno-pre-title">
                       {selectedDay.exercises[0]?.muscle
-                        ? `Foco em ${selectedDay.exercises.map((e) => e.muscle).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).slice(0, 2).join(" e ")}`
+                        ? `Foco em ${selectedDay.exercises
+                            .map((e) => e.muscle)
+                            .filter(Boolean)
+                            .filter((v, i, a) => a.indexOf(v) === i)
+                            .slice(0, 2)
+                            .join(" e ")}`
                         : "Sessão de Treino"}
                     </h3>
 
-                    <div className="mt-5 flex flex-wrap gap-4 text-xs text-background/70 dark:text-muted-foreground">
-                      <span className="flex items-center gap-1.5">
-                        <Dumbbell className="size-4" /> {currentWorkoutExercises.length} exercícios
+                    <div className="gp-aluno-pre-meta">
+                      <span>
+                        <Dumbbell className="size-4" aria-hidden="true" />{" "}
+                        {currentWorkoutExercises.length} exercícios
                       </span>
-                      <span className="flex items-center gap-1.5">
-                        <Clock3 className="size-4" /> ~{currentWorkoutExercises.length * 10} minutos
+                      <span>
+                        <Clock3 className="size-4" aria-hidden="true" /> ~
+                        {currentWorkoutExercises.length * 10} minutos
                       </span>
                     </div>
                   </div>
 
-                  <Button
-                    size="lg"
-                    className="mt-7 h-12 w-full font-bold bg-lion-red hover:bg-lion-red-dark text-white shadow-brand transition-transform active:scale-[0.99] cursor-pointer sm:w-auto"
+                  <button
+                    type="button"
+                    className="gp-aluno-cta-btn"
                     onClick={handleStartWorkout}
                   >
-                    Iniciar treino <ArrowRight className="size-4 ml-1" />
-                  </Button>
+                    Iniciar treino <ArrowRight className="size-4 ml-1" aria-hidden="true" />
+                  </button>
                 </div>
 
-                <div className="p-5 sm:p-7">
-                  <p className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                    Exercícios prescritos
-                  </p>
-                  <ol className="grid gap-1 sm:grid-cols-2 sm:gap-x-8">
+                <div className="gp-aluno-pre-list">
+                  <p className="gp-aluno-list-head">Exercícios prescritos</p>
+                  <ol className="gp-aluno-exercise-ol">
                     {currentWorkoutExercises.map((exercise, index) => (
                       <li
                         key={exercise.id || `${exercise.exerciseName}-${index}`}
-                        className="flex items-center gap-3 border-b border-border py-3 last:border-0 sm:[&:nth-last-child(-n+2)]:border-0"
+                        className="gp-aluno-exercise-item"
                       >
-                        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
-                          {index + 1}
-                        </span>
-                        <div className="min-w-0">
-                          <span className="block truncate text-sm font-semibold text-foreground">
+                        <span className="gp-aluno-exercise-idx">{index + 1}</span>
+                        <div className="gp-aluno-exercise-info">
+                          <span className="gp-aluno-exercise-name">
                             {exercise.exerciseName}
                           </span>
-                          <span className="block text-xs text-muted-foreground">
-                            {exercise.sets} séries × {exercise.reps} reps · {formatRestSeconds(exercise.restSeconds)} descanso
+                          <span className="gp-aluno-exercise-meta">
+                            {exercise.sets} séries × {exercise.reps} reps ·{" "}
+                            {formatRestSeconds(exercise.restSeconds)} descanso
                           </span>
                         </div>
                       </li>
@@ -926,62 +922,60 @@ export default function PlanoAlunoPage({
               </div>
             ) : (
               /* Treino em Andamento (Interação da Sessão) */
-              <div className="animate-in slide-in-from-right-4 fade-in grid duration-300 lg:grid-cols-[1fr_0.8fr]">
-                <div className="p-5 sm:p-7">
+              <div className="gp-aluno-session-grid">
+                <div className="gp-aluno-session-main">
                   <button
                     type="button"
                     onClick={() => setIsTraining(false)}
-                    className="mb-6 inline-flex items-center gap-2 text-xs font-bold text-muted-foreground transition hover:text-foreground cursor-pointer"
+                    className="gp-aluno-back-summary-btn"
                   >
-                    <ArrowLeft className="size-4" /> Voltar ao resumo
+                    <ArrowLeft className="size-4" aria-hidden="true" /> Voltar ao resumo
                   </button>
 
-                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-lion-red">
+                  <span className="gp-aluno-step-tag">
                     Exercício atual · {currentExerciseIdx + 1} de {currentWorkoutExercises.length}
-                  </p>
+                  </span>
 
-                  <h3 className="mt-3 text-2xl font-extrabold sm:text-3xl text-foreground">
+                  <h3 className="gp-aluno-current-title">
                     {currentExercise?.exerciseName || "Exercício"}
                   </h3>
 
                   {currentExercise?.muscle && (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Grupo muscular: <strong className="text-foreground">{currentExercise.muscle}</strong>
+                    <p className="gp-aluno-current-muscle">
+                      Grupo muscular: <strong>{currentExercise.muscle}</strong>
                     </p>
                   )}
 
-                  <div className="mt-6 grid grid-cols-2 gap-3">
-                    <div className="rounded-lg bg-muted p-4">
-                      <span className="block text-xs text-muted-foreground">Série</span>
-                      <strong className="mt-1 block text-xl text-foreground">
+                  <div className="gp-aluno-metrics-row">
+                    <div className="gp-aluno-metric-box">
+                      <span>Série</span>
+                      <strong>
                         {currentSet} de {currentExercise?.sets || 4}
                       </strong>
                     </div>
 
-                    <div className="rounded-lg bg-muted p-4">
-                      <span className="block text-xs text-muted-foreground">Repetições</span>
-                      <strong className="mt-1 block text-xl text-foreground">
-                        {currentExercise?.reps || 12}
-                      </strong>
+                    <div className="gp-aluno-metric-box">
+                      <span>Repetições</span>
+                      <strong>{currentExercise?.reps || 12} reps</strong>
                     </div>
                   </div>
 
-                  <div className="mt-6">
-                    <div className="mb-2 flex justify-between text-xs font-semibold">
-                      <span>Progresso do treino</span>
-                      <span className="text-muted-foreground">
+                  <div className="gp-aluno-session-progress">
+                    <div className="gp-aluno-session-progress-head">
+                      <span>Progresso da sessão</span>
+                      <strong>
                         {Math.round(
                           ((currentExerciseIdx + currentSet / (currentExercise?.sets || 4)) /
                             currentWorkoutExercises.length) *
                             100
                         )}
                         %
-                      </span>
+                      </strong>
                     </div>
 
-                    <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div className="gp-aluno-session-progress-bar">
                       <div
-                        className="h-full rounded-full bg-lion-red transition-all duration-300"
+                        className="gp-aluno-session-progress-bar-fill"
                         style={{
                           width: `${Math.round(
                             ((currentExerciseIdx + currentSet / (currentExercise?.sets || 4)) /
@@ -993,30 +987,30 @@ export default function PlanoAlunoPage({
                     </div>
                   </div>
 
-                  <Button
-                    size="lg"
-                    className="mt-7 h-12 w-full font-bold bg-lion-red hover:bg-lion-red-dark text-white cursor-pointer"
+                  <button
+                    type="button"
+                    className="gp-aluno-action-btn"
                     onClick={handleNextSet}
                   >
-                    <Check className="size-4 mr-1" />
+                    <Check className="size-4 mr-1" aria-hidden="true" />
                     {currentSet === currentExercise?.sets &&
                     currentExerciseIdx + 1 === currentWorkoutExercises.length
                       ? "Concluir treino"
                       : isResting
                       ? "Pular descanso e avançar"
                       : "Concluir série"}
-                  </Button>
+                  </button>
                 </div>
 
                 {/* Painel de Descanso / Timer */}
-                <div className="grid place-items-center border-t border-border bg-muted/40 p-7 lg:border-l lg:border-t-0">
-                  <div className="text-center">
-                    <p className="mb-5 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                <div className="gp-aluno-timer-panel">
+                  <div>
+                    <p className="gp-aluno-timer-title">
                       {isResting ? "Descanso entre séries" : "Intervalo recomendado"}
                     </p>
 
-                    <div className="relative mx-auto size-40">
-                      <svg className="size-full -rotate-90" viewBox="0 0 120 120" aria-hidden="true">
+                    <div className="gp-aluno-timer-ring-wrap" aria-hidden="true">
+                      <svg viewBox="0 0 120 120">
                         <circle
                           cx="60"
                           cy="60"
@@ -1040,24 +1034,24 @@ export default function PlanoAlunoPage({
                               ? 339 - (restSecondsLeft / currentExercise.restSeconds) * 339
                               : 0
                           }
-                          className="text-lion-red transition-all duration-1000"
+                          className="text-primary transition-all duration-1000"
                         />
                       </svg>
 
-                      <div className="absolute inset-0 grid place-content-center">
-                        <span className="text-3xl font-extrabold tabular-nums text-foreground">
+                      <div className="gp-aluno-timer-center">
+                        <span className="gp-aluno-timer-digits">
                           00:{String(restSecondsLeft).padStart(2, "0")}
                         </span>
-                        <span className="mt-1 text-xs text-muted-foreground">
+                        <span className="gp-aluno-timer-label">
                           {isResting ? "restantes" : "preparar"}
                         </span>
                       </div>
                     </div>
 
-                    <p className="mt-5 text-sm text-muted-foreground">
+                    <p className="gp-aluno-timer-msg">
                       {isResting
-                        ? "Respire fundo e hidrate-se. A próxima série já vem."
-                        : "Execute os movimentos com amplitude e boa postura."}
+                        ? "Respire fundo, hidrate-se e recupere o fôlego para a próxima série."
+                        : "Execute os movimentos com amplitude, boa postura e carga controlada."}
                     </p>
                   </div>
                 </div>
@@ -1065,7 +1059,14 @@ export default function PlanoAlunoPage({
             )}
           </div>
         </section>
-      </div>
-    </main>
+      </main>
+
+      {/* Chat Flutuante Persistente */}
+      <FloatingChat
+        userRole="ALUNO"
+        personalTrainerName={personalTrainer?.name}
+        hasPersonalTrainer={memberProfile ? Boolean(memberProfile.personalTrainerId || workouts.some((workout) => workout.personalTrainerId)) : workouts.some((workout) => workout.personalTrainerId) ? true : undefined}
+      />
+    </div>
   );
 }

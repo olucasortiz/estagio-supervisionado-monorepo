@@ -1,12 +1,9 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Search, SlidersHorizontal, Dumbbell, ChevronRight, Users, Loader2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Search, ChevronRight, Users, MessageSquare } from "lucide-react";
 import { StudentViewModel, StudentStatus } from "./types";
 import { formatCpf } from "./formatters";
-import { cn } from "@/lib/utils";
 
 interface StudentsPanelProps {
   students: StudentViewModel[];
@@ -14,6 +11,7 @@ interface StudentsPanelProps {
   error?: string;
   onManage: (student: StudentViewModel) => void;
   selectedStudentId?: string;
+  onRetry?: () => void;
 }
 
 type FilterOption = "todos" | StudentStatus;
@@ -30,6 +28,7 @@ export function StudentsPanel({
   error,
   onManage,
   selectedStudentId,
+  onRetry,
 }: StudentsPanelProps) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterOption>("todos");
@@ -47,156 +46,46 @@ export function StudentsPanel({
   }, [students, query, filter]);
 
   return (
-    <section className="space-y-5">
-      {/* Header bar: Search and Status Filters */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative w-full lg:max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por nome ou CPF"
-            className="h-11 rounded-xl pl-9 bg-card"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          <SlidersHorizontal className="size-4 shrink-0 text-muted-foreground" />
-          {filterOptions.map((f) => {
-            const isActive = filter === f.key;
-            return (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setFilter(f.key)}
-                className={cn(
-                  "shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer",
-                  isActive
-                    ? "border-primary bg-primary text-primary-foreground shadow-brand"
-                    : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                )}
-              >
-                {f.label}
-              </button>
-            );
-          })}
-        </div>
+    <section className="gp-students" aria-labelledby="personal-students-title">
+      <div className="gp-students-heading"><div><h2 id="personal-students-title">Meus alunos</h2><p>Encontre um aluno e continue a prescrição do treino.</p></div>
+        {!loading && !error && <p className="gp-students-count" role="status">{filteredStudents.length} de {students.length} alunos</p>}
       </div>
-
-      {/* Error state */}
-      {error && (
-        <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive font-medium">
-          {error}
+      <div className="gp-students-toolbar">
+        <div className="gp-students-search-field">
+          <label htmlFor="personal-student-search">Buscar aluno</label>
+          <div><Search size={18} aria-hidden="true" /><input id="personal-student-search" name="studentSearch" className="gp-students-search" autoComplete="off" type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Nome ou CPF…" /></div>
         </div>
-      )}
-
-      {/* Loading state */}
-      {loading ? (
-        <div className="surface-card flex flex-col items-center justify-center p-16 text-center text-muted-foreground">
-          <Loader2 className="size-8 animate-spin text-primary mb-2" />
-          <p className="text-sm font-semibold">Carregando lista de alunos...</p>
-        </div>
-      ) : (
-        /* Students Table Card */
-        <div className="surface-card overflow-hidden">
-          {/* Table Header (Desktop) */}
-          <div className="hidden grid-cols-[2.2fr_1.1fr_0.9fr_1.6fr_auto] gap-4 border-b border-border bg-muted/50 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:grid">
-            <span>Aluno</span>
-            <span>CPF</span>
-            <span>Status</span>
-            <span>Ficha ativa</span>
-            <span className="text-right">Treino</span>
-          </div>
-
-          {/* Table Body */}
-          <div key={filter + query} className="divide-y divide-border">
-            {filteredStudents.map((s, i) => {
-              const isSelected = s.id === selectedStudentId;
-
-              return (
-                <div
-                  key={s.id}
-                  style={{ animationDelay: `${i * 40}ms` }}
-                  className={cn(
-                    "animate-rise row-raise grid grid-cols-1 gap-4 bg-card px-5 py-4 hover:bg-primary-soft/40 lg:grid-cols-[2.2fr_1.1fr_0.9fr_1.6fr_auto] lg:items-center",
-                    isSelected && "border-l-4 border-l-primary bg-primary-soft/30",
-                  )}
+        <fieldset className="gp-students-filters"><legend>Situação do aluno</legend><div>{filterOptions.map((f) => <button key={f.key} type="button" aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>{f.label}</button>)}</div></fieldset>
+      </div>
+      {error ? <div className="gp-personal-state"><p role="alert">{error}</p>{onRetry && <button type="button" className="gp-personal-button" onClick={onRetry}>Tentar novamente</button>}</div> : loading ? <div className="gp-personal-state" role="status"><span className="gp-personal-loading" aria-hidden="true" /><p>Carregando lista de alunos…</p></div> : filteredStudents.length === 0 ? <div className="gp-personal-state"><Users size={28} aria-hidden="true" /><h3>Nenhum aluno encontrado</h3><p>{query || filter !== "todos" ? "Ajuste a busca ou os filtros." : "Nenhum aluno está vinculado ao seu perfil no momento."}</p></div> : <div className="gp-students-table-wrapper">
+        <table className="gp-students-table"><caption className="sr-only">Alunos vinculados ao personal e acesso às fichas</caption><thead><tr><th scope="col">Aluno</th><th scope="col">CPF</th><th scope="col">Situação</th><th scope="col">Ficha ativa</th><th scope="col">Treino</th></tr></thead>
+          <tbody>{filteredStudents.map((s) => <tr key={s.id} data-selected={s.id === selectedStudentId || undefined}>
+            <th scope="row"><div className="gp-student-identity"><span className="gp-personal-avatar" aria-hidden="true">{s.initials}</span><strong>{s.name}</strong></div></th>
+            <td data-label="CPF">{formatCpf(s.cpf)}</td>
+            <td data-label="Situação"><span className="gp-student-status" data-active={s.status === "Ativo"}>{s.status}</span></td>
+            <td data-label="Ficha ativa">{s.hasActiveSheet ? "Ficha vigente" : "Sem ficha ativa"}</td>
+            <td className="gp-student-action">
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <button type="button" className="gp-personal-button" onClick={() => onManage(s)} aria-label={`Gerenciar ficha de ${s.name}`}>
+                  Gerenciar ficha<ChevronRight size={16} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className="gp-personal-button"
+                  style={{ minWidth: "40px", padding: "8px 10px", background: "var(--muted)", color: "var(--foreground)", border: "1px solid var(--border)" }}
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent("open-lion-chat", { detail: { memberId: s.id } }));
+                  }}
+                  aria-label={`Conversar com ${s.name}`}
+                  title={`Conversar com ${s.name}`}
                 >
-                  {/* Name + Avatar */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-ink text-sm font-semibold text-background">
-                      {s.initials}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-foreground text-sm">{s.name}</p>
-                      <p className="text-xs text-muted-foreground lg:hidden">CPF: {formatCpf(s.cpf)}</p>
-                    </div>
-                  </div>
-
-                  {/* CPF (Desktop) */}
-                  <span className="hidden text-sm text-muted-foreground tabular-nums lg:inline">
-                    {formatCpf(s.cpf)}
-                  </span>
-
-                  {/* Status Badge */}
-                  <div>
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
-                        s.status === "Ativo"
-                          ? "border-success/25 bg-success/12 text-success"
-                          : "border-border bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {s.status}
-                    </span>
-                  </div>
-
-                  {/* Active Sheet Indicator */}
-                  <div className="text-sm">
-                    {s.hasActiveSheet ? (
-                      <span className="inline-flex items-center gap-1.5 text-foreground text-sm font-medium">
-                        <Dumbbell className="size-3.5 text-primary shrink-0" />
-                        Ficha Vigente
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Sem ficha ativa</span>
-                    )}
-                  </div>
-
-                  {/* Manage Button */}
-                  <div className="lg:text-right">
-                    <Button
-                      size="sm"
-                      onClick={() => onManage(s)}
-                      className={cn(
-                        "group h-9 rounded-lg bg-primary px-3.5 text-xs font-medium text-primary-foreground shadow-brand transition-all duration-200 hover:bg-primary-strong",
-                        isSelected && "bg-foreground text-background hover:bg-foreground/90",
-                      )}
-                    >
-                      Gerenciar ficha
-                      <ChevronRight className="size-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Empty search or no students */}
-            {filteredStudents.length === 0 && (
-              <div className="animate-rise flex flex-col items-center gap-2 px-5 py-16 text-center">
-                <Users className="size-8 text-muted-foreground" />
-                <p className="font-medium text-foreground">Nenhum aluno encontrado</p>
-                <p className="text-sm text-muted-foreground">
-                  {query || filter !== "todos"
-                    ? "Ajuste a busca ou os filtros."
-                    : "Nenhum aluno está vinculado ao seu perfil no momento."}
-                </p>
+                  <MessageSquare size={15} aria-hidden="true" />
+                </button>
               </div>
-            )}
-          </div>
-        </div>
-      )}
+            </td>
+          </tr>)}</tbody>
+        </table>
+      </div>}
     </section>
   );
 }

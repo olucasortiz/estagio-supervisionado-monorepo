@@ -40,24 +40,51 @@ export function mapStudent(entry: unknown, index = 0): StudentViewModel {
   };
 }
 
-export function mapWorkoutSheet(entry: unknown, index = 0): WorkoutSheetViewModel {
-  const sheet: Record<string, unknown> = entry && typeof entry === "object" ? entry as Record<string, unknown> : {};
-  const rawDate = readString(sheet.createdAt, readString(sheet.created_at, ""));
+function formatCreationDate(raw: unknown): string {
+  if (!raw) return "Data não registrada";
 
-  let formattedDate = "—";
-  if (rawDate) {
-    try {
-      const normalized = rawDate.includes("T") ? rawDate.split("T")[0] : rawDate;
-      const [year, month, day] = normalized.split("-");
-      if (year && month && day) {
-        formattedDate = `${day}/${month}/${year}`;
-      } else {
-        formattedDate = rawDate;
-      }
-    } catch {
-      formattedDate = rawDate;
+  // Caso 1: Array serializado pelo Jackson [year, month, day, hour, minute, second, ...]
+  if (Array.isArray(raw) && raw.length >= 3) {
+    const year = raw[0];
+    const month = String(raw[1]).padStart(2, "0");
+    const day = String(raw[2]).padStart(2, "0");
+    if (year && month && day) {
+      return `${day}/${month}/${year}`;
     }
   }
+
+  // Caso 2: String ISO ou YYYY-MM-DD (sem conversão de fuso)
+  if (typeof raw === "string" && raw.trim()) {
+    const trimmed = raw.trim();
+    const datePart = trimmed.split(/[T ]/)[0];
+    const match = datePart.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (match) {
+      const year = match[1];
+      const month = match[2].padStart(2, "0");
+      const day = match[3].padStart(2, "0");
+      return `${day}/${month}/${year}`;
+    }
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+      return trimmed;
+    }
+  }
+
+  // Caso 3: Timestamp numérico
+  if (typeof raw === "number" && !isNaN(raw) && raw > 0) {
+    const d = new Date(raw);
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  return "Data não registrada";
+}
+
+export function mapWorkoutSheet(entry: unknown, index = 0): WorkoutSheetViewModel {
+  const sheet: Record<string, unknown> = entry && typeof entry === "object" ? entry as Record<string, unknown> : {};
+  const rawDate = sheet.createdAt ?? sheet.created_at;
+  const formattedDate = formatCreationDate(rawDate);
 
   const weekDay = readString(sheet.weekDay, readString(sheet.week_day, "MONDAY"));
   const weekDayMap: Record<string, string> = {
