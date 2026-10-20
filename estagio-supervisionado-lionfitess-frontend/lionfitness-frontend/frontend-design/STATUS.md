@@ -7,6 +7,10 @@ Atualizado em 19/10/2026. Pedido vigente: refinamentos pontuais na identidade Gr
 4. Aplicação do logotipo oficial da Lion Fitness (`03-LOGO-ORIGINAL-LION.png`).
 5. Chat persistente bidirecional entre Aluno e Personal Trainer com histórico e notificações integradas.
 
+## Escala visual corrigida — 20/10/2026
+
+- Usuário esclareceu que deseja o tamanho MAIOR da primeira imagem. A interface permanece na escala original de 100%; nenhuma redução global deve ser aplicada. A proposta anterior de escala compacta foi rejeitada e nunca publicada.
+- Commit/push solicitado em 20/10/2026 para registrar esta preferência de escala. A produção continua na escala original.
 ## Publicação completa e correção PostgreSQL — 20/10/2026
 
 - Push autorizado pelo usuário. Redesign, logo oficial, guias e correções publicados no GitHub em 67ab201; ativação PM2 ajustada em 1d57026. GitHub Actions run 39440985044 concluído com success. Frontend de produção agora usa /home/ubuntu/lion-frontend-releases/1d57026cf4090e6c970b11bc9d27314513272345/server.js. GET público /login = 200 com logo oficial e classes gp-auth.
