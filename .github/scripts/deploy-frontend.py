@@ -26,7 +26,9 @@ def activate(config):
     try:
         with os.fdopen(descriptor, 'w') as handle:
             json.dump({'apps': [config]}, handle)
-        subprocess.run(['pm2', 'startOrReload', filename, '--only', 'lion-frontend', '--update-env'], check=True)
+        # PM2 reload preserves the previous script path; recreate only this named process.
+        subprocess.run(['pm2', 'delete', 'lion-frontend'], check=False, stdout=subprocess.DEVNULL)
+        subprocess.run(['pm2', 'start', filename, '--only', 'lion-frontend'], check=True)
     finally:
         os.unlink(filename)
 
