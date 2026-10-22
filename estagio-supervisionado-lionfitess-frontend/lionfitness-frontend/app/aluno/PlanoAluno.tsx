@@ -174,6 +174,7 @@ function labelStatus(status: string | null | undefined): string {
   if (!status) return "INATIVO";
   const map: Record<string, string> = {
     ACTIVE: "ATIVO",
+    EXPIRED: "EXPIRADO",
     OVERDUE: "VENCIDO",
     CANCELED: "CANCELADO",
     INACTIVE: "INATIVO",

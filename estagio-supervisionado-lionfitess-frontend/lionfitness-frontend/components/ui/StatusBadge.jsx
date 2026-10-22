@@ -3,6 +3,7 @@
 const STATUS_MAP = {
   Ativo:        { cls: "badge-success", label: "Ativo" },
   ACTIVE:       { cls: "badge-success", label: "Ativo" },
+  EXPIRED:      { cls: "badge-warning", label: "Expirado" },
   Inativo:      { cls: "badge-neutral", label: "Inativo" },
   INACTIVE:     { cls: "badge-neutral", label: "Inativo" },
   Cancelado:    { cls: "badge-error",   label: "Cancelado" },

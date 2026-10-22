@@ -50,15 +50,8 @@ WHERE table_schema = 'public'
 -- ==============================================================================
 
 BEGIN;
--- Compatibilidade com o histórico legado
-ALTER TABLE public.workout_sheet_history
-    ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ;
-
-UPDATE public.workout_sheet_history
-SET created_at = changed_at
-WHERE created_at IS NULL;
--- 2.1 Criar a tabela workout_sheet_history caso não exista na base Supabase
-CREATE TABLE IF NOT EXISTS workout_sheet_history (
+-- Criar a tabela primeiro; as etapas seguintes também atendem instalações legadas.
+CREATE TABLE IF NOT EXISTS public.workout_sheet_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     workout_sheet_id UUID NOT NULL,
     change_reason TEXT,
@@ -66,39 +59,44 @@ CREATE TABLE IF NOT EXISTS workout_sheet_history (
     changed_by_user_id UUID,
     changed_by_name VARCHAR(150),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    CONSTRAINT fk_wsh_workout_sheet FOREIGN KEY (workout_sheet_id) 
-        REFERENCES workout_sheets(id) ON DELETE CASCADE,
-    CONSTRAINT fk_wsh_changed_by_user FOREIGN KEY (changed_by_user_id) 
-        REFERENCES users(id) ON DELETE SET NULL
+    CONSTRAINT fk_wsh_workout_sheet FOREIGN KEY (workout_sheet_id)
+        REFERENCES public.workout_sheets(id) ON DELETE CASCADE,
+    CONSTRAINT fk_wsh_changed_by_user FOREIGN KEY (changed_by_user_id)
+        REFERENCES public.users(id) ON DELETE SET NULL
 );
 
+-- Mantém created_at legado sem fuso como timestamp local; não converte valores sem
+-- zona horária, pois o instante original não pode ser inferido com segurança.
+ALTER TABLE public.workout_sheet_history
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ;
+
 -- 2.2 Garantir que a tabela workout_sheets possui a coluna 'version' para lock otimista
-ALTER TABLE workout_sheets 
+ALTER TABLE public.workout_sheets
     ADD COLUMN IF NOT EXISTS version BIGINT NOT NULL DEFAULT 0;
 
 -- 2.3 Garantir que workout_exercises possui 'is_active' e 'sort_order'
-ALTER TABLE workout_exercises 
+ALTER TABLE public.workout_exercises
     ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;
 
-ALTER TABLE workout_exercises 
+ALTER TABLE public.workout_exercises
     ADD COLUMN IF NOT EXISTS sort_order INTEGER;
 
 -- 2.4 Caso workout_sheet_history já existisse com schema parcial antigo, adicionar colunas que faltavam
-ALTER TABLE workout_sheet_history 
+ALTER TABLE public.workout_sheet_history
     ADD COLUMN IF NOT EXISTS snapshot JSONB;
 
-ALTER TABLE workout_sheet_history 
+ALTER TABLE public.workout_sheet_history
     ADD COLUMN IF NOT EXISTS changed_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL;
 
-ALTER TABLE workout_sheet_history 
+ALTER TABLE public.workout_sheet_history
     ADD COLUMN IF NOT EXISTS changed_by_name VARCHAR(150);
 
 -- 2.5 Criação idempotente de índices para alta performance em consultas de auditoria
 CREATE INDEX IF NOT EXISTS idx_workout_sheet_history_sheet_created
-    ON workout_sheet_history(workout_sheet_id, created_at DESC);
+    ON public.workout_sheet_history(workout_sheet_id, created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_workout_sheet_history_actor
-    ON workout_sheet_history(changed_by_user_id);
+    ON public.workout_sheet_history(changed_by_user_id);
 
 COMMIT;
 

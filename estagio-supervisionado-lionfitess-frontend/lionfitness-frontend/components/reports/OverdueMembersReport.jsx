@@ -46,11 +46,11 @@ function formatSecureCurrency(value) {
 import { useAuth } from "../../hooks/useAuth";
 import exportReportPdf from "./exportReportPdf";
 
-export default function OverdueMembersReport({ members = [] }) {
+export default function OverdueMembersReport({ members = [], overdueMembers }) {
   const { user } = useAuth();
   const [generated, setGenerated] = useState(false);
 
-  const overdue = members.filter((m) =>
+  const overdue = Array.isArray(overdueMembers) ? overdueMembers : members.filter((m) =>
     m.situacaoFin === "Inadimplente" ||
     m.situacaoFin === "OVERDUE" ||
     m.financialStatus === "OVERDUE" ||
@@ -100,7 +100,7 @@ export default function OverdueMembersReport({ members = [] }) {
       plano: m.plano || "—",
       situacaoFin: "Inadimplente",
       valorPendente: formatSecureCurrency(m.pendingAmount ?? m.valorPendente ?? m.value ?? m.valor ?? m.amount ?? ""),
-      vencimento: formatSecureDate(m.dueDate ?? m.due_date ?? m.vencimento ?? m.nextPaymentDate ?? m.next_payment_date ?? m.venceEm ?? ""),
+      vencimento: formatSecureDate(m.paymentDate ?? m.payment_date ?? m.dueDate ?? m.due_date ?? m.vencimento ?? m.nextPaymentDate ?? m.next_payment_date ?? m.venceEm ?? ""),
     }));
 
     const todayStr = new Date().toISOString().split("T")[0];
@@ -192,6 +192,8 @@ export default function OverdueMembersReport({ members = [] }) {
               { key: "nome", label: "Nome", render: (r) => r.nome || r.name || "—" },
               { key: "cpf",  label: "CPF",  render: (r) => <span style={{ fontFamily: "monospace", fontSize: 12 }}>{maskCPF(r.cpf)}</span> },
               { key: "plano", label: "Plano", render: (r) => r.plano || "—" },
+              { key: "amount", label: "Valor pendente", render: (r) => formatSecureCurrency(r.amount) },
+              { key: "paymentDate", label: "Vencimento", render: (r) => formatSecureDate(r.paymentDate) },
               { key: "situacaoFin", label: "Situação financeira", render: () => <StatusBadge status="Inadimplente" /> },
             ]}
           />

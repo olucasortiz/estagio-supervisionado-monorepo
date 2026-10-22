@@ -43,7 +43,9 @@ public class PaymentRepository {
                                         resultSet.getBigDecimal("amount"),
                                         resultSet.getObject("reference_date", LocalDate.class),
                                         resultSet.getString("payment_method"),
-                                        resultSet.getString("payment_status"));
+                                        resultSet.getString("payment_status"),
+                                        resultSet.getString("plan_name"),
+                                        resultSet.getInt("open_payment_count"));
 
         private final JdbcTemplate jdbcTemplate;
 
@@ -205,27 +207,41 @@ public class PaymentRepository {
         public List<OverdueMemberResponse> findOverdueMembers() {
                 return jdbcTemplate.query(
                                 """
-                                                select m.id as member_id,
-                                                       m.name,
-                                                       m.cpf,
-                                                       s.id as subscription_id,
-                                                       s.status::text as subscription_status,
-                                                       p.id as payment_id,
-                                                       p.amount,
-                                                       s.end_date as reference_date,
-                                                       p.method::text as payment_method,
-                                                       p.status::text as payment_status
-                                                from members m
-                                                inner join subscriptions s on s.member_id = m.id
-                                                inner join payments p on p.subscription_id = s.id
-                                                where m.is_active = true
-                                                  and s.status::text <> 'CANCELED'
-                                                  and p.status::text <> 'CANCELED'
-                                                  and (
-                                                        p.status::text = 'OVERDUE'
-                                                        or (p.status::text = 'PENDING' and s.end_date < current_date)
-                                                        )
-                                                order by s.end_date asc, m.name asc
+                                                with delinquent_payments as (
+                                                    select m.id as member_id,
+                                                           m.name,
+                                                           m.cpf,
+                                                           s.id as subscription_id,
+                                                           s.status::text as subscription_status,
+                                                           p.id as payment_id,
+                                                           sum(p.amount) over (partition by m.id) as amount,
+                                                           s.end_date as reference_date,
+                                                           p.method::text as payment_method,
+                                                           p.status::text as payment_status,
+                                                           pl.name as plan_name,
+                                                           count(*) over (partition by m.id)::int as open_payment_count,
+                                                           row_number() over (
+                                                               partition by m.id
+                                                               order by s.end_date asc nulls last, p.created_at asc, p.id
+                                                           ) as member_row
+                                                    from members m
+                                                    inner join subscriptions s on s.member_id = m.id
+                                                    inner join plans pl on pl.id = s.plan_id
+                                                    inner join payments p on p.subscription_id = s.id
+                                                    where m.is_active = true
+                                                      and s.status::text <> 'CANCELED'
+                                                      and p.status::text <> 'CANCELED'
+                                                      and (
+                                                            p.status::text = 'OVERDUE'
+                                                            or (p.status::text = 'PENDING' and s.end_date < (now() at time zone 'America/Sao_Paulo')::date)
+                                                            )
+                                                )
+                                                select member_id, name, cpf, subscription_id, subscription_status,
+                                                       payment_id, amount, reference_date, payment_method,
+                                                       payment_status, plan_name, open_payment_count
+                                                from delinquent_payments
+                                                where member_row = 1
+                                                order by reference_date asc nulls last, name asc
                                                 """,
                                 OVERDUE_MEMBER_ROW_MAPPER);
         }

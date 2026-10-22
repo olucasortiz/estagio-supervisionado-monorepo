@@ -300,11 +300,44 @@ export const normalizePayment = (payment, subscriptions) => {
 
 export const normalizeOverdueMember = (member) => {
   const n = normalizeMember(member);
+  const memberId = member.memberId ?? member.member_id ?? member.id ?? "";
   return {
     ...n,
+    id: memberId || member.paymentId || member.payment_id || "",
+    memberId,
     plano: member.plan?.name || member.plan?.nome || member.planName || member.plan_name || n.plano,
-    situacaoFin: member.financialStatus || member.financial_status || member.statusFinanceiro || member.situacaoFin || n.situacaoFin || "Inadimplente",
+    amount: member.amount ?? member.pendingAmount ?? member.pending_amount ?? "",
+    paymentDate: member.paymentDate || member.payment_date || member.dueDate || member.due_date || "",
+    paymentStatus: member.paymentStatus || member.payment_status || "PENDING",
+    openPaymentCount: Number(member.openPaymentCount ?? member.open_payment_count ?? 1),
+    situacaoFin: "Inadimplente",
   };
+};
+
+export const aggregateOverdueMembers = (items) => {
+  const byMember = new Map();
+  for (const item of items) {
+    const key = String(item.memberId || item.id || item.paymentId || item.payment_id || "");
+    const current = byMember.get(key);
+    if (!current) {
+      byMember.set(key, { ...item, id: key });
+      continue;
+    }
+
+    const currentHasAggregate = Number(current.openPaymentCount) > 1;
+    const itemHasAggregate = Number(item.openPaymentCount) > 1;
+    current.amount = currentHasAggregate || itemHasAggregate
+      ? Math.max(Number(current.amount) || 0, Number(item.amount) || 0)
+      : (Number(current.amount) || 0) + (Number(item.amount) || 0);
+    current.openPaymentCount = currentHasAggregate || itemHasAggregate
+      ? Math.max(Number(current.openPaymentCount) || 1, Number(item.openPaymentCount) || 1)
+      : (Number(current.openPaymentCount) || 1) + (Number(item.openPaymentCount) || 1);
+    if (item.paymentDate && (!current.paymentDate || item.paymentDate < current.paymentDate)) {
+      current.paymentDate = item.paymentDate;
+    }
+    if (String(item.paymentStatus).toUpperCase() === "OVERDUE") current.paymentStatus = "OVERDUE";
+  }
+  return [...byMember.values()];
 };
 
 // ─── Estado inicial dos formulários (mantido idêntico) ────────────────────
@@ -480,7 +513,7 @@ export default function DashboardContent({ activeReport, styles } = {}) {
       const personalTrainers = Array.isArray(rawTrainers) ? rawTrainers.map(normalizePersonalTrainer) : [];
       const subscriptions = rawSubs.map((s) => normalizeSubscription(s, members, plans));
       const payments = rawPayments.map((p) => normalizePayment(p, subscriptions));
-      const overdueMembers = rawOverdue.map(normalizeOverdueMember);
+      const overdueMembers = aggregateOverdueMembers(rawOverdue.map(normalizeOverdueMember));
 
       setData({ members, allMembers, plans, users, personalTrainers, subscriptions, payments, overdueMembers });
     } catch (err) {
@@ -706,7 +739,7 @@ export default function DashboardContent({ activeReport, styles } = {}) {
     19: <NewMembersReport     styles={currentStyles} members={data.members} toDate={toDate} fmtDate={fmtDate} />,
     20: <CancellationsReport  styles={currentStyles} cancellations={data.cancellations} toDate={toDate} fmtDate={fmtDate} />,
     21: <ActiveMembersReport  styles={currentStyles} members={data.allMembers || data.members} Badge={null} />,
-    22: <OverdueMembersReport styles={currentStyles} members={data.members} Badge={null} />,
+    22: <OverdueMembersReport styles={currentStyles} members={data.members} overdueMembers={data.overdueMembers} Badge={null} />,
     30: <MembersSection       {...sectionProps} />,
     31: <PlansSection         {...sectionProps} />,
     32: <UsersSection         {...sectionProps} />,

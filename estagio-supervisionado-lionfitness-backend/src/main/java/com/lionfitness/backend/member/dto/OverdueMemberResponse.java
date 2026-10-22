@@ -14,6 +14,8 @@ public record OverdueMemberResponse(
         BigDecimal amount,
         LocalDate paymentDate,
         String paymentMethod,
-        String paymentStatus
+        String paymentStatus,
+        String planName,
+        Integer openPaymentCount
 ) {
 }

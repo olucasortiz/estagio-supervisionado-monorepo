@@ -42,7 +42,7 @@ function formatDateTime(value: string) {
   return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
-export function NotificationBell({ canReply = false }: { canReply?: boolean }) {
+export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);

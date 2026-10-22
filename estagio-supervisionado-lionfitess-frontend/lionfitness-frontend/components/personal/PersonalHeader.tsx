@@ -35,7 +35,7 @@ export function PersonalHeader({
           <div className="gp-personal-account"><strong>{userName}</strong><span>Personal Trainer</span></div>
           <span className="gp-personal-avatar" aria-label={userName}>{initials}</span>
           <ThemeToggle className="gp-personal-icon-button" />
-          <NotificationBell canReply />
+          <NotificationBell />
           <button type="button" onClick={onLogout} className="gp-personal-icon-button" aria-label="Sair do sistema" title="Sair do sistema"><LogOut size={18} aria-hidden="true" /></button>
         </div>
       </div>

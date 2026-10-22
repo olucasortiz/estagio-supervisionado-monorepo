@@ -131,13 +131,15 @@ public class SubscriptionService {
         logger.info("Loading active subscription for authenticated email {}", authenticatedEmail);
         return subscriptionRepository.findActiveByUserEmail(authenticatedEmail)
                 .map(sub -> {
+                    String effectiveStatus = renewalEligibilityService.effectiveStatus(sub.status(), sub.endDate());
                     SubscriptionRenewalEligibilityService.RenewalEligibility renewalEligibility =
                             renewalEligibilityService.assess(new Subscription(
                                     sub.id(), sub.memberId(), sub.planId(), sub.startDate(), sub.endDate(),
-                                    sub.status(), sub.createdAt()));
+                                    effectiveStatus, sub.createdAt()));
                     int days = 0;
-                    if ("ACTIVE".equalsIgnoreCase(sub.status()) && sub.endDate() != null) {
-                        long diff = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), sub.endDate());
+                    if ("ACTIVE".equalsIgnoreCase(effectiveStatus) && sub.endDate() != null) {
+                        long diff = java.time.temporal.ChronoUnit.DAYS.between(
+                                renewalEligibilityService.businessDate(), sub.endDate());
                         days = diff < 0 ? 0 : (int) diff;
                     }
                     return new MySubscriptionResponse(
@@ -149,7 +151,7 @@ public class SubscriptionService {
                             sub.planPrice(),
                             sub.startDate(),
                             sub.endDate(),
-                            sub.status(),
+                            effectiveStatus,
                             sub.createdAt(),
                             days,
                             true,
@@ -194,7 +196,7 @@ public class SubscriptionService {
                 subscription.planId(),
                 subscription.startDate(),
                 subscription.endDate(),
-                subscription.status(),
+                renewalEligibilityService.effectiveStatus(subscription.status(), subscription.endDate()),
                 subscription.createdAt()
         );
     }

@@ -30,7 +30,9 @@ import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.core.io.ByteArrayResource;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -115,8 +117,10 @@ class WorkoutSheetHistoryPostgresTest {
     private void migrate(String kind) throws Exception {
         if ("startup".equals(kind)) new WorkoutSchemaMigration(dataSource).migrate();
         else try (var connection = dataSource.getConnection()) {
-            ScriptUtils.executeSqlScript(connection,
-                    new ClassPathResource("db/manual/2026-10-15-workout-sheet-history-safe-migration.sql"));
+            String script = new ClassPathResource("db/manual/2026-10-15-workout-sheet-history-safe-migration.sql")
+                    .getContentAsString(StandardCharsets.UTF_8)
+                    .replace("public.", schema + ".");
+            ScriptUtils.executeSqlScript(connection, new ByteArrayResource(script.getBytes(StandardCharsets.UTF_8)));
         }
     }
 

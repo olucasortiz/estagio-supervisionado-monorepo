@@ -30,9 +30,11 @@ public class SubscriptionRenewalEligibilityService {
     }
 
     public RenewalEligibility assess(Subscription subscription) {
-        LocalDate today = LocalDate.now(clock.withZone(zoneId));
+        LocalDate today = businessDate();
         LocalDate availableFrom = subscription.endDate().minusDays(RENEWAL_WINDOW_DAYS);
-        boolean eligible = !today.isBefore(availableFrom);
+        boolean renewableStatus = "ACTIVE".equalsIgnoreCase(subscription.status())
+                || "EXPIRED".equalsIgnoreCase(subscription.status());
+        boolean eligible = renewableStatus && !today.isBefore(availableFrom);
         int daysUntilRenewal = eligible ? 0 : Math.toIntExact(ChronoUnit.DAYS.between(today, availableFrom));
         return new RenewalEligibility(eligible, availableFrom, daysUntilRenewal);
     }
@@ -42,6 +44,17 @@ public class SubscriptionRenewalEligibilityService {
         if (!eligibility.eligible()) {
             throw new SubscriptionRenewalNotAvailableException(eligibility.availableFrom());
         }
+    }
+
+    public LocalDate businessDate() {
+        return LocalDate.now(clock.withZone(zoneId));
+    }
+
+    public String effectiveStatus(String status, LocalDate endDate) {
+        if ("ACTIVE".equalsIgnoreCase(status) && endDate != null && endDate.isBefore(businessDate())) {
+            return "EXPIRED";
+        }
+        return status;
     }
 
     public record RenewalEligibility(boolean eligible, LocalDate availableFrom, int daysUntilRenewal) {

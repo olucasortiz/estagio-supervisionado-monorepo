@@ -62,6 +62,30 @@ class SubscriptionRenewalEligibilityServiceTest {
     }
 
     @Test
+    @DisplayName("Matrícula permanece ativa até o fim da data de vencimento e expira no dia seguinte")
+    void derivesExpiredStatusOnlyAfterEndDate() {
+        SubscriptionRenewalEligibilityService service = serviceOn(LocalDate.of(2026, 10, 31));
+
+        assertThat(service.effectiveStatus("ACTIVE", LocalDate.of(2026, 10, 31))).isEqualTo("ACTIVE");
+        assertThat(service.effectiveStatus("ACTIVE", LocalDate.of(2026, 10, 30))).isEqualTo("EXPIRED");
+        assertThat(service.effectiveStatus("CANCELED", LocalDate.of(2026, 10, 30))).isEqualTo("CANCELED");
+        assertThat(service.effectiveStatus("PENDING", LocalDate.of(2026, 10, 30))).isEqualTo("PENDING");
+    }
+
+    @Test
+    @DisplayName("Matrícula cancelada não pode ser renovada como se ainda estivesse ativa")
+    void canceledSubscriptionIsNotRenewalEligible() {
+        Subscription canceled = new Subscription(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 20), "CANCELED",
+                LocalDateTime.of(2026, 10, 1, 12, 0));
+
+        SubscriptionRenewalEligibilityService.RenewalEligibility eligibility =
+                serviceOn(LocalDate.of(2026, 10, 31)).assess(canceled);
+
+        assertThat(eligibility.eligible()).isFalse();
+    }
+
+    @Test
     @DisplayName("BUG-10: Transição entre UTC e horário de Brasília (22h30 BRT = 01h30 UTC do dia seguinte)")
     void handlesDateTransitionBetweenUtcAndBrasiliaTime() {
         // Instant: 2026-10-26T01:30:00Z.
