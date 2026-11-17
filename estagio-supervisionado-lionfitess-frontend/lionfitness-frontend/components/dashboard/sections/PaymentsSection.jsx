@@ -9,9 +9,9 @@ import StatusBadge from "../../ui/StatusBadge";
 import PixPaymentModal from "../../ui/PixPaymentModal";
 import CardPaymentModal from "../../ui/CardPaymentModal";
 import Combobox from "../../ui/Combobox";
+import { paymentMethodLabel } from "@/lib/payment-labels";
 
 
-const METHOD_LABELS = { PIX: "Pix", CASH: "Dinheiro", CARD: "Cartão", Dinheiro: "Dinheiro", Cartão: "Cartão", Pix: "Pix", Boleto: "Boleto" };
 
 function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, feedback, error, isEditing, data }) {
   const isPixMethod = ["Pix", "PIX"].includes(form.method);
@@ -290,7 +290,7 @@ export default function PaymentsSection({
           columns={[
             { key: "subscriptionLabel", label: "Aluno" },
             { key: "amount", label: "Valor", render: (r) => <strong>{fmtCurrency(r.amount)}</strong> },
-            { key: "method", label: "Método", render: (r) => METHOD_LABELS[r.method] || r.method },
+            { key: "method", label: "Método", render: (r) => paymentMethodLabel(r.method) },
             { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
             { key: "paidAt", label: "Data", render: (r) => fmtDate(r.paidAt) },
           ]}

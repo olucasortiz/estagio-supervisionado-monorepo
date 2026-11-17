@@ -34,7 +34,7 @@ export function AdminRevenueChart({ data, className }: AdminRevenueChartProps) {
   const padLeft = 50;
   const padRight = 20;
   const padTop = 20;
-  const padBottom = 30;
+  const padBottom = 12; // os meses ficam nos botões abaixo do gráfico, sem repetição no eixo
 
   const chartW = width - padLeft - padRight;
   const chartH = height - padTop - padBottom;
@@ -89,7 +89,6 @@ export function AdminRevenueChart({ data, className }: AdminRevenueChartProps) {
         {points.map((point, index) => <g key={`${point.mes}-${index}`} onPointerEnter={() => setHoveredIdx(index)} aria-hidden="true">
           <circle cx={point.x} cy={point.y} r={18} fill="transparent" />
           <circle cx={point.x} cy={point.y} r={activeIndex === index ? 5 : 3.5} fill={activeIndex === index ? "var(--primary)" : "var(--card)"} stroke="var(--primary)" strokeWidth="2" pointerEvents="none" />
-          <text x={point.x} y={height - 8} textAnchor="middle" fill="var(--muted-foreground)" fontSize="11">{point.mes}</text>
         </g>)}
       </svg>
       <div className="gp-chart-months" style={{ "--chart-months": points.length } as React.CSSProperties} role="group" aria-label="Consultar receita por mês">

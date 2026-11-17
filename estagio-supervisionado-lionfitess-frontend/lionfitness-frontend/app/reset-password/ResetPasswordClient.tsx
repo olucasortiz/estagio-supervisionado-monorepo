@@ -42,10 +42,10 @@ export default function ResetPasswordClient() {
 
   const requirements: Requirement[] = useMemo(
     () => [
-      { label: "Mínimo de 6 caracteres", met: password.length >= 6 },
-      { label: "Pelo menos uma letra maiúscula", met: /[A-Z]/.test(password) },
-      { label: "Pelo menos um número", met: /[0-9]/.test(password) },
-      { label: "Pelo menos um caractere especial", met: /[^A-Za-z0-9]/.test(password) },
+      { label: "Mínimo de 6 caracteres (obrigatório)", met: password.length >= 6 },
+      { label: "Uma letra maiúscula (recomendado)", met: /[A-Z]/.test(password) },
+      { label: "Um número (recomendado)", met: /[0-9]/.test(password) },
+      { label: "Um caractere especial (recomendado)", met: /[^A-Za-z0-9]/.test(password) },
     ],
     [password]
   );

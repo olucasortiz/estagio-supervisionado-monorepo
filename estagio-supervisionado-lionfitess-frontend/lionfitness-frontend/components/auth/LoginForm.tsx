@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, CreditCard, Dumbbell, Eye, EyeOff, Loader2, Users, ClipboardList } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import "@/app/graphite-tokens.css";
 import "@/app/auth.css";
@@ -11,11 +11,10 @@ import { ForgotPasswordDialog } from "./ForgotPasswordDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { getDefaultRouteByRole } from "@/services/auth";
 
-const features = [
-  { icon: Users, label: "Alunos" },
-  { icon: Dumbbell, label: "Treinos" },
-  { icon: ClipboardList, label: "Planos" },
-  { icon: CreditCard, label: "Pagamentos" },
+const areas = [
+  { title: "Administração", text: "Cadastros, financeiro e relatórios da academia." },
+  { title: "Personal trainers", text: "Alunos vinculados e fichas de treino." },
+  { title: "Alunos", text: "Plano, pagamentos e treinos da semana." },
 ];
 
 export default function LoginForm() {
@@ -61,17 +60,17 @@ export default function LoginForm() {
 
         <div>
           <h1>
-            Gestão inteligente
+            Um só acesso
             <br />
-            para academias
+            para toda a academia
           </h1>
-          <p>Tudo o que sua academia precisa em um só lugar: alunos, treinos, planos e pagamentos.</p>
+          <p>Entre com seu e-mail. O sistema abre a área do seu perfil.</p>
 
-          <ul className="gp-auth-modules" style={{ listStyle: "none", padding: 0, marginBottom: 0 }}>
-            {features.map((feature) => (
-              <li key={feature.label} className="gp-auth-module">
-                <feature.icon size={18} strokeWidth={2} aria-hidden="true" />
-                {feature.label}
+          <ul className="gp-auth-modules">
+            {areas.map((area) => (
+              <li key={area.title} className="gp-auth-module">
+                <strong>{area.title}</strong>
+                <span>{area.text}</span>
               </li>
             ))}
           </ul>
@@ -84,7 +83,7 @@ export default function LoginForm() {
       <section className="gp-auth-main" aria-label="Login">
         <div className="gp-auth-brand-mobile">
           <LionLogo variant="dark" size="lg" />
-          <p>Gestão inteligente para academias</p>
+          <p>Acesso para administração, personais e alunos</p>
         </div>
 
         <div className="gp-auth-card">

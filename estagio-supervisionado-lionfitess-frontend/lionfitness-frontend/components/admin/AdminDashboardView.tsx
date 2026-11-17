@@ -15,6 +15,7 @@ import { AdminRevenueChart, type RevenueDataPoint } from "./AdminRevenueChart";
 import Avatar from "../ui/Avatar";
 import StatusBadge from "../ui/StatusBadge";
 import { cn } from "@/lib/utils";
+import { paymentMethodLabel } from "@/lib/payment-labels";
 
 export type DashboardItem = {
   [key: string]: string | number | boolean | null | undefined | Date;
@@ -185,7 +186,7 @@ export default function AdminDashboardView({
       events.push({
         id: `pay-${p.id || idx}`,
         title: "Pagamento registrado",
-        desc: `${p.subscriptionLabel || "Assinatura"} · ${fmtCurrency(p.amount)} (${p.method || "Pix"})`,
+        desc: `${p.subscriptionLabel || "Assinatura"}, ${fmtCurrency(p.amount)} no ${paymentMethodLabel(p.method || "PIX").toLowerCase()}`,
         time: fmtDate(dateStr) || "Hoje",
         rawDate: d,
         type: "pagamento",
@@ -215,7 +216,7 @@ export default function AdminDashboardView({
         events.push({
           id: `canc-${m.id || idx}`,
           title: "Matrícula cancelada",
-          desc: `${m.nome} · Motivo: ${m.motivoCancelamento || "Cancelado"}`,
+          desc: `${m.nome}, motivo: ${m.motivoCancelamento || "Cancelado"}`,
           time: fmtDate(dateStr) || "Recentemente",
           rawDate: d,
           type: "cancelamento",
@@ -253,7 +254,7 @@ export default function AdminDashboardView({
         </div>
         <div className="gp-metric gp-metric-revenue">
           <dt><Wallet size={19} aria-hidden="true" />Receita realizada</dt>
-          <dd><CountUp value={totalRevenue} prefix="R$ " decimals={2} duration={500} /><p>Pagamentos liquidados · {data.payments?.length || 0} lançamentos na base</p></dd>
+          <dd><CountUp value={totalRevenue} prefix="R$ " decimals={2} duration={500} /><p>Pagamentos liquidados em {data.payments?.length || 0} lançamentos</p></dd>
         </div>
         <div className="gp-metric gp-metric-overdue">
           <dt><AlertTriangle size={19} aria-hidden="true" />Alunos inadimplentes</dt>
@@ -277,7 +278,7 @@ export default function AdminDashboardView({
               <li key={plan.id}>
                 <div><strong>{plan.nome}</strong><span>{fmtCurrency(plan.receita)}</span></div>
                 <div className="gp-plan-meter" role="meter" aria-label={`Participação estimada de ${plan.nome}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={plan.share}><span style={{ transform: `scaleX(${Math.min(100, Math.max(0, plan.share)) / 100})` }} /></div>
-                <p><span>{plan.subsCount} {plan.subsCount === 1 ? "aluno vinculado" : "alunos vinculados"} · {fmtCurrency(plan.price)}/plano</span><strong>{plan.share}%</strong></p>
+                <p><span>{plan.subsCount} {plan.subsCount === 1 ? "aluno vinculado" : "alunos vinculados"}, {fmtCurrency(plan.price)} por plano</span><strong>{plan.share}%</strong></p>
               </li>
             ))}</ul>
           )}
@@ -304,7 +305,7 @@ export default function AdminDashboardView({
                 <thead><tr><th scope="col">Aluno / Assinatura</th><th scope="col">Método</th><th scope="col" className="gp-number">Valor</th><th scope="col">Data</th><th scope="col">Situação</th></tr></thead>
                 <tbody>{recentPayments.map((payment) => <tr key={payment.id}>
                   <td data-label="Aluno / Assinatura"><strong>{payment.subscriptionLabel || "Assinatura"}</strong></td>
-                  <td data-label="Método">{payment.method || "—"}</td>
+                  <td data-label="Método">{paymentMethodLabel(payment.method)}</td>
                   <td data-label="Valor" className="gp-number"><strong>{fmtCurrency(payment.amount)}</strong></td>
                   <td data-label="Data">{fmtDate(payment.paidAt || payment.createdAt)}</td>
                   <td data-label="Situação"><StatusBadge status={payment.status || "Pago"} /></td>

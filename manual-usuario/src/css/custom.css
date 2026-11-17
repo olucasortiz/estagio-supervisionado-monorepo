@@ -1,0 +1,158 @@
+/* ───────── Tokens — Graphite Performance, versão manual ───────── */
+:root {
+  --lf-display: 'Bricolage Grotesque', 'Inter', system-ui, sans-serif;
+  --lf-red: #b4232d;
+  --lf-blue: #3f6fd1;
+  --lf-amber: #b9770e;
+  --lf-bg: #f3f4f6;
+  --lf-surface: #ffffff;
+  --lf-raised: #eceef1;
+  --lf-line: #dde0e5;
+  --lf-line-strong: #b9bfc8;
+  --lf-muted: #5a6371;
+
+  --ifm-font-family-base: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ifm-heading-font-family: var(--lf-display);
+  --ifm-color-primary: #b4232d;
+  --ifm-color-primary-dark: #a22029;
+  --ifm-color-primary-darker: #991e27;
+  --ifm-color-primary-darkest: #7f1920;
+  --ifm-color-primary-light: #c3262f;
+  --ifm-color-primary-lighter: #cc2a34;
+  --ifm-color-primary-lightest: #db4650;
+  --ifm-background-color: var(--lf-bg);
+  --ifm-background-surface-color: var(--lf-surface);
+  --ifm-navbar-background-color: var(--lf-surface);
+  --ifm-navbar-shadow: none;
+  --ifm-footer-background-color: var(--lf-surface);
+  --ifm-footer-color: var(--lf-muted);
+  --ifm-global-radius: 6px;
+  --ifm-code-font-size: 90%;
+  --ifm-leading: 1.7;
+  --ifm-table-border-color: var(--lf-line);
+  --ifm-toc-border-color: var(--lf-line);
+  --ifm-menu-color-background-active: transparent;
+  --ifm-menu-color-background-hover: var(--lf-raised);
+
+  --lf-fig-bg: #fbeaea;
+  --lf-fig-border: #b4232d;
+}
+[data-theme='dark'] {
+  --lf-red: #e0525b;
+  --lf-blue: #7fa2f0;
+  --lf-amber: #e0a63a;
+  --lf-bg: #121418;
+  --lf-surface: #1a1d22;
+  --lf-raised: #23272e;
+  --lf-line: #2c313a;
+  --lf-line-strong: #4a515d;
+  --lf-muted: #98a1ae;
+
+  --ifm-color-primary: #e0525b;
+  --ifm-color-primary-dark: #d93642;
+  --ifm-color-primary-darker: #d22a36;
+  --ifm-color-primary-darkest: #ae202b;
+  --ifm-color-primary-light: #e66e76;
+  --ifm-color-primary-lighter: #ea7d84;
+  --ifm-color-primary-lightest: #f1a2a7;
+  --ifm-background-color: var(--lf-bg);
+  --ifm-background-surface-color: var(--lf-surface);
+  --ifm-navbar-background-color: var(--lf-surface);
+  --ifm-footer-background-color: var(--lf-surface);
+  --ifm-font-color-base: #e6e8eb;
+  --ifm-table-border-color: var(--lf-line);
+
+  --lf-fig-bg: #241a1c;
+  --lf-fig-border: #c9343d;
+}
+body { background: var(--lf-bg); }
+
+/* ───────── Barra superior e rodapé ───────── */
+.navbar { border-bottom: 1px solid var(--lf-line); }
+.navbar__title { font-family: var(--lf-display); font-weight: 700; letter-spacing: -0.02em; font-size: 1.15rem; }
+.navbar__logo img { border-radius: 5px; }
+.navbar__link { font-weight: 500; }
+.footer { border-top: 1px solid var(--lf-line); font-size: .85rem; }
+.footer__copyright { text-align: left; }
+
+/* ───────── Leitura ───────── */
+.markdown { --ifm-h1-font-size: 2.4rem; }
+.markdown h1 {
+  font-weight: 700; letter-spacing: -0.03em; line-height: 1.08;
+  margin-bottom: 1rem; text-wrap: balance;
+}
+.markdown h2 {
+  font-weight: 700; letter-spacing: -0.02em; font-size: 1.55rem;
+  margin-top: 2.2rem; padding-top: 1.2rem; border-top: 1px solid var(--lf-line);
+}
+.markdown h3 { font-weight: 650; letter-spacing: -0.01em; font-size: 1.2rem; margin-top: 1.8rem; }
+.markdown > p, .markdown > ul, .markdown > ol { max-width: 44rem; }
+.theme-doc-markdown { max-width: 52rem; }
+.markdown strong { font-weight: 600; }
+.markdown a:not(.button) { text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.markdown code {
+  background: var(--lf-raised); border: 1px solid var(--lf-line);
+  border-radius: 4px; padding: .08em .35em;
+}
+.markdown em { color: inherit; }
+
+/* Tabelas: leves, sem zebra, rolam no celular */
+.markdown table {
+  display: block; overflow-x: auto; width: 100%;
+  border: 1px solid var(--lf-line); border-radius: 6px; border-collapse: separate; border-spacing: 0;
+  font-size: .92rem; margin: 1.25rem 0 1.5rem;
+  background: var(--lf-surface);
+}
+.markdown table thead tr { background: var(--lf-raised); border: 0; }
+.markdown table th { font-weight: 600; text-align: left; border: 0; border-bottom: 1px solid var(--lf-line); white-space: nowrap; }
+.markdown table td { border: 0; border-bottom: 1px solid var(--lf-line); vertical-align: top; }
+.markdown table tr:last-child td { border-bottom: 0; }
+.markdown table tr:nth-child(2n) { background: transparent; }
+.markdown table th, .markdown table td { padding: .65rem .9rem; }
+
+/* ───────── Barra lateral ───────── */
+.theme-doc-sidebar-container { border-right: 1px solid var(--lf-line) !important; }
+.menu__link { border-radius: 4px; font-size: .92rem; }
+.menu__link--active:not(.menu__link--sublist) {
+  font-weight: 600; color: var(--ifm-color-primary);
+  box-shadow: inset 3px 0 0 var(--ifm-color-primary);
+  background: var(--lf-raised);
+}
+.menu__list-item-collapsible .menu__link--sublist,
+.theme-doc-sidebar-item-category-level-1 > .menu__list-item-collapsible > .menu__link {
+  font-family: var(--lf-display); font-weight: 650; letter-spacing: -0.01em;
+}
+.table-of-contents__link--active { font-weight: 600; }
+.pagination-nav__link { border: 1px solid var(--lf-line); border-radius: 6px; background: var(--lf-surface); }
+.pagination-nav__link:hover { border-color: var(--ifm-color-primary); }
+.pagination-nav__label { font-family: var(--lf-display); font-weight: 650; }
+
+/* ───────── Avisos ───────── */
+.alert {
+  --ifm-alert-background-color: var(--lf-surface);
+  --ifm-alert-background-color-highlight: transparent;
+  --ifm-alert-border-width: 0 0 0 4px;
+  --ifm-alert-border-radius: 4px;
+  --ifm-alert-shadow: none;
+  border: 1px solid var(--lf-line);
+  border-left-width: 4px;
+  color: var(--ifm-font-color-base);
+}
+.alert .admonitionHeading_node_modules, .alert [class*='admonitionHeading'] {
+  font-family: var(--lf-display); text-transform: none; letter-spacing: -0.005em; font-size: .95rem;
+}
+
+/* ───────── Perfis e rotas (informação, não enfeite) ───────── */
+.perfil-tag {
+  display: inline-block; padding: 1px 9px; margin: 0 .3rem .3rem 0;
+  border-radius: 3px; font-size: .78rem; font-weight: 600;
+  border: 1px solid currentColor; line-height: 1.6;
+}
+.perfil-adm { color: var(--lf-red); }
+.perfil-pt  { color: var(--lf-blue); }
+.perfil-al  { color: var(--lf-amber); }
+.rota {
+  font-family: var(--ifm-font-family-monospace); font-size: .82rem;
+  background: var(--lf-raised); border: 1px solid var(--lf-line);
+  border-radius: 3px; padding: 1px 7px; color: var(--lf-muted);
+}

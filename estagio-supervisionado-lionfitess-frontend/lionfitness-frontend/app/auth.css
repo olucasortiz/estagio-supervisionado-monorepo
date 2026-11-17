@@ -11,9 +11,10 @@
 .gp-auth-aside { display: none; width: 45%; flex-direction: column; justify-content: space-between; padding: 48px 56px; background: #191c20; color: #f4f5f6; border-right: 1px solid #343b45; }
 .gp-auth-aside h1 { font-size: clamp(30px, 3vw, 40px); font-weight: 800; line-height: 1.1; color: #f4f5f6; }
 .gp-auth-aside p { margin-top: 16px; max-width: 420px; font-size: 15px; line-height: 1.6; color: #a7afba; }
-.gp-auth-modules { margin-top: 36px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 420px; }
-.gp-auth-module { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid #343b45; border-radius: 12px; background: #22262b; font-size: 14px; font-weight: 600; color: #f4f5f6; }
-.gp-auth-module svg { color: #ff9ba2; flex-shrink: 0; }
+.gp-auth-modules { margin: 32px 0 0; padding: 0; list-style: none; max-width: 420px; border-top: 1px solid #343b45; }
+.gp-auth-module { display: grid; gap: 2px; padding: 14px 0; border-bottom: 1px solid #343b45; }
+.gp-auth-module strong { font-size: 15px; font-weight: 600; color: #f4f5f6; }
+.gp-auth-module span { font-size: 14px; line-height: 1.5; color: #a7afba; }
 .gp-auth-copy { font-size: 12px; color: #a7afba; }
 .gp-auth-main { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 16px; position: relative; }
 .gp-auth-topbar { position: absolute; top: 16px; right: 16px; }
@@ -91,3 +92,7 @@
   .gp-auth-input, .gp-auth-primary, .gp-auth-toggle, .gp-auth-strength-bars i { transition: none; }
   .gp-auth-spin { animation: none; }
 }
+
+
+/* O Edge desenha um segundo olho nos campos de senha; o botão do formulário já faz esse papel. */
+.graphite-auth input::-ms-reveal, .graphite-auth input::-ms-clear { display: none; }

@@ -258,7 +258,7 @@ export function BuilderPanel({
 
       {editing && (
         <form id="sheet-edit" onSubmit={saveSheet} className="surface-card gp-sheet-edit space-y-4 p-5">
-          <p className="text-sm font-semibold">Editar ficha · versão {sheet.version}</p>
+          <p className="text-sm font-semibold">Editando a versão {sheet.version} da ficha</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="edit-title">Objetivo da ficha</Label>
@@ -421,7 +421,7 @@ export function BuilderPanel({
                 <p className="text-xs font-bold  text-primary">Exercício Selecionado</p>
                 <h4 className="text-base font-extrabold text-foreground mt-0.5">{selectedCatalogItem.name}</h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Músculo: {selectedCatalogItem.muscle} · Categoria: {selectedCatalogItem.category}
+                  Músculo: {selectedCatalogItem.muscle}. Categoria: {selectedCatalogItem.category}
                 </p>
               </div>
 

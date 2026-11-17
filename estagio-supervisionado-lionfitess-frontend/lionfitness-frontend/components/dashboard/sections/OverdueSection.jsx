@@ -27,8 +27,7 @@ export default function OverdueSection({ data }) {
             <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
           </svg>
           <div>
-            <strong>Atenção:</strong> {overdue.length} {overdue.length === 1 ? "aluno está" : "alunos estão"} com situação financeira irregular.
-            Taxa de inadimplência: <strong>{taxa}%</strong>.
+            <strong>Atenção:</strong> {overdue.length} {overdue.length === 1 ? "aluno está" : "alunos estão"} com pagamento pendente ou vencido.
           </div>
         </div>
       )}
@@ -41,7 +40,7 @@ export default function OverdueSection({ data }) {
       {/* Barra */}
       {total > 0 && (
         <div className="card card-md" style={{ marginBottom: 20 }}>
-          <p style={{ fontSize: "var(--font-xs)", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+          <p style={{ fontSize: "var(--font-sm)", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>
             Proporção de inadimplência
           </p>
           <div role="meter" aria-label="Proporção de inadimplência" aria-valuenow={taxa} aria-valuemin={0} aria-valuemax={100} style={{ height: 10, borderRadius: 999, overflow: "hidden", background: "var(--bg-subtle)" }}>

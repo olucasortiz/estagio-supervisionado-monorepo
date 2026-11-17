@@ -7,6 +7,18 @@ Atualizado em 19/10/2026. Pedido vigente: refinamentos pontuais na identidade Gr
 4. Aplicação do logotipo oficial da Lion Fitness (`03-LOGO-ORIGINAL-LION.png`).
 5. Chat persistente bidirecional entre Aluno e Personal Trainer com histórico e notificações integradas.
 
+## Revisão de acabamento visual — 17/11/2026
+
+- Pedido: remover sinais de acabamento genérico sem mover elementos, com navegador (Playwright Core + Edge) e contas de teste informadas pelo usuário. Somente leitura: nenhum cadastro, pagamento ou e-mail foi enviado; formulários foram abertos e cancelados.
+- Texto e tipografia: removidos rótulos em caixa-alta com espaçamento largo (breadcrumb, rótulos de relatório, formulários, tabelas, passos, ALUNO inteiro, chat); mantido só o texto da logo de cartão de crédito. Pontos médios (·) usados como separador viraram vírgula/ponto; setas em texto nos botões do assistente viraram ícones.
+- Dados em português: métodos de pagamento (CREDIT_CARD, PIX, CASH) via `lib/payment-labels.ts`; status "EXPIRED" do aluno agora "Vencido"; singular em "1 dia" e "1 exercício".
+- Redundância: gráfico de receita sem meses repetidos (os botões fazem o papel do eixo); coluna "#" das tabelas administrativas oculta; aviso de inadimplência sem repetir a taxa; faixa "Aluno selecionado" do personal não repete o cartão; ALUNO sem selo decorativo, ícone de halteres solto e rótulos "Seu progresso"/"Hoje" repetidos; duração do treino agora vem da prescrição (séries e descanso), não de 10 min fixos por exercício.
+- Login: painel lateral deixou de listar quatro "módulos" com ícones e a frase "Gestão inteligente"; passou a descrever as três áreas reais. Recuperação: o Edge desenhava um segundo olho nos campos de senha (oculto) e as recomendações de senha agora dizem quais são obrigatórias.
+- Bug visual corrigido: `ThemeToggle` fora do painel admin renderizava o ícone com 8 px (losango amarelo). Padding zerado no componente.
+- Verificação: `tsc` e lint sem erros (2 avisos antigos), `next build` ok, capturas de 61 telas em produção local (build) salvas em manual-usuario/static/img/manual. Teste de estouro horizontal em 390 e 768 px executado em login, recuperação, ADMIN, PERSONAL e ALUNO nos dois temas.
+- Manual do usuário: botão "?" (barra superior) e item "Manual do usuário" (menu lateral) do ADMIN abrem `/ajuda/manual/administrador/introducao`. O manual (projeto `manual-usuario/`, Docusaurus) é publicado em `public/ajuda` com `npm run manual:publicar`; `next.config.ts` reescreve `/ajuda/manual/*` para o `index.html` de cada página. Para hospedar fora, definir `NEXT_PUBLIC_MANUAL_URL` (base sem barra final). Em produção é preciso rodar `manual:publicar` antes do `next build` (a esteira de deploy não faz isso).
+- Capturas: 72 de 72 imagens do manual presentes (10 enviadas pelo usuário, o restante capturado via Playwright). Telas dependentes de e-mail real, CPF duplicado, pagamento e cancelamento bloqueado foram fornecidas pelo usuário.
+
 ## Escala visual corrigida — 20/10/2026
 
 - Usuário esclareceu que deseja o tamanho MAIOR da primeira imagem. A interface permanece na escala original de 100%; nenhuma redução global deve ser aplicada. A proposta anterior de escala compacta foi rejeitada e nunca publicada.

@@ -33,7 +33,7 @@ export function PaymentSummary({
     <section aria-label="Resumo do pagamento" className="rounded-xl border border-border bg-muted/45 p-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-[0.68rem] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
             <ReceiptText className="size-3.5" /> Resumo do pagamento
           </p>
           {planName ? <h3 className="mt-1 truncate text-sm font-semibold text-foreground">{planName}</h3> : null}

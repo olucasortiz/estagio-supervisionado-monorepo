@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "qa:browser": "playwright-cli"
+    "qa:browser": "playwright-cli",
+    "manual:publicar": "node scripts/publicar-manual.mjs"
   },
   "dependencies": {
     "jspdf": "^4.2.1",

@@ -487,7 +487,7 @@ export default function PersonalPage() {
             })}
           </nav>
           <p id="personal-navigation-help" className="gp-personal-context">
-            {selectedStudentViewModel ? <>Aluno selecionado: <strong>{selectedStudentViewModel.name}</strong>{!selectedSheetViewModel && " · Selecione ou crie uma ficha para montar o treino."}</> : "Selecione um aluno em Gerenciar ficha para acessar suas fichas e montar o treino."}
+            {selectedStudentViewModel ? (!selectedSheetViewModel ? "Selecione ou crie uma ficha para montar o treino." : <>Ficha em uso: <strong>{selectedSheetViewModel.title}</strong></>) : "Selecione um aluno em Gerenciar ficha para acessar suas fichas e montar o treino."}
           </p>
 
           {/* Breadcrumb / Botão de Voltar Contextual */}

@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import Drawer from "./Drawer";
 import PersonalTrainerPickerModal from "./PersonalTrainerPickerModal";
 import Avatar from "./Avatar";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 const STEPS = [
   { id: 1, label: "Dados Pessoais" },
@@ -140,7 +141,7 @@ export default function MemberWizardDrawer({
             <div style={{ display: "flex", gap: "var(--space-2)" }}>
               {step > 1 && (
                 <button className="btn btn-ghost" type="button" disabled={saving} onClick={() => setStep((s) => s - 1)}>
-                  ← Voltar
+                  <ArrowLeft size={16} aria-hidden="true" /> Voltar
                 </button>
               )}
             </div>
@@ -153,7 +154,7 @@ export default function MemberWizardDrawer({
                   onClick={() => setStep((s) => s + 1)}
                   disabled={!canNext()}
                 >
-                  Próximo →
+                  Próximo <ArrowRight size={16} aria-hidden="true" />
                 </button>
               ) : (
                 <button className="btn btn-primary" type="button" onClick={handleSubmit} disabled={saving}>

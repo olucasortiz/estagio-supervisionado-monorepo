@@ -7,9 +7,8 @@ export default function PageHeader({ title, subtitle, action, breadcrumb }) {
         {breadcrumb && (
           <div style={{
             display: "flex", alignItems: "center", gap: 6,
-            fontSize: "var(--font-xs)", color: "var(--text-muted)",
+            fontSize: "var(--font-sm)", color: "var(--text-muted)",
             fontWeight: 500, marginBottom: 4,
-            textTransform: "uppercase", letterSpacing: "0.05em",
           }}>
             {breadcrumb}
           </div>

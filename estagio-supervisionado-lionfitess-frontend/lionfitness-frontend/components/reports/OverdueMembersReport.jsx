@@ -162,7 +162,7 @@ export default function OverdueMembersReport({ members = [] }) {
       {/* Barra de inadimplência */}
       {generated && members.length > 0 && (
         <div className="card gp-report-chart">
-          <p style={{ fontSize: "var(--font-xs)", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+          <p style={{ fontSize: "var(--font-sm)", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 10 }}>
             Proporção de inadimplência
           </p>
           <div style={{ height: 14, borderRadius: 999, overflow: "hidden", background: "var(--bg-subtle)", display: "flex" }}>

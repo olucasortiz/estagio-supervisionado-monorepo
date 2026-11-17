@@ -13,7 +13,6 @@ import {
   LogOut,
   QrCode,
   ShieldCheck,
-  Sparkles,
   AlertCircle,
   RotateCcw,
 } from "lucide-react";
@@ -170,15 +169,24 @@ function formatRestSeconds(seconds: number | null | undefined): string {
   return `${seconds}s`;
 }
 
+/** Segundos para mm:ss (60 vira 01:00, não 00:60). */
+function formatClock(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  return `${String(Math.floor(safe / 60)).padStart(2, "0")}:${String(safe % 60).padStart(2, "0")}`;
+}
+
 function labelStatus(status: string | null | undefined): string {
-  if (!status) return "INATIVO";
+  if (!status) return "Inativo";
   const map: Record<string, string> = {
-    ACTIVE: "ATIVO",
-    OVERDUE: "VENCIDO",
-    CANCELED: "CANCELADO",
-    INACTIVE: "INATIVO",
+    ACTIVE: "Ativo",
+    OVERDUE: "Vencido",
+    EXPIRED: "Vencido",
+    CANCELED: "Cancelado",
+    CANCELLED: "Cancelado",
+    INACTIVE: "Inativo",
+    PENDING: "Pendente",
   };
-  return map[status.toUpperCase()] ?? status.toUpperCase();
+  return map[status.toUpperCase()] ?? status;
 }
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
@@ -395,6 +403,16 @@ export default function PlanoAlunoPage({
   }, [weeklyDays, selectedDayKey]);
 
   const currentWorkoutExercises = selectedDay?.exercises || [];
+  // Estimativa a partir da própria prescrição: ~40 s de execução por série + descanso prescrito.
+  const estimatedMinutes = Math.max(
+    5,
+    Math.round(
+      currentWorkoutExercises.reduce(
+        (total, exercise) => total + (exercise.sets || 1) * (40 + (exercise.restSeconds || 45)),
+        0
+      ) / 60
+    )
+  );
   const currentExercise = currentWorkoutExercises[currentExerciseIdx] || null;
 
   // Handlers do treino em andamento
@@ -495,16 +513,10 @@ export default function PlanoAlunoPage({
         {/* Header / Boas-vindas */}
         <header className="gp-aluno-hero">
           <div>
-            <div className="gp-aluno-greeting-chip">
-              <Sparkles className="size-3.5" aria-hidden="true" /> {greeting}
-            </div>
-            <h1>Olá, {studentFirstName}!</h1>
+            <h1>{greeting}, {studentFirstName}</h1>
             <p>Acompanhe sua rotina semanal, execute seus treinos e consulte sua assinatura.</p>
           </div>
 
-          <div className="gp-aluno-hero-badge" aria-hidden="true">
-            <Dumbbell className="size-6" />
-          </div>
         </header>
 
         {/* ─── Grid Superior (Plano & Progresso) ────────────────────────── */}
@@ -532,7 +544,7 @@ export default function PlanoAlunoPage({
                     </span>
                   ) : (
                     <Badge variant="outline" className="border-border text-muted-foreground">
-                      SEM PLANO
+                      Sem plano
                     </Badge>
                   )}
                 </div>
@@ -667,10 +679,7 @@ export default function PlanoAlunoPage({
             <div className="gp-aluno-card-body" style={{ paddingBottom: 0 }}>
               <div className="gp-aluno-progress-head">
                 <div>
-                  <span id="heading-seu-progresso" className="gp-aluno-card-label">
-                    Seu progresso
-                  </span>
-                  <h2 className="gp-aluno-progress-title">
+                  <h2 id="heading-seu-progresso" className="gp-aluno-progress-title">
                     {totalTreinos > 0 ? "Sua rotina semanal" : "Rotina em montagem"}
                   </h2>
                   <p className="gp-aluno-progress-sub">
@@ -761,7 +770,7 @@ export default function PlanoAlunoPage({
                       Meta semanal da sessão concluída! Parabéns!
                     </strong>
                   ) : (
-                    `Continue com foco — ${totalTreinos - treinosConcluidos} de ${totalTreinos} treinos disponíveis.`
+                    `${totalTreinos - treinosConcluidos} de ${totalTreinos} ${totalTreinos === 1 ? "treino disponível" : "treinos disponíveis"} nesta sessão.`
                   )}
                 </span>
               </div>
@@ -774,9 +783,7 @@ export default function PlanoAlunoPage({
         <section className="gp-aluno-workout-section" aria-labelledby="heading-treino-dia">
           <div className="gp-aluno-section-header">
             <div>
-              <span className="gp-aluno-section-tag">
-                {selectedDay.isToday ? "Hoje" : selectedDay.nome}
-              </span>
+              {!selectedDay.isToday && <span className="gp-aluno-section-tag">{selectedDay.nome}</span>}
               <h2 id="heading-treino-dia" className="gp-aluno-section-title">
                 {isTraining
                   ? "Treino em andamento"
@@ -806,7 +813,7 @@ export default function PlanoAlunoPage({
               {isTraining && (
                 <span className="gp-aluno-badge-active-session">
                   <span className="gp-aluno-badge-pulse-dot" aria-hidden="true" />
-                  EM CURSO
+                  Em curso
                 </span>
               )}
             </div>
@@ -879,11 +886,11 @@ export default function PlanoAlunoPage({
                     <div className="gp-aluno-pre-meta">
                       <span>
                         <Dumbbell className="size-4" aria-hidden="true" />{" "}
-                        {currentWorkoutExercises.length} exercícios
+                        {currentWorkoutExercises.length} {currentWorkoutExercises.length === 1 ? "exercício" : "exercícios"}
                       </span>
                       <span>
-                        <Clock3 className="size-4" aria-hidden="true" /> ~
-                        {currentWorkoutExercises.length * 10} minutos
+                        <Clock3 className="size-4" aria-hidden="true" /> cerca de{" "}
+                        {estimatedMinutes} min
                       </span>
                     </div>
                   </div>
@@ -933,7 +940,7 @@ export default function PlanoAlunoPage({
                   </button>
 
                   <span className="gp-aluno-step-tag">
-                    Exercício atual · {currentExerciseIdx + 1} de {currentWorkoutExercises.length}
+                    Exercício {currentExerciseIdx + 1} de {currentWorkoutExercises.length}
                   </span>
 
                   <h3 className="gp-aluno-current-title">
@@ -1040,7 +1047,7 @@ export default function PlanoAlunoPage({
 
                       <div className="gp-aluno-timer-center">
                         <span className="gp-aluno-timer-digits">
-                          00:{String(restSecondsLeft).padStart(2, "0")}
+                          {formatClock(restSecondsLeft)}
                         </span>
                         <span className="gp-aluno-timer-label">
                           {isResting ? "restantes" : "preparar"}

@@ -86,3 +86,10 @@
 @media (prefers-reduced-motion: reduce) {
   .graphite-admin *, .graphite-admin *::before, .graphite-admin *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* Coluna de numeração das tabelas: não carrega informação e ocupava a primeira coluna. */
+.graphite-admin .table thead th:first-child,
+.graphite-admin .table .data-row td:first-child { display: none; }
+
+/* Atalho para o manual: separado dos grupos de navegação e sem aparência de item ativo. */
+.gp-nav-help { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--sidebar-border, var(--border)); border-radius: 0 0 8px 8px; text-decoration: none; }

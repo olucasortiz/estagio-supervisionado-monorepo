@@ -1,0 +1,98 @@
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 3.5rem 1.25rem 4.5rem;
+}
+
+.hero { max-width: 46rem; margin-bottom: 3rem; }
+.title {
+  font-family: var(--lf-display);
+  font-weight: 700;
+  font-size: clamp(2.2rem, 5.2vw, 3.8rem);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  margin: 0 0 1.1rem;
+  text-wrap: balance;
+}
+.lead {
+  font-size: 1.15rem;
+  line-height: 1.6;
+  color: var(--lf-muted);
+  max-width: 38rem;
+  margin: 0;
+}
+
+.fichas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* Ficha de treino: a tarefa à esquerda, a seção à direita, pontilhado no meio */
+.ficha {
+  --accent: var(--lf-red);
+  background: var(--lf-surface);
+  border: 1px solid var(--lf-line);
+  border-top: 4px solid var(--accent);
+  border-radius: 4px;
+  padding: 1.4rem 1.4rem 1.2rem;
+  animation: entrada 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i) * 90ms);
+}
+.adm { --accent: var(--lf-red); }
+.pt  { --accent: var(--lf-blue); }
+.al  { --accent: var(--lf-amber); }
+
+.cabeca { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+.cabeca h2 {
+  font-family: var(--lf-display);
+  font-size: 1.55rem;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+.cabeca code {
+  background: none; border: 0; padding: 0;
+  color: var(--lf-muted); font-size: .85rem;
+}
+.resumo { color: var(--lf-muted); font-size: .95rem; line-height: 1.5; margin: .5rem 0 1rem; }
+
+.linhas { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--lf-line); }
+.linhas li { border-bottom: 1px solid var(--lf-line); }
+.linha {
+  display: flex; align-items: baseline; gap: .5rem;
+  padding: .7rem .15rem;
+  color: var(--ifm-font-color-base);
+  text-decoration: none;
+}
+.linha:hover { color: var(--accent); text-decoration: none; }
+.tarefa { font-weight: 500; }
+.leader { flex: 1; min-width: 1rem; border-bottom: 2px dotted var(--lf-line-strong); transform: translateY(-4px); }
+.secao { color: var(--lf-muted); font-size: .8rem; white-space: nowrap; }
+.linha:hover .secao { color: inherit; }
+
+.inicio {
+  display: inline-block; margin-top: 1rem;
+  font-weight: 600; font-size: .92rem;
+  color: var(--accent);
+}
+
+.atalhos {
+  display: flex; flex-wrap: wrap; gap: .5rem 2rem;
+  margin-top: 3rem; padding-top: 1.4rem;
+  border-top: 1px solid var(--lf-line);
+}
+.atalhos a { font-weight: 500; color: var(--ifm-font-color-base); text-decoration: underline; text-decoration-color: var(--lf-line-strong); text-underline-offset: 4px; }
+.atalhos a:hover { color: var(--lf-red); text-decoration-color: currentColor; }
+
+@keyframes entrada {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .ficha { animation: none; } }
+
+@media (max-width: 996px) {
+  .fichas { grid-template-columns: 1fr; }
+  .page { padding-top: 2.25rem; }
+  .hero { margin-bottom: 2rem; }
+}

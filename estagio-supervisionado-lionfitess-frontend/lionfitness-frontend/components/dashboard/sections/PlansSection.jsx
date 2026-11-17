@@ -5,6 +5,7 @@ import RegistrySummary from "../../admin/RegistrySummary";
 import PageHeader from "../../ui/PageHeader";
 import Modal from "../../ui/Modal";
 import StatusBadge from "../../ui/StatusBadge";
+import { daysLabel } from "@/lib/payment-labels";
 
 const PLAN_TYPE_LABELS = { MONTHLY: "Mensal", DAILY: "Diário" };
 
@@ -31,7 +32,7 @@ function PlanCard({ plan, onEdit, onDelete, fmtCurrency }) {
         <div>
           <p style={{ fontSize: "var(--font-xs)", color: "var(--text-muted)", margin: 0 }}>Duração</p>
           <p style={{ fontWeight: 600, fontSize: "var(--font-base)", color: "var(--text-primary)", margin: 0 }}>
-            {plan.durationDays !== "—" ? `${plan.durationDays} dias` : "—"}
+            {daysLabel(plan.durationDays)}
           </p>
         </div>
       </div>

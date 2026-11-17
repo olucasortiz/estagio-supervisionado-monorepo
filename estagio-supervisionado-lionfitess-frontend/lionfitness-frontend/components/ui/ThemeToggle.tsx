@@ -45,11 +45,12 @@ export function ThemeToggle({ className, variant = "icon", ...props }: ThemeTogg
       type="button"
       onClick={toggleTheme}
       className={cn(
-        "h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer shrink-0",
+        "h-9 w-9 px-0 py-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer shrink-0",
         className
       )}
       aria-label={label}
       title={label}
+      style={{ padding: 0 }}
       {...props}
     >
       {isDark ? (

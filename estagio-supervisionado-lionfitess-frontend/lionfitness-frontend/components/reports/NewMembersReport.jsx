@@ -185,13 +185,13 @@ export default function NewMembersReport() {
 
       {/* KPI cards */}
       {generated && (
-        <ReportMetrics items={[{label:"Novos alunos no período",value:members.length},{label:"Média por dia",value:avgPerDay},{label:"Alunos ativos",value:members.filter(m => m.active !== false).length}]} />
+        <ReportMetrics items={[{label:"Novos alunos no período",value:members.length},{label:"Média por dia",value:avgPerDay !== "—" ? String(avgPerDay).replace(".", ",") : "—"},{label:"Alunos ativos",value:members.filter(m => m.active !== false).length}]} />
       )}
 
       {/* Barra visual de proporção */}
       {generated && members.length > 0 && (
         <div className="card gp-report-chart">
-          <p style={{ fontSize: "var(--font-xs)", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+          <p style={{ fontSize: "var(--font-sm)", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>
             Distribuição por status
           </p>
           {(() => {

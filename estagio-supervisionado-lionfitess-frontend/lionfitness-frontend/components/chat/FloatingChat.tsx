@@ -447,7 +447,7 @@ export function FloatingChat({
                 <div key={group.day} className="space-y-3">
                   {/* Divisor de Dia */}
                   <div className="flex items-center justify-center my-2">
-                    <span className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                       {group.day}
                     </span>
                   </div>
@@ -468,7 +468,7 @@ export function FloatingChat({
                         {/* Assunto / Tag se existir */}
                         {msg.type && msg.type !== "OTHER" && msg.type !== "PERSONAL_TRAINER_REPLY" && (
                           <span
-                            className={`inline-block mb-1 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.2 rounded ${
+                            className={`inline-block mb-1 text-xs font-medium px-1.5 py-0.2 rounded ${
                               msg.fromMe
                                 ? "bg-white/20 text-white"
                                 : "bg-card text-muted-foreground border border-border"
@@ -579,7 +579,7 @@ export function FloatingChat({
               </Button>
             </div>
             <p className="text-[10px] text-muted-foreground/75 px-1">
-              Enter para enviar · Shift+Enter para nova linha
+              Enter envia. Shift+Enter quebra a linha.
             </p>
           </footer>
         </aside>

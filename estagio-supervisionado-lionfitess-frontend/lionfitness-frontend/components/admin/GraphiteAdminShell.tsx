@@ -1,11 +1,12 @@
 "use client";
 
 import { useId, useMemo, useState, type ReactNode } from "react";
-import { ChevronDown, Dumbbell, LayoutDashboard, LogOut, Menu, Moon, Sun } from "lucide-react";
+import { ChevronDown, CircleHelp, Dumbbell, LayoutDashboard, LogOut, Menu, Moon, Sun } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useThemeMode } from "@/hooks/useThemeMode";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { adminMenuGroupsDef } from "./AdminShell";
+import { MANUAL_ADMIN_URL } from "@/lib/manual";
 
 interface ShellProps {
   children: ReactNode;
@@ -53,6 +54,9 @@ function Sidebar({ activeItem, onSelectItem, onNavigate }: Omit<ShellProps, "chi
             </div>
           );
         })}
+        <a className="gp-nav-item gp-nav-help" href={MANUAL_ADMIN_URL} target="_blank" rel="noopener noreferrer">
+          <CircleHelp size={18} aria-hidden="true" /><span>Manual do usuário</span><span className="sr-only"> (abre em nova aba)</span>
+        </a>
       </nav>
       <div className="gp-sidebar-account"><span className="gp-avatar">{getInitials(user?.name)}</span><div><strong>{user?.name || "Administrador"}</strong><small>Administrador</small></div><button type="button" className="gp-icon-button" onClick={logout} aria-label="Sair do sistema"><LogOut size={18} aria-hidden="true" /></button></div>
     </div>
@@ -80,6 +84,7 @@ export function GraphiteAdminShell({ children, activeItem, onSelectItem }: Shell
           <button type="button" className="gp-icon-button gp-menu-trigger" aria-label="Abrir menu" aria-haspopup="dialog" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Menu size={20} aria-hidden="true" /></button>
           <div className="gp-greeting"><p>Olá, {user?.name?.split(" ")[0] || "Admin"}</p><span>{today}</span></div>
           <div className="gp-topbar-actions">
+            <a className="gp-icon-button" href={MANUAL_ADMIN_URL} target="_blank" rel="noopener noreferrer" aria-label="Abrir o manual do usuário (nova aba)" title="Manual do usuário"><CircleHelp size={19} aria-hidden="true" /></a>
             <button type="button" className="gp-icon-button" onClick={toggleTheme} aria-label={isDark ? "Ativar tema claro" : "Ativar tema escuro"}>{isDark ? <Sun size={19} aria-hidden="true" /> : <Moon size={19} aria-hidden="true" />}</button>
             <span className="gp-avatar" aria-label={user?.name || "Administrador"}>{getInitials(user?.name)}</span>
             <button type="button" className="gp-icon-button gp-topbar-logout" onClick={logout} aria-label="Encerrar sessão"><LogOut size={18} aria-hidden="true" /></button>

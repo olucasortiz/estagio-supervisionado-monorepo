@@ -156,7 +156,7 @@ export function SheetsPanel({
           </p>
           <h2 className="text-xl font-bold tracking-tight text-foreground">{student.name}</h2>
           <p className="text-xs text-muted-foreground font-medium">
-            CPF: {formatCpf(student.cpf)} · Situação: <span className="font-semibold text-foreground">{student.status}</span>
+            CPF {formatCpf(student.cpf)}. Situação: <span className="font-semibold text-foreground">{student.status}</span>
           </p>
         </div>
 
@@ -353,7 +353,7 @@ export function SheetsPanel({
                           {s.title}
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {s.weekDayLabel || s.weekDay ? `${s.weekDayLabel || s.weekDay} · ` : ""}
+                          {s.weekDayLabel || s.weekDay ? `${s.weekDayLabel || s.weekDay}, ` : ""}
                           {s.createdAtFormatted === "Data não registrada"
                             ? s.createdAtFormatted
                             : `criada em ${s.createdAtFormatted}`}
@@ -430,9 +430,9 @@ export function SheetsPanel({
                         {selectedHistory.snapshot.exercises.map((exercise, index) => (
                           <li key={exercise.id} className="rounded-lg border border-border p-3 text-sm">
                             <p className="font-semibold">{index + 1}. {exercise.exerciseName}</p>
-                            <p className="text-xs text-muted-foreground">{exercise.muscle} · {exercise.exerciseType} · {exercise.equipment || "Sem equipamento"}</p>
+                            <p className="text-xs text-muted-foreground">{exercise.muscle}, {exercise.exerciseType}, {exercise.equipment || "sem equipamento"}</p>
                             {exercise.difficulty && <p>Dificuldade: {exercise.difficulty}</p>}
-                            <p className="mt-1">{exercise.sets} séries × {exercise.reps} repetições · descanso {exercise.restSeconds}s</p>
+                            <p className="mt-1">{exercise.sets} séries de {exercise.reps} repetições, descanso de {exercise.restSeconds}s</p>
                             <p className="mt-1 whitespace-pre-wrap"><strong>Instruções:</strong> {exercise.instructions || "—"}</p>
                             <p className="mt-1 whitespace-pre-wrap"><strong>Observações:</strong> {exercise.notes || "—"}</p>
                           </li>

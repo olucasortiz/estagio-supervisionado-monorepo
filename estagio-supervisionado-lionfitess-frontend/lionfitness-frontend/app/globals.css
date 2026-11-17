@@ -476,9 +476,7 @@
   display: block;
   font-size: var(--font-xs); font-weight: 600;
   color: var(--text-secondary);
-  letter-spacing: 0.02em;
   margin-bottom: var(--space-1);
-  text-transform: uppercase;
 }
 
 /* Cards */
@@ -513,7 +511,7 @@
 .table th {
   padding: var(--space-3) var(--space-4);
   text-align: left; font-size: var(--font-xs); font-weight: 700;
-  color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-muted);
   border-bottom: 1px solid var(--border-default);
   background: var(--bg-subtle);
   white-space: nowrap;
@@ -620,8 +618,8 @@
 .step-item.active .step-circle { border-color: var(--brand-primary); background: var(--brand-primary); color: #fff; }
 .step-item.done   .step-circle { border-color: var(--brand-primary); background: var(--brand-primary); color: #fff; }
 .step-label {
-  font-size: 10px; font-weight: 600; color: var(--text-muted);
-  text-transform: uppercase; letter-spacing: 0.05em; margin-top: var(--space-1);
+  font-size: 12px; font-weight: 600; color: var(--text-muted);
+  margin-top: var(--space-1);
   text-align: center;
 }
 .step-item.active .step-label { color: var(--brand-primary); }

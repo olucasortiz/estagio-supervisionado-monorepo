@@ -187,7 +187,7 @@ export default function CancellationsReport() {
       {/* Gráfico de motivos */}
       {generated && cancellations.length > 0 && Object.keys(motivoCount).length > 1 && (
         <div className="card gp-report-chart">
-          <p style={{ fontSize: "var(--font-xs)", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
+          <p style={{ fontSize: "var(--font-sm)", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 12 }}>
             Motivos de cancelamento
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

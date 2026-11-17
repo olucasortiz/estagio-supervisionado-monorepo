@@ -113,8 +113,8 @@
   font-family: var(--font-display);
   font-size: 15px;
   font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-size: 17px;
+  letter-spacing: -0.01em;
   color: var(--foreground);
   white-space: nowrap;
 }
@@ -152,11 +152,9 @@
 }
 
 .gp-aluno-profile-role {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--muted-foreground);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .gp-aluno-nav .gp-aluno-icon-btn,
@@ -217,8 +215,6 @@
   gap: 6px;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--primary);
   margin-bottom: 8px;
 }
@@ -288,10 +284,8 @@
 }
 
 .gp-aluno-card-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--muted-foreground);
 }
 
@@ -301,10 +295,8 @@
   gap: 6px;
   padding: 3px 8px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   font-variant-numeric: tabular-nums;
   background: var(--muted);
   color: var(--foreground);
@@ -462,10 +454,8 @@
 }
 
 .gp-aluno-pay-badge {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   padding: 2px 6px;
   border-radius: 4px;
   background: var(--muted);
@@ -593,10 +583,9 @@
 }
 
 .gp-aluno-day-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted-foreground);
-  text-transform: uppercase;
 }
 
 .gp-aluno-day-btn[data-today="true"] .gp-aluno-day-label {
@@ -675,10 +664,8 @@
 }
 
 .gp-aluno-section-tag {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--primary);
   display: block;
   margin-bottom: 2px;
@@ -693,8 +680,10 @@
 
 .gp-aluno-section-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+  max-width: 100%;
 }
 
 /* Card do Personal Trainer */
@@ -726,10 +715,8 @@
 }
 
 .gp-aluno-pt-role {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   color: var(--muted-foreground);
 }
 
@@ -749,10 +736,8 @@
   gap: 6px;
   padding: 4px 10px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
   background: var(--brand-primary-bg);
   color: var(--primary);
   border: 1px solid rgba(180, 35, 45, 0.2);
@@ -839,10 +824,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--primary);
 }
 
@@ -898,10 +881,8 @@
 }
 
 .gp-aluno-list-head {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--muted-foreground);
   margin-bottom: 12px;
 }
@@ -990,10 +971,8 @@
 }
 
 .gp-aluno-step-tag {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--primary);
   display: block;
   font-variant-numeric: tabular-nums;
@@ -1033,11 +1012,9 @@
 }
 
 .gp-aluno-metric-box span {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted-foreground);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   display: block;
 }
 
@@ -1115,10 +1092,8 @@
 }
 
 .gp-aluno-timer-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--muted-foreground);
   margin-bottom: 16px;
 }
@@ -1154,10 +1129,9 @@
 }
 
 .gp-aluno-timer-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--muted-foreground);
-  text-transform: uppercase;
   margin-top: 4px;
 }
 
@@ -1261,3 +1235,9 @@
     animation: none !important;
   }
 }
+
+
+/* Botão de tema: mesmo alvo de toque e peso visual dos demais controles do cabeçalho */
+.gp-aluno-nav-actions button[aria-label^="Ativar tema"] { width: 44px; height: 44px; border-radius: 8px; }
+.gp-aluno-nav-actions button[aria-label^="Ativar tema"] svg { width: 18px; height: 18px; color: var(--muted-foreground); }
+.gp-aluno-nav-actions button[aria-label^="Ativar tema"]:hover svg { color: var(--foreground); }
