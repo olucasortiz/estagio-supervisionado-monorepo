@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PageHeader from "../../ui/PageHeader";
 import DataTable from "../../ui/DataTable";
 import Modal from "../../ui/Modal";
@@ -9,15 +9,44 @@ import StatusBadge from "../../ui/StatusBadge";
 import PixPaymentModal from "../../ui/PixPaymentModal";
 import CardPaymentModal from "../../ui/CardPaymentModal";
 import Combobox from "../../ui/Combobox";
-import { paymentMethodLabel } from "@/lib/payment-labels";
+import { displayPaymentStatus, paymentMethodLabel, statusForMethod } from "@/lib/payment-labels";
+import { PaymentMethodIcon } from "@/components/payment/PaymentMethodIcon";
+import { PixIcon } from "@/components/payment/PixIcon";
+import { CreditCard } from "lucide-react";
 
 
+
+const SUBSCRIPTION_STATUS = { ACTIVE: "ativa", EXPIRED: "vencida", CANCELED: "cancelada", CANCELLED: "cancelada", PENDING: "pendente", INACTIVE: "inativa" };
+const labelSubscriptionStatus = (status) => SUBSCRIPTION_STATUS[String(status).toUpperCase()] || String(status).toLowerCase();
 
 function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, feedback, error, isEditing, data }) {
   const isPixMethod = ["Pix", "PIX"].includes(form.method);
   const isCardMethod = ["Cartão", "CARD"].includes(form.method);
 
   const selectedSub = (data.subscriptions || []).find((s) => String(s.id) === String(form.subscriptionId));
+  const selectedPlan = (data.plans || []).find((p) => String(p.id) === String(selectedSub?.planId));
+  const planPrice = selectedPlan?.price != null && selectedPlan.price !== "—" ? Number(selectedPlan.price) : null;
+
+  // No registro, o valor vem do plano e o status vem do método; nada disso é digitado.
+  useEffect(() => {
+    if (isEditing || !open) return;
+    const amount = planPrice != null ? String(planPrice) : "";
+    if (String(form.amount ?? "") !== amount) onChange("amount", amount);
+  }, [isEditing, open, planPrice, form.amount, onChange]);
+
+  useEffect(() => {
+    if (isEditing || !open || !form.method) return;
+    const status = statusForMethod(form.method);
+    if (form.status !== status) onChange("status", status);
+  }, [isEditing, open, form.method, form.status, onChange]);
+
+  useEffect(() => {
+    if (isEditing || !open || form.paidAt) return;
+    const hoje = new Date();
+    onChange("paidAt", `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`);
+  }, [isEditing, open, form.paidAt, onChange]);
+
+  const fmtBRL = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   let renewalNotice = null;
   if (selectedSub?.endDate) {
     const today = new Date();
@@ -72,10 +101,10 @@ function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, fee
             getLabel={(s) => s.memberName || "Assinatura"}
             getSubLabel={(s) => {
               const parts = [
-                s.planName ? `📋 ${s.planName}` : null,
-                s.status ? `· ${s.status}` : null,
+                s.planName || null,
+                s.status ? labelSubscriptionStatus(s.status) : null,
               ].filter(Boolean);
-              return parts.length > 0 ? parts.join("  ") : null;
+              return parts.length > 0 ? parts.join(", ") : null;
             }}
             placeholder="Buscar por aluno ou plano..."
             required
@@ -94,14 +123,18 @@ function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, fee
               color: renewalNotice.blocked ? "var(--error-text)" : "var(--success-text)",
             }}
           >
-            {renewalNotice.blocked ? "⚠️ " : "✅ "}
             {renewalNotice.message}
           </div>
         )}
         <div className="form-grid">
           <div className="form-field">
-            <label className="label" htmlFor="payments-amount">Valor (R$) *</label>
-            <input id="payments-amount" className="input" type="number" step="0.01" min="0" value={form.amount} onChange={(e) => onChange("amount", e.target.value)} placeholder="0,00" required />
+            <label className="label" htmlFor="payments-amount">Valor</label>
+            <input id="payments-amount" className="input" type="text" readOnly aria-readonly="true" aria-describedby="payments-amount-help"
+              value={form.amount !== "" && form.amount != null ? fmtBRL(form.amount) : ""}
+              placeholder={isEditing ? "—" : "Escolha a assinatura"} />
+            <small id="payments-amount-help" className="gp-field-help">
+              {isEditing ? "Valor registrado no lançamento." : selectedPlan ? `Valor do plano ${selectedPlan.name || selectedSub?.planName || ""}.` : "Definido pelo plano da assinatura."}
+            </small>
           </div>
           <div className="form-field">
             <label className="label" htmlFor="payments-paidAt">Data do pagamento *</label>
@@ -113,20 +146,33 @@ function PaymentFormModal({ open, onClose, form, onChange, onSubmit, saving, fee
             <span id="payment-method-label" className="label">Método *</span>
             <div role="group" aria-labelledby="payment-method-label" style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
               {["Dinheiro", "Cartão", "Pix", "Boleto"].map((m) => (
-                <button key={m} aria-pressed={form.method === m} type="button" className={`btn btn-sm ${form.method === m ? "btn-primary" : "btn-ghost"}`} onClick={() => onChange("method", m)}>
-                  {m}
+                <button key={m} aria-pressed={form.method === m} type="button" className={`btn btn-sm gp-method-btn ${form.method === m ? "btn-primary" : "btn-ghost"}`} onClick={() => onChange("method", m)}>
+                  <PaymentMethodIcon method={m} /> {m}
                 </button>
               ))}
             </div>
           </div>
           <div className="form-field">
-            <label className="label" htmlFor="payments-status">Status *</label>
-            <select id="payments-status" className="select" value={form.status} onChange={(e) => onChange("status", e.target.value)} required>
-              <option value="Pago">Pago</option>
-              <option value="Pendente">Pendente</option>
-              <option value="Atrasado">Atrasado</option>
-              <option value="Cancelado">Cancelado</option>
-            </select>
+            {isEditing ? (
+              <>
+                <label className="label" htmlFor="payments-status">Status</label>
+                <select id="payments-status" className="select" value={["Atrasado", "OVERDUE"].includes(form.status) ? "Pendente" : form.status} onChange={(e) => onChange("status", e.target.value)}>
+                  <option value="Pendente">Pendente</option>
+                  <option value="Pago">Pago (pagamento confirmado)</option>
+                  <option value="Cancelado">Cancelado</option>
+                </select>
+                <small className="gp-field-help">Atrasado é automático: pendente com a assinatura vencida.</small>
+              </>
+            ) : (
+              <>
+                <span className="label">Status</span>
+                <p className="gp-status-auto" role="status">
+                  {!form.method ? "Escolha o método de pagamento."
+                    : statusForMethod(form.method) === "Pago" ? "Pago: dinheiro é recebido na hora."
+                    : "Pendente: aguarda a confirmação do pagamento."}
+                </p>
+              </>
+            )}
           </div>
         </div>
         {error && (
@@ -206,6 +252,14 @@ export default function PaymentsSection({
       setFormError("Por favor, selecione uma assinatura para continuar.");
       return;
     }
+    if (!editing.payments && !forms.payments.method) {
+      setFormError("Escolha o método de pagamento.");
+      return;
+    }
+    if (!editing.payments && !(Number(forms.payments.amount) > 0)) {
+      setFormError("O plano desta assinatura não tem valor cadastrado. Ajuste o plano em Cadastros > Planos.");
+      return;
+    }
 
     const selectedSub = (data.subscriptions || []).find((s) => String(s.id) === String(forms.payments.subscriptionId));
     if (selectedSub?.endDate) {
@@ -242,17 +296,20 @@ export default function PaymentsSection({
     if (saved) setModalOpen(false);
   };
 
+  const subEnd = (subscriptionId) => (data.subscriptions || []).find((s) => String(s.id) === String(subscriptionId))?.endDate || null;
+  const statusOf = (p) => displayPaymentStatus(p.status, subEnd(p.subscriptionId));
+
   // KPI financeiro
   const totalRecebido = data.payments
     .filter((p) => ["PAID", "Pago"].includes(p.status))
     .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
   const totalPendente = data.payments
-    .filter((p) => ["PENDING", "Pendente"].includes(p.status))
+    .filter((p) => ["PENDING", "Pendente"].includes(statusOf(p)))
     .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
   const totalAtrasado = data.payments
-    .filter((p) => ["OVERDUE", "Atrasado", "LATE"].includes(p.status))
+    .filter((p) => ["OVERDUE", "Atrasado", "LATE"].includes(statusOf(p)))
     .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
   return (
@@ -290,8 +347,8 @@ export default function PaymentsSection({
           columns={[
             { key: "subscriptionLabel", label: "Aluno" },
             { key: "amount", label: "Valor", render: (r) => <strong>{fmtCurrency(r.amount)}</strong> },
-            { key: "method", label: "Método", render: (r) => paymentMethodLabel(r.method) },
-            { key: "status", label: "Status", render: (r) => <StatusBadge status={r.status} /> },
+            { key: "method", label: "Método", render: (r) => <span className="gp-method-cell"><PaymentMethodIcon method={r.method} />{paymentMethodLabel(r.method)}</span> },
+            { key: "status", label: "Status", render: (r) => <StatusBadge status={statusOf(r)} /> },
             { key: "paidAt", label: "Data", render: (r) => fmtDate(r.paidAt) },
           ]}
           actions={(item) => (
@@ -307,7 +364,7 @@ export default function PaymentsSection({
                       resolvePixContext(item.subscriptionId);
                     }}
                   >
-                    Pix
+                    <PixIcon size={15} /> Pix
                   </button>
                   <button
                     className="btn btn-ghost btn-sm"
@@ -317,7 +374,7 @@ export default function PaymentsSection({
                       resolveCardContext(item.subscriptionId);
                     }}
                   >
-                    Cartão
+                    <CreditCard size={15} aria-hidden="true" /> Cartão
                   </button>
                 </>
               )}

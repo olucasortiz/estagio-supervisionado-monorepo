@@ -1,4 +1,5 @@
-import { CreditCard, QrCode, ReceiptText, ShieldCheck } from "lucide-react";
+import { CreditCard, ReceiptText, ShieldCheck } from "lucide-react";
+import { PixIcon } from "./PixIcon";
 
 type PaymentSummaryProps = {
   amount: number | string | null | undefined;
@@ -27,7 +28,7 @@ export function PaymentSummary({
   installmentDescription,
   compact = false,
 }: PaymentSummaryProps) {
-  const MethodIcon = method === "Pix" ? QrCode : CreditCard;
+  const MethodIcon = method === "Pix" ? PixIcon : CreditCard;
 
   return (
     <section aria-label="Resumo do pagamento" className="rounded-xl border border-border bg-muted/45 p-4">

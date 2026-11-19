@@ -7,6 +7,23 @@ Atualizado em 19/10/2026. Pedido vigente: refinamentos pontuais na identidade Gr
 4. Aplicação do logotipo oficial da Lion Fitness (`03-LOGO-ORIGINAL-LION.png`).
 5. Chat persistente bidirecional entre Aluno e Personal Trainer com histórico e notificações integradas.
 
+## Registro de pagamento — 19/11/2026 (pedido do usuário)
+
+- Valor: preenchido com o preço do plano da assinatura e somente leitura (`PaymentsSection.jsx`). Status não é mais escolhido no registro: Dinheiro = Pago; Pix, Cartão e Boleto = Pendente (`statusForMethod`). Na edição: Pendente, Pago ou Cancelado.
+- Atrasado é calculado na exibição: pendente com assinatura vencida (`displayPaymentStatus`), mesma regra da consulta de inadimplência do backend. Totais "Pendente"/"Em atraso" usam essa regra.
+- Ícones: símbolo do Pix (`components/payment/PixIcon.tsx`, simple-icons 13.21.0, CC0) e ícones de cartão, dinheiro e boleto (`PaymentMethodIcon`) no formulário, na tabela, nos botões de cobrança, no cartão de renovação do aluno, no modal Pix e no resumo de pagamento. Emojis do formulário removidos.
+- Limite: a regra é aplicada no frontend; a API ainda aceita valor e status enviados diretamente. Para impor no servidor é preciso alterar `PaymentService` e republicar o backend.
+- Manual: nova página Referência > Ambiente de teste e pagamentos (versão em validação, Pix de conta de teste, cartões de teste do Mercado Pago); Pagamentos e regras atualizados; rota do admin corrigida para /dashboard.
+
+## Limpeza de código — 19/11/2026
+
+- Removidos: `app/aluno/data.ts` (aluno e treinos fixos de protótipo, sem uso) e `public/login-hero.png` (imagem sem referência).
+- Comentados com aviso "NÃO UTILIZADO": `components/ui/{alert,select,sheet}.tsx`, `components/ui/DashboardCard.jsx`, o shell antigo em `components/admin/AdminShell.tsx` (só `adminMenuGroupsDef` segue ativo), menus por perfil e `createDashboardThemeStyles` em `DashboardLayout.jsx`, e `sendMessageToPersonal`, `cancelSubscription`, `getCancellations` em `services/api.js`. Import `CheckCircle2` sem uso removido.
+- Mantidos de propósito: simulação de Pix do admin (usada nos testes, CT-30 do roteiro), `exercise_catalog_seed.sql` (catálogo real) e `PixGenerateRequest` no backend, que ainda aceita IDs textuais de teste; alterá-lo exige republicar o backend.
+- Pendente de decisão: o formulário de resposta dentro de NotificationBell (`replyTarget`/`canReply`) não é alcançável; a resposta acontece pelo chat (botão Conversar).
+- Verificação: tsc ok, lint 0 erros (1 aviso: `canReply`), next build ok, teste de navegador nos três perfis sem erros de página.
+- Roteiro de testes para o orientador: `testes/Roteiro-de-Testes-Lion-Fitness.pdf` (53 casos), gerado por `testes/gerar_roteiro.py`.
+
 ## Revisão de acabamento visual — 17/11/2026
 
 - Pedido: remover sinais de acabamento genérico sem mover elementos, com navegador (Playwright Core + Edge) e contas de teste informadas pelo usuário. Somente leitura: nenhum cadastro, pagamento ou e-mail foi enviado; formulários foram abertos e cancelados.

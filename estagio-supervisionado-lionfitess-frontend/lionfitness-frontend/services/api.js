@@ -76,9 +76,10 @@ export async function getUnreadNotificationCount() {
   return getResource("/notifications/unread-count", "Não foi possível carregar o contador de notificações.");
 }
 
-export async function sendMessageToPersonal(payload) {
-  return createResource("/notifications/trainer-message", payload, "Não foi possível enviar a mensagem ao personal.");
-}
+// NÃO UTILIZADO (19/11/2026): o chat usa /notifications/conversation/send.
+// export async function sendMessageToPersonal(payload) {
+//   return createResource("/notifications/trainer-message", payload, "Não foi possível enviar a mensagem ao personal.");
+// }
 
 export async function markNotificationAsRead(notificationId) {
   return patchResource(`/notifications/${notificationId}/read`, undefined, "Não foi possível atualizar a notificação.");
@@ -464,9 +465,10 @@ export async function deleteSubscription(id) {
   return deleteResource("/subscriptions", id, "Failed to delete subscription");
 }
 
-export async function cancelSubscription(id) {
-  return deleteSubscription(id);
-}
+// NÃO UTILIZADO (19/11/2026): o cancelamento usa cancelMember; a exclusão usa deleteSubscription.
+// export async function cancelSubscription(id) {
+//   return deleteSubscription(id);
+// }
 
 export async function getPayments() {
   return getResource("/payments", "Failed to fetch payments");
@@ -489,9 +491,10 @@ export async function getOverdueMembers() {
   return Array.isArray(list) ? list.map(normalizeMemberPhoto) : list;
 }
 
-export async function getCancellations() {
-  return getResource("/cancellations", "Failed to fetch cancellations");
-}
+// NÃO UTILIZADO (19/11/2026): o relatório de cancelamentos busca os dados por getCancellationsReport (período).
+// export async function getCancellations() {
+//   return getResource("/cancellations", "Failed to fetch cancellations");
+// }
 
 export async function cancelMember(id, payload) {
   return createResource(

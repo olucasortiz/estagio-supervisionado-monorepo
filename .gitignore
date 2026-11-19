@@ -21,6 +21,8 @@ dist/
 build/
 coverage/
 docs
+# Fontes do Manual do Usuário (Docusaurus) precisam ser versionadas
+!manual-usuario/docs/
 
 
 # Logs frontend

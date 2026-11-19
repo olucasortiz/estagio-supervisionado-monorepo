@@ -11,7 +11,6 @@ import {
   Dumbbell,
   Flame,
   LogOut,
-  QrCode,
   ShieldCheck,
   AlertCircle,
   RotateCcw,
@@ -22,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { PixIcon } from "@/components/payment/PixIcon";
 import { NotificationBell } from "@/components/notification/NotificationBell";
 import { ContactPersonalDialog } from "@/components/notification/ContactPersonalDialog";
 import { FloatingChat } from "@/components/chat/FloatingChat";
@@ -617,7 +617,7 @@ export default function PlanoAlunoPage({
                     >
                       <div className="gp-aluno-pay-top">
                         <span className="gp-aluno-pay-icon" data-pix="true">
-                          <QrCode className="size-5" aria-hidden="true" />
+                          <PixIcon size={20} />
                         </span>
                         <span className="gp-aluno-pay-badge">Rápido</span>
                       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, Download, FileText, Dumbbell, ArrowRight, Loader2, CheckCircle2, Trash2, History } from "lucide-react";
+import { Plus, Download, FileText, Dumbbell, ArrowRight, Loader2, Trash2, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {

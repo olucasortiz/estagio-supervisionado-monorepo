@@ -187,7 +187,7 @@ export const FIGURAS = [
     'Tela “Pagamentos” com a tabela (Aluno, Valor, Método, Status, Data) e ações Editar/Excluir.'),
   F('PAG-02', 'pag-02-formulario.png', 'Administrador · Financeiro · Pagamentos',
     'Registrar pagamento', '/ → Pagamentos → Registrar', PERFIS.ADMIN,
-    'Painel “Registrar Pagamento” com Assinatura, Valor, Data, Método e Status.',
+    'Janela “Registrar Pagamento” com a assinatura escolhida, o valor do plano preenchido (bloqueado), a data de hoje, o método Dinheiro e o status automático “Pago”.',
     {destaque: true}),
   F('INA-01', 'ina-01-inadimplencia.png', 'Administrador · Financeiro · Inadimplência',
     'Gestão de inadimplência', '/ → Financeiro → Inadimplência', PERFIS.ADMIN,

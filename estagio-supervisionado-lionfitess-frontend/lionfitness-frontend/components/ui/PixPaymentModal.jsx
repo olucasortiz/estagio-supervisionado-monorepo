@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { QrCode, TestTube2 } from "lucide-react";
+import { PixIcon } from "../payment/PixIcon";
 import { generatePixTransaction, getPixTransactionStatus, simulateConfirmPix } from "../../services/api";
 import { CopyPixCodeButton } from "../payment/CopyPixCodeButton";
 import { PaymentStatus } from "../payment/PaymentStatus";
@@ -215,7 +216,7 @@ export default function PixPaymentModal({
       onClose={onClose}
       title="Pagamento via Pix"
       subtitle={subtitle}
-      icon={<QrCode className="size-5" />}
+      icon={<PixIcon size={20} />}
       variant="payment"
       size="md"
       preventClose={Boolean(successMessage)}
