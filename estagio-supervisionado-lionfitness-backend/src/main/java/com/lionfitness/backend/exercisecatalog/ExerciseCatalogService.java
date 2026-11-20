@@ -88,6 +88,33 @@ public class ExerciseCatalogService {
         return toResponse(saved, context);
     }
 
+    /**
+     * Estória 6: edita um exercício. O personal só edita os personalizados que criou;
+     * o ADMIN edita qualquer exercício do catálogo.
+     */
+    @Transactional
+    public ExerciseCatalogResponse update(String authenticatedEmail, UUID id, ExerciseCatalogCreateRequest request) {
+        AccessContext context = resolveAccessContext(authenticatedEmail);
+        ExerciseCatalog exercise = exerciseCatalogRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Exercício não encontrado."));
+        if (!canManage(exercise, context)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Você só pode editar exercícios personalizados de sua autoria.");
+        }
+        if (!exercise.isCustom() && exerciseCatalogRepository.existsStandardByNameAndCategory(
+                request.name().trim(), request.category().trim(), id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Já existe outro exercício padrão com este nome e categoria.");
+        }
+        if (!exerciseCatalogRepository.update(id, request)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Exercício não encontrado.");
+        }
+        String equipment = request.equipment() == null || request.equipment().isBlank() ? null : request.equipment().trim();
+        return toResponse(new ExerciseCatalog(exercise.id(), request.name().trim(), request.category().trim(),
+                request.muscle().trim(), equipment, request.instructions().trim(), exercise.isCustom(),
+                exercise.createdByPersonalTrainerId(), exercise.isActive(), exercise.createdAt()), context);
+    }
+
     private AccessContext resolveAccessContext(String authenticatedEmail) {
         User user = userRepository.findByEmail(authenticatedEmail)
                 .orElseThrow(() -> new ResponseStatusException(

@@ -7,6 +7,15 @@ Atualizado em 19/10/2026. Pedido vigente: refinamentos pontuais na identidade Gr
 4. Aplicação do logotipo oficial da Lion Fitness (`03-LOGO-ORIGINAL-LION.png`).
 5. Chat persistente bidirecional entre Aluno e Personal Trainer com histórico e notificações integradas.
 
+## Lacunas da ERS — 20/11/2026 (pedido do usuário; inclui backend)
+
+- Aluno: histórico de pagamentos (`GET /payments/me`), avaliação física (somente leitura, com evolução) e evolução de cargas; carga por série no treino. "Pular descanso" agora só encerra o intervalo.
+- Catálogo: "Novo exercício" (admin cria padrão) e "Editar" (personal só os seus) via `PUT /exercise-catalog/{id}`.
+- Visão geral: 5º cartão "Alunos inativos" (cancelamentos); total cadastrado no cartão de ativos.
+- Avaliação física opcional (`/physical-assessments`): personal (seus alunos) e admin; só data, peso e altura obrigatórios; Pollock 3/7, bioimpedância, PAR-Q opcional; evolução vs. anterior e desde a primeira. Carga por aparelho (`/load-logs`). Tabelas criadas no boot (`TrainingRecordsSchemaMigration`).
+- Verificação: 375 testes backend (0 falhas), tsc/eslint/build, navegação real no Edge contra API simulada local (1366 e 390 px). Roteiro (65 casos) e manual atualizados.
+- Deploy: `deploy.yml` passou a testar e publicar o backend (`deploy-backend.py`, rollback automático) antes do frontend.
+
 ## Registro de pagamento — 19/11/2026 (pedido do usuário)
 
 - Valor: preenchido com o preço do plano da assinatura e somente leitura (`PaymentsSection.jsx`). Status não é mais escolhido no registro: Dinheiro = Pago; Pix, Cartão e Boleto = Pendente (`statusForMethod`). Na edição: Pendente, Pago ou Cancelado.

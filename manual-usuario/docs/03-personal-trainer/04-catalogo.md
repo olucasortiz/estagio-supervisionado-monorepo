@@ -17,6 +17,11 @@ Consultar a biblioteca de exercícios disponíveis para prescrição, com filtro
 
 ## O que você pode alterar
 - Exercícios **padrão** do catálogo aparecem como **Somente consulta**.
-- Exercícios **personalizados criados por você** podem ser ativados ou inativados.
+- **Novo exercício** cria um exercício **personalizado**, vinculado a você.
+- Exercícios **personalizados criados por você** podem ser **editados** (nome, categoria, músculo, equipamento e instruções) e **ativados ou inativados**.
+
+:::info[Fichas já montadas]
+Editar um exercício vale para as **próximas prescrições**. As fichas já salvas guardam a cópia do exercício como estava.
+:::
 
 <Figura id="CAT-01" />

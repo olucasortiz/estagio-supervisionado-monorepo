@@ -1,12 +1,13 @@
 .gp-overview { display: grid; gap: 24px; animation: gp-overview-enter 200ms ease-out; }
 .gp-overview-heading h1 { font: 800 clamp(28px, 3vw, 36px)/1.2 var(--font-display); letter-spacing: -.04em; }
 .gp-overview-heading > p { margin-top: 8px; font-size: 14px; line-height: 1.6; color: var(--muted-foreground); }
-.gp-overview-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.gp-overview-metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+.gp-metric-inactive dt svg { color: var(--error-text); }
 .gp-metric { min-width: 0; padding: 22px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
 .gp-metric dt { display: flex; align-items: center; gap: 9px; color: var(--text-secondary); font-size: 12px; }
 .gp-metric dt svg { flex-shrink: 0; color: var(--muted-foreground); }.gp-metric-revenue dt svg { color: var(--success-text); }.gp-metric-overdue dt svg { color: var(--warning-text); }
 .gp-metric dd { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-top: 18px; font-size: clamp(24px, 2.2vw, 32px); font-weight: 750; line-height: 1.2; letter-spacing: -.04em; }
-.gp-metric-revenue dd { font-size: clamp(20px, 1.8vw, 29px); }.gp-metric dd > span + span { font-size: 11px; font-weight: 500; letter-spacing: 0; color: var(--warning-text); }
+.gp-metric-revenue dd { font-size: clamp(18px, 1.5vw, 27px); }.gp-metric dd > span + span { font-size: 11px; font-weight: 500; letter-spacing: 0; color: var(--warning-text); }
 .gp-metric dd > p { flex-basis: 100%; margin-top: 2px; font-size: 11px; font-weight: 400; letter-spacing: 0; line-height: 1.5; color: var(--muted-foreground); }
 .gp-overview-grid { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 .gp-overview-panel { padding: 24px; min-width: 0; background: var(--card); border: 1px solid var(--border); border-radius: 12px; }
@@ -35,7 +36,7 @@
 .gp-chart-months { display: grid; grid-template-columns: repeat(var(--chart-months), minmax(0, 1fr)); gap: 4px; margin-top: 8px; }
 .gp-chart-month { min-height: 44px; border: 1px solid transparent; border-radius: 6px; font-size: 11px; color: var(--muted-foreground); transition: background-color 150ms, color 150ms, border-color 150ms; }.gp-chart-month:hover { background: var(--muted); color: var(--foreground); }.gp-chart-month[aria-pressed="true"] { background: var(--accent); border-color: var(--border); color: var(--accent-foreground); }
 @keyframes gp-overview-enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
-@media (max-width: 1279px) { .gp-overview-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }.gp-overview-grid { grid-template-columns: minmax(0, 1fr); }.gp-overview-chart { min-width: 0; } }
+@media (max-width: 1279px) { .gp-overview-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }.gp-overview-metrics > .gp-metric:last-child:nth-child(odd) { grid-column: 1 / -1; }.gp-overview-grid { grid-template-columns: minmax(0, 1fr); }.gp-overview-chart { min-width: 0; } }
 @media (max-width: 639px) {
   .gp-overview { gap: 20px; }.gp-overview-heading h1 { font-size: 28px; }.gp-overview-heading > p { font-size: 13px; }
   .gp-overview-metrics { gap: 10px; }.gp-metric { padding: 16px 12px; }.gp-metric dt { font-size: 11px; gap: 7px; }.gp-metric dt svg { width: 15px; height: 15px; }.gp-metric dd { font-size: 28px; margin-top: 14px; }.gp-metric-revenue dd { font-size: clamp(18px, 5vw, 24px); }.gp-metric p { font-size: 10px; }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, Pencil, Plus, UserMinus, Users } from "lucide-react";
+import { Activity, AlertCircle, CheckCircle2, Pencil, Plus, UserMinus, Users } from "lucide-react";
+import { StudentFollowUpDrawer } from "../../training/StudentFollowUpDrawer";
 import PageHeader from "../../ui/PageHeader";
 import DataTable from "../../ui/DataTable";
 import StatusBadge from "../../ui/StatusBadge";
@@ -25,6 +26,7 @@ export default function MembersSection({
   const [pendingRemoval, setPendingRemoval] = useState(null);
   const [removing, setRemoving] = useState(false);
   const [removalError, setRemovalError] = useState("");
+  const [followUpMember, setFollowUpMember] = useState(null);
   const removingRef = useRef(false);
   const members = Array.isArray(data.allMembers) && data.allMembers.length ? data.allMembers : Array.isArray(data.members) ? data.members : [];
   const isActive = (member) => member.situacao === "Ativo" || member.situacao === "ACTIVE";
@@ -108,12 +110,14 @@ export default function MembersSection({
           actions={(item) => (
             <>
               <button className="btn btn-ghost btn-sm gp-member-action" aria-label={`Editar ${item.nome || item.name}`} onClick={() => handleOpenEdit(item)}><Pencil size={14} aria-hidden="true" />Editar</button>
+              <button className="btn btn-ghost btn-sm gp-member-action" disabled={isInactive(item)} aria-label={`Avaliação física e cargas de ${item.nome || item.name}`} onClick={() => setFollowUpMember({ id: item.id, name: item.nome || item.name })}><Activity size={14} aria-hidden="true" />Avaliação</button>
               <button className="btn btn-ghost btn-sm gp-member-action gp-member-inactivate" disabled={isInactive(item)} aria-label={`Inativar ${item.nome || item.name}`} onClick={() => { setRemovalError(""); setPendingRemoval(item); }}><UserMinus size={14} aria-hidden="true" />Inativar</button>
             </>
           )}
         />
       </section>
 
+      <StudentFollowUpDrawer student={followUpMember} onClose={() => setFollowUpMember(null)} />
       <MemberWizardDrawer
         open={drawerOpen}
         onClose={handleDrawerClose}

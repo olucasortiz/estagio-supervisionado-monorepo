@@ -13,6 +13,8 @@ O aluno usa o **Painel do Aluno** para consultar **seu plano, seus pagamentos e 
 - Ver a situação do **plano**.
 - **Renovar a mensalidade** por **Pix** ou **cartão** (crédito ou débito).
 - Ver os **treinos por dia da semana** e **executar o treino** com acompanhamento de séries e descanso.
+- Anotar a **carga** de cada série durante o treino e ver a **evolução de cargas** por aparelho.
+- Consultar o **histórico de pagamentos** e, se tiver feito, a **avaliação física** com a sua evolução.
 - Ver quem é o **seu personal** e **conversar** com ele.
 - Receber **notificações** (respostas do personal).
 
@@ -26,6 +28,7 @@ O aluno usa o **Painel do Aluno** para consultar **seu plano, seus pagamentos e 
 | **Renovar mensalidade** | Pix e Cartão | [Meu plano e renovação](./meu-plano-e-pagamentos) |
 | **Dias da semana** + treino | Treino do dia | [Meus treinos](./meus-treinos) |
 | **Seu Personal** | Dados do personal e conversa | [Personal e chat](./personal-e-chat) |
+| **Avaliação física**, **Evolução de cargas** e **Histórico de pagamentos** | Consultas no fim do painel | [Avaliação, cargas e pagamentos](./avaliacao-cargas-e-pagamentos) |
 
 ## Uso no celular
 O painel foi pensado para uso no celular, inclusive durante o treino.

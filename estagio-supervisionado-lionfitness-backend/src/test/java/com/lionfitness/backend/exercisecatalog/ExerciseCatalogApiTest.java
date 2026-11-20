@@ -184,6 +184,72 @@ class ExerciseCatalogApiTest {
                 .andExpect(jsonPath("$.isActive").value(true)).andExpect(jsonPath("$.canManage").value(true));
     }
 
+    static final String EDIT_BODY = """
+            {"name":"Supino inclinado", "category":"Peito", "muscle":"Peitoral superior",
+            "equipment":"Halteres", "instructions":"Novas instruções"}
+            """;
+
+    org.springframework.test.web.servlet.ResultActions putExercise(String role, String body) throws Exception {
+        return mvc.perform(put("/exercise-catalog/" + exerciseId).with(user(email).roles(role))
+                .contentType(MediaType.APPLICATION_JSON).content(body));
+    }
+
+    @Test
+    void trainerCanEditOwnCustomExerciseKeepingOriginAndStatus() throws Exception {
+        actor("PERSONAL_TRAINER");
+        when(catalog.findById(exerciseId)).thenReturn(Optional.of(exercise(true, trainerId, false)));
+        when(catalog.update(eq(exerciseId), any())).thenReturn(true);
+        putExercise("PERSONAL_TRAINER", EDIT_BODY).andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Supino inclinado"))
+                .andExpect(jsonPath("$.equipment").value("Halteres"))
+                .andExpect(jsonPath("$.isCustom").value(true))
+                .andExpect(jsonPath("$.isActive").value(false))
+                .andExpect(jsonPath("$.createdByPersonalTrainerId").value(trainerId.toString()));
+    }
+
+    @Test
+    void trainerCannotEditStandardOrOtherTrainersExercise() throws Exception {
+        actor("PERSONAL_TRAINER");
+        when(catalog.findById(exerciseId)).thenReturn(Optional.of(exercise(false, null, true)));
+        putExercise("PERSONAL_TRAINER", EDIT_BODY).andExpect(status().isForbidden());
+        when(catalog.findById(exerciseId)).thenReturn(Optional.of(exercise(true, UUID.randomUUID(), true)));
+        putExercise("PERSONAL_TRAINER", EDIT_BODY).andExpect(status().isForbidden());
+        verify(catalog, never()).update(any(), any());
+    }
+
+    @Test
+    void adminEditOfStandardRejectsDuplicateNameAndCategory() throws Exception {
+        actor("ADMIN");
+        when(catalog.findById(exerciseId)).thenReturn(Optional.of(exercise(false, null, true)));
+        when(catalog.existsStandardByNameAndCategory("Supino inclinado", "Peito", exerciseId)).thenReturn(true);
+        putExercise("ADMIN", EDIT_BODY).andExpect(status().isConflict());
+        verify(catalog, never()).update(any(), any());
+    }
+
+    @Test
+    void adminCreationIsStoredAsStandardCatalogExercise() throws Exception {
+        actor("ADMIN");
+        when(catalog.save(any(), any(), isNull())).thenReturn(exercise(false, null, true));
+        mvc.perform(post("/exercise-catalog").with(user(email).roles("ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON).content(EDIT_BODY))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.isCustom").value(false));
+        verify(catalog).save(any(), any(), isNull());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"name\":\" \",\"category\":\"Peito\",\"muscle\":\"P\",\"instructions\":\"I\"}"})
+    void invalidEditPayloadReturns400(String body) throws Exception {
+        putExercise("ADMIN", body).andExpect(status().isBadRequest());
+        verify(catalog, never()).update(any(), any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"USER", "OPERATIONAL"})
+    void studentCannotEditCatalog(String role) throws Exception {
+        putExercise(role, EDIT_BODY).andExpect(status().isForbidden());
+        verifyNoInteractions(catalog);
+    }
+
     void sheetAccess() {
         actor("PERSONAL_TRAINER");
         WorkoutSheetResponse sheet = new WorkoutSheetResponse(sheetId, UUID.randomUUID(), trainerId,

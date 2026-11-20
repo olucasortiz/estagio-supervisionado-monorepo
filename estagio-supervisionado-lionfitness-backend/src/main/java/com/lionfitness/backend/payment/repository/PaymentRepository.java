@@ -202,6 +202,39 @@ public class PaymentRepository {
                 return result != null && result > 0;
         }
 
+        /** Histórico do próprio aluno; lançamentos excluídos (CANCELED) não aparecem. */
+        public List<com.lionfitness.backend.payment.dto.MyPaymentResponse> findHistoryByMemberId(UUID memberId) {
+                return jdbcTemplate.query(
+                                """
+                                                select p.id, p.subscription_id, pl.name as plan_name, p.amount,
+                                                       p.method::text as method,
+                                                       case when p.status::text = 'PENDING' and s.end_date < current_date
+                                                            then 'OVERDUE' else p.status::text end as status,
+                                                       p.paid_at, s.end_date, p.created_at
+                                                from payments p
+                                                inner join subscriptions s on s.id = p.subscription_id
+                                                left join plans pl on pl.id = s.plan_id
+                                                where s.member_id = ?
+                                                  and p.status::text <> 'CANCELED'
+                                                order by coalesce(p.paid_at, p.created_at) desc, p.created_at desc
+                                                limit 120
+                                                """,
+                                (rs, row) -> {
+                                        LocalDateTime paidAt = rs.getObject("paid_at", LocalDateTime.class);
+                                        return new com.lionfitness.backend.payment.dto.MyPaymentResponse(
+                                                        rs.getObject("id", UUID.class),
+                                                        rs.getObject("subscription_id", UUID.class),
+                                                        rs.getString("plan_name"),
+                                                        rs.getBigDecimal("amount"),
+                                                        rs.getString("method"),
+                                                        rs.getString("status"),
+                                                        paidAt != null ? paidAt.toLocalDate() : null,
+                                                        rs.getObject("end_date", LocalDate.class),
+                                                        rs.getObject("created_at", LocalDateTime.class));
+                                },
+                                memberId);
+        }
+
         public List<OverdueMemberResponse> findOverdueMembers() {
                 return jdbcTemplate.query(
                                 """

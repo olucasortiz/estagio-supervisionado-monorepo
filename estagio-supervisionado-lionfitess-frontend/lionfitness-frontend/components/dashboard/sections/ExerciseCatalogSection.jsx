@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { searchExerciseCatalog, updateExerciseCatalogStatus } from "../../../services/api";
+import { createExerciseCatalog, searchExerciseCatalog, updateExerciseCatalog, updateExerciseCatalogStatus } from "../../../services/api";
 import PageHeader from "../../ui/PageHeader";
 import DataTable from "../../ui/DataTable";
 import Modal from "../../ui/Modal";
@@ -9,8 +9,19 @@ import StatusBadge from "../../ui/StatusBadge";
 import { Toast } from "../../ui/Toast";
 
 const initialFilters = { name: "", category: "", muscle: "", equipment: "" };
+const emptyExercise = { name: "", category: "", muscle: "", equipment: "", instructions: "" };
+const EXERCISE_FIELDS = [
+  ["name", "Nome", 150, true],
+  ["category", "Categoria", 80, true],
+  ["muscle", "Músculo", 80, true],
+  ["equipment", "Equipamento / aparelho", 100, false],
+];
 
 export default function ExerciseCatalogSection() {
+  // Cadastro e edição: o ADMIN cria exercícios padrão e edita qualquer um;
+  // o personal cria personalizados e edita só os seus (o backend decide pelo perfil).
+  const [editor, setEditor] = useState(null);
+  const [editorError, setEditorError] = useState("");
   const [exercises, setExercises] = useState([]);
   const [filters, setFilters] = useState(initialFilters);
   const [status, setStatus] = useState("all");
@@ -72,6 +83,42 @@ export default function ExerciseCatalogSection() {
     }
   }
 
+  function openEditor(exercise) {
+    setError("");
+    setFeedback("");
+    setEditorError("");
+    setEditor(exercise
+      ? { id: exercise.id, form: { name: exercise.name || "", category: exercise.category || "", muscle: exercise.muscle || "", equipment: exercise.equipment || "", instructions: exercise.instructions || "" } }
+      : { id: null, form: { ...emptyExercise } });
+  }
+
+  async function saveEditor(event) {
+    event.preventDefault();
+    if (!editor || savingRef.current) return;
+    const form = Object.fromEntries(Object.entries(editor.form).map(([key, value]) => [key, value.trim()]));
+    if (!form.name || !form.category || !form.muscle || !form.instructions) {
+      setEditorError("Preencha nome, categoria, músculo e instruções.");
+      return;
+    }
+    savingRef.current = true;
+    setSaving(true);
+    setEditorError("");
+    try {
+      const payload = { ...form, equipment: form.equipment || null };
+      const saved = editor.id ? await updateExerciseCatalog(editor.id, payload) : await createExerciseCatalog(payload);
+      setExercises((current) => editor.id
+        ? current.map((exercise) => exercise.id === saved.id ? saved : exercise)
+        : [saved, ...current]);
+      setFeedback(`Exercício "${saved.name}" ${editor.id ? "atualizado" : "cadastrado"} com sucesso.`);
+      setEditor(null);
+    } catch (err) {
+      setEditorError(err.message || "Não foi possível salvar o exercício.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }
+
   const visible = exercises.filter((exercise) => status === "all" || exercise.isActive === (status === "active"));
 
   return (
@@ -110,11 +157,14 @@ export default function ExerciseCatalogSection() {
             <h2>Biblioteca de exercícios</h2>
             <p>As ações disponíveis respeitam sua permissão em cada exercício.</p>
           </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", justifyContent: "flex-end" }}>
           {!loading && <dl className="gp-catalog-totals" aria-label="Resumo da consulta autorizada">
             <div><dt>Na consulta</dt><dd>{exercises.length}</dd></div>
             <div><dt>Ativos</dt><dd>{exercises.filter((exercise) => exercise.isActive).length}</dd></div>
             <div><dt>Gerenciáveis</dt><dd>{exercises.filter((exercise) => exercise.canManage).length}</dd></div>
           </dl>}
+          <button type="button" className="btn btn-primary btn-sm" disabled={saving} onClick={() => openEditor(null)}>Novo exercício</button>
+          </div>
         </div>
         <DataTable data={visible} loading={loading} searchable={false} caption="Exercícios autorizados e disponibilidade" emptyTitle="Nenhum exercício encontrado" emptyDescription="Revise os filtros de busca e a situação selecionada." columns={[
           { key: "name", label: "Nome", sortValue: (exercise) => exercise.name, render: (exercise) => <strong className="gp-catalog-name">{exercise.name}</strong> },
@@ -124,9 +174,14 @@ export default function ExerciseCatalogSection() {
           { key: "isCustom", label: "Origem", render: (exercise) => exercise.isCustom ? "Personalizado" : "Padrão" },
           { key: "isActive", label: "Situação", render: (exercise) => <StatusBadge status={exercise.isActive ? "Ativo" : "Inativo"} /> },
         ]} actions={(exercise) => exercise.canManage ? (
-          <button type="button" className="btn btn-outline btn-sm" aria-label={`${exercise.isActive ? "Inativar" : "Ativar"} ${exercise.name}`} disabled={saving || loading} onClick={() => { setError(""); setPending(exercise); }}>
-            {exercise.isActive ? "Inativar" : "Ativar"}
-          </button>
+          <span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <button type="button" className="btn btn-ghost btn-sm" aria-label={`Editar ${exercise.name}`} disabled={saving || loading} onClick={() => openEditor(exercise)}>
+              Editar
+            </button>
+            <button type="button" className="btn btn-outline btn-sm" aria-label={`${exercise.isActive ? "Inativar" : "Ativar"} ${exercise.name}`} disabled={saving || loading} onClick={() => { setError(""); setPending(exercise); }}>
+              {exercise.isActive ? "Inativar" : "Ativar"}
+            </button>
+          </span>
         ) : <span className="gp-catalog-readonly">Somente consulta</span>} />
       </div>
       <Modal open={Boolean(pending)} onClose={() => { if (!saving) { setPending(null); setError(""); } }} preventClose={saving}
@@ -139,6 +194,33 @@ export default function ExerciseCatalogSection() {
         <p>Confirmar {pending?.isActive ? "inativação" : "ativação"} de <strong className="gp-catalog-name">{pending?.name}</strong>?</p>
         <p className="mt-2 text-sm text-muted-foreground">A disponibilidade para novas prescrições será atualizada. As fichas já salvas serão preservadas.</p>
         {error && <div className="alert alert-error mt-3" role="alert">{error}</div>}
+      </Modal>
+      <Modal open={Boolean(editor)} onClose={() => { if (!saving) { setEditor(null); setEditorError(""); } }} preventClose={saving}
+        title={editor?.id ? "Editar exercício" : "Novo exercício"} footer={
+          <>
+            <button type="button" className="btn btn-ghost" disabled={saving} onClick={() => { setEditor(null); setEditorError(""); }}>Cancelar</button>
+            <button type="submit" form="catalog-exercise-form" className="btn btn-primary" disabled={saving}>{saving ? "Salvando…" : "Salvar exercício"}</button>
+          </>
+        }>
+        {editor && (
+          <form id="catalog-exercise-form" onSubmit={saveEditor} noValidate style={{ display: "grid", gap: 12 }}>
+            {!editor.id && <p className="text-sm text-muted-foreground" style={{ margin: 0 }}>Exercícios criados pelo administrador entram no catálogo padrão; os criados por personal trainer ficam como personalizados dele.</p>}
+            {EXERCISE_FIELDS.map(([field, label, maxLength, required]) => (
+              <div className="form-field" key={field}>
+                <label className="label" htmlFor={`exercise-${field}`}>{label}{required ? " *" : ""}</label>
+                <input id={`exercise-${field}`} className="input" autoComplete="off" maxLength={maxLength} required={required}
+                  value={editor.form[field]} onChange={(event) => setEditor((current) => ({ ...current, form: { ...current.form, [field]: event.target.value } }))} />
+              </div>
+            ))}
+            <div className="form-field">
+              <label className="label" htmlFor="exercise-instructions">Instruções *</label>
+              <textarea id="exercise-instructions" className="input" rows={4} required style={{ height: "auto", minHeight: 96, paddingTop: 8, resize: "vertical" }}
+                value={editor.form.instructions} onChange={(event) => setEditor((current) => ({ ...current, form: { ...current.form, instructions: event.target.value } }))} />
+            </div>
+            {editor.id && <p className="text-sm text-muted-foreground" style={{ margin: 0 }}>Fichas já montadas mantêm a cópia do exercício como estava; a alteração vale para novas prescrições.</p>}
+            {editorError && <div className="alert alert-error" role="alert">{editorError}</div>}
+          </form>
+        )}
       </Modal>
     </section>
   );

@@ -39,6 +39,18 @@ Resumo das regras que o sistema aplica e que você percebe ao usar as telas.
 | **Catálogo interno** como base | Exercícios personalizados ficam vinculados ao personal que os criou. |
 | **Edição gera histórico** | Data, motivo e versão anterior. |
 | **Aluno só consulta** | Não altera fichas, pagamentos ou dados administrativos. |
+| **Catálogo** | O ADMIN cria exercícios **padrão** e edita qualquer um; o personal cria **personalizados** e edita só os seus. Editar não muda fichas já montadas. |
+
+## Avaliação física e cargas
+| Regra | Detalhe |
+|---|---|
+| **Avaliação opcional** | Nenhum aluno precisa ter avaliação. Quando houver, só **data, peso e altura** são obrigatórios. |
+| Quem registra | O **personal** (só dos seus alunos) e o **ADMIN**. O aluno apenas consulta. |
+| Sexo e nascimento | Exigidos só no protocolo de **dobras cutâneas** (as equações de Pollock dependem deles). |
+| PAR-Q | Opcional. Se começar, responda as 7 perguntas. Qualquer **“sim”** gera o alerta de **liberação médica**. |
+| Cálculos automáticos | **IMC** (faixas da OMS), **% de gordura** (Jackson & Pollock + Siri, ou o valor da bioimpedância), **massa magra/gorda** e **relação cintura-quadril**. |
+| Histórico | Cada avaliação mostra a diferença para a **anterior**; com duas ou mais, aparece a **evolução desde a primeira**. Excluir só tira do histórico (o registro fica no banco). |
+| Carga por aparelho | O aluno informa a carga ao concluir cada série (opcional). Só vale para exercícios da **própria ficha ativa**. |
 
 ## Permissões por perfil
 | Funcionalidade | ADMIN | PERSONAL_TRAINER | OPERATIONAL |
@@ -47,7 +59,9 @@ Resumo das regras que o sistema aplica e que você percebe ao usar as telas.
 | Cadastros (alunos, planos, usuários, personais) | ✔ | — | — |
 | Catálogo de exercícios | ✔ | ✔ (consulta e seus exercícios) | — |
 | Alunos vinculados e fichas de treino | — | ✔ | — |
-| Painel do aluno (plano, pagamentos, treino) | — | — | ✔ (apenas os próprios) |
+| Registrar avaliação física | ✔ | ✔ (seus alunos) | — |
+| Consultar cargas por aparelho | ✔ | ✔ (seus alunos) | ✔ (as próprias) |
+| Painel do aluno (plano, pagamentos, treino, avaliação) | — | — | ✔ (apenas os próprios) |
 | Chat e notificações | — | ✔ | ✔ |
 
 As permissões são **validadas no servidor**, não apenas escondidas na tela.

@@ -30,6 +30,7 @@ import { StudentsPanel } from "@/components/personal/StudentsPanel";
 import { SheetsPanel } from "@/components/personal/SheetsPanel";
 import { BuilderPanel } from "@/components/personal/BuilderPanel";
 import { FloatingChat } from "@/components/chat/FloatingChat";
+import { StudentFollowUpDrawer } from "@/components/training/StudentFollowUpDrawer";
 import ExerciseCatalogSection from "@/components/dashboard/sections/ExerciseCatalogSection";
 import {
   StudentViewModel,
@@ -67,6 +68,8 @@ export default function PersonalPage() {
   const [selectedMemberId, setSelectedMemberId] = useState("");
   const [membersLoading, setMembersLoading] = useState(true);
   const [membersError, setMembersError] = useState("");
+  // Avaliação física e cargas do aluno (painel lateral).
+  const [followUpStudent, setFollowUpStudent] = useState<{ id: string; name: string } | null>(null);
 
   // ── Fichas Reais ───────────────────────────────────────────────────────────
   const [workoutSheets, setWorkoutSheets] = useState<WorkoutSheetViewModel[]>([]);
@@ -516,6 +519,7 @@ export default function PersonalPage() {
                 loading={membersLoading}
                 error={membersError}
                 onManage={handleManageStudent}
+                onFollowUp={(student) => setFollowUpStudent({ id: student.id, name: student.name })}
                 onRetry={() => loadMembers()}
                 selectedStudentId={selectedMemberId}
               />
@@ -570,6 +574,8 @@ export default function PersonalPage() {
             )}
           </div>
         </main>
+
+        <StudentFollowUpDrawer student={followUpStudent} onClose={() => setFollowUpStudent(null)} />
 
         {/* Chat Flutuante Persistente */}
         <FloatingChat

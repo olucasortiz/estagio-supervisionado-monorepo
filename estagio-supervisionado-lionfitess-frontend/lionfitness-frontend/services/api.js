@@ -182,6 +182,45 @@ export async function deleteWorkoutSheet(id) {
   return deleteResource("/workout-sheets", id, "Failed to delete workout sheet");
 }
 
+export async function updateExerciseCatalog(id, payload) {
+  return updateResource("/exercise-catalog", id, payload, "Não foi possível salvar o exercício.");
+}
+
+// Painel do aluno: histórico de pagamentos (somente leitura).
+export async function getMyPayments() {
+  return getResource("/payments/me", "Não foi possível carregar seus pagamentos.");
+}
+
+// Avaliação física.
+export async function getMyPhysicalAssessments() {
+  return getResource("/physical-assessments/me", "Não foi possível carregar suas avaliações físicas.");
+}
+
+export async function getPhysicalAssessmentsByMember(memberId) {
+  return getResource(`/physical-assessments/member/${memberId}`, "Não foi possível carregar as avaliações físicas.");
+}
+
+export async function createPhysicalAssessment(payload) {
+  return createResource("/physical-assessments", payload, "Não foi possível salvar a avaliação física.");
+}
+
+export async function deletePhysicalAssessment(id) {
+  return deleteResource("/physical-assessments", id, "Não foi possível excluir a avaliação física.");
+}
+
+// Registro de carga/peso por aparelho.
+export async function logExerciseLoad(payload) {
+  return createResource("/load-logs", payload, "Não foi possível registrar a carga.");
+}
+
+export async function getMyLoadLogs() {
+  return getResource("/load-logs/me", "Não foi possível carregar suas cargas.");
+}
+
+export async function getLoadLogsByMember(memberId) {
+  return getResource(`/load-logs/member/${memberId}`, "Não foi possível carregar as cargas do aluno.");
+}
+
 export async function getWorkoutExercisesBySheet(workoutSheetId) {
   return getResource(`/workout-exercises/sheet/${workoutSheetId}`, "Failed to fetch workout exercises");
 }

@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   CreditCard,
   Layers,
+  UserMinus,
   UserPlus,
   Users,
   Wallet,
@@ -93,6 +94,12 @@ export default function AdminDashboardView({
 
   const totalStudents = data.members?.length || 0;
   const overdueRate = totalStudents > 0 ? Math.round((overdueCount / totalStudents) * 100) : 0;
+
+  // Estória 25: total cadastrado, inativos e cancelamentos a partir da base completa (ativos + inativos).
+  const registryMembers = data.allMembers?.length ? data.allMembers : data.members || [];
+  const registeredStudents = registryMembers.length;
+  const inactiveStudents = registryMembers.filter((m) => m.active === false || m.situacao === "Inativo").length;
+  const canceledStudents = registryMembers.filter((m) => m.dataCancelamento || m.motivoCancelamento).length;
 
   // ── 2. Série Histórica Real de Pagamentos ─────────────────────────────────────
   const monthlyRevenueSeries = useMemo<RevenueDataPoint[]>(() => {
@@ -246,7 +253,11 @@ export default function AdminDashboardView({
       <dl className="gp-overview-metrics" aria-label="Indicadores da academia">
         <div className="gp-metric">
           <dt><Users size={19} aria-hidden="true" />Alunos ativos</dt>
-          <dd><CountUp value={activeStudents} duration={500} /><p>{totalStudents} alunos na base consultada</p></dd>
+          <dd><CountUp value={activeStudents} duration={500} /><p>{registeredStudents} {registeredStudents === 1 ? "aluno cadastrado" : "alunos cadastrados"} no total</p></dd>
+        </div>
+        <div className="gp-metric gp-metric-inactive">
+          <dt><UserMinus size={19} aria-hidden="true" />Alunos inativos</dt>
+          <dd><CountUp value={inactiveStudents} duration={500} /><p>{canceledStudents} {canceledStudents === 1 ? "cancelamento registrado" : "cancelamentos registrados"}</p></dd>
         </div>
         <div className="gp-metric">
           <dt><Layers size={19} aria-hidden="true" />Assinaturas ativas</dt>

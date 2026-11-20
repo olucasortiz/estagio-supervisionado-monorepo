@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Search, ChevronRight, Users, MessageSquare } from "lucide-react";
+import { Search, ChevronRight, Users, MessageSquare, Activity } from "lucide-react";
 import { StudentViewModel, StudentStatus } from "./types";
 import { formatCpf } from "./formatters";
 
@@ -10,6 +10,8 @@ interface StudentsPanelProps {
   loading: boolean;
   error?: string;
   onManage: (student: StudentViewModel) => void;
+  /** Abre avaliação física e cargas do aluno. */
+  onFollowUp?: (student: StudentViewModel) => void;
   selectedStudentId?: string;
   onRetry?: () => void;
 }
@@ -27,6 +29,7 @@ export function StudentsPanel({
   loading,
   error,
   onManage,
+  onFollowUp,
   selectedStudentId,
   onRetry,
 }: StudentsPanelProps) {
@@ -69,6 +72,19 @@ export function StudentsPanel({
                 <button type="button" className="gp-personal-button" onClick={() => onManage(s)} aria-label={`Gerenciar ficha de ${s.name}`}>
                   Gerenciar ficha<ChevronRight size={16} aria-hidden="true" />
                 </button>
+                {onFollowUp && (
+                  <button
+                    type="button"
+                    className="gp-personal-button"
+                    style={{ background: "var(--muted)", color: "var(--foreground)", border: "1px solid var(--border)" }}
+                    onClick={() => onFollowUp(s)}
+                    aria-label={`Avaliação física e cargas de ${s.name}`}
+                    title="Avaliação física e cargas"
+                  >
+                    <Activity size={15} aria-hidden="true" />
+                    <span>Acompanhamento</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   className="gp-personal-button"

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -53,6 +54,14 @@ public class ExerciseCatalogController {
             Authentication authentication, @PathVariable UUID id,
             @Valid @RequestBody ExerciseCatalogStatusRequest request) {
         return ResponseEntity.ok(exerciseCatalogService.updateStatus(authentication.getName(), id, request));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('PERSONAL_TRAINER', 'ADMIN')")
+    public ResponseEntity<ExerciseCatalogResponse> update(
+            Authentication authentication, @PathVariable UUID id,
+            @Valid @RequestBody ExerciseCatalogCreateRequest request) {
+        return ResponseEntity.ok(exerciseCatalogService.update(authentication.getName(), id, request));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

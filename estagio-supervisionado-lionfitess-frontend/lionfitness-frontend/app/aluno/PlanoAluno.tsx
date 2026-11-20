@@ -30,7 +30,15 @@ import {
   getMyWorkouts,
   getMemberProfile,
   getMyPersonalTrainer,
+  getMyPayments,
+  getMyPhysicalAssessments,
+  getMyLoadLogs,
+  logExerciseLoad,
 } from "@/services/api";
+import { AssessmentSummary } from "@/components/training/AssessmentSummary";
+import { LoadHistory } from "@/components/training/LoadHistory";
+import { PaymentHistory, type MyPayment } from "@/components/training/PaymentHistory";
+import { formatKg, loadKey, type LoadLog, type PhysicalAssessment } from "@/lib/training-records";
 
 // ─── Tipos alinhados com o backend ───────────────────────────────────────────
 
@@ -229,6 +237,50 @@ export default function PlanoAlunoPage({
   const [isResting, setIsResting] = useState(false);
   const [completedWorkoutsSession, setCompletedWorkoutsSession] = useState(0);
 
+  // Pagamentos, avaliações físicas e cargas (somente leitura, exceto o registro de carga no treino)
+  const [payments, setPayments] = useState<MyPayment[] | null>(null);
+  const [assessments, setAssessments] = useState<PhysicalAssessment[] | null>(null);
+  const [loadLogs, setLoadLogs] = useState<LoadLog[] | null>(null);
+  const [recordsError, setRecordsError] = useState<Record<string, string>>({});
+  const [loadInput, setLoadInput] = useState("");
+  const [repsInput, setRepsInput] = useState("");
+  const [loadFeedback, setLoadFeedback] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const sources: [string, () => Promise<unknown>, (value: never[]) => void][] = [
+      ["payments", getMyPayments, (value) => setPayments(value as MyPayment[])],
+      ["assessments", getMyPhysicalAssessments, (value) => setAssessments(value as PhysicalAssessment[])],
+      ["loads", getMyLoadLogs, (value) => setLoadLogs(value as LoadLog[])],
+    ];
+    sources.forEach(([key, request, apply]) => {
+      request()
+        .then((data) => { if (active) apply((Array.isArray(data) ? data : []) as never[]); })
+        .catch((err: Error) => {
+          if (!active) return;
+          apply([] as never[]);
+          setRecordsError((current) => ({ ...current, [key]: err.message || "Não foi possível carregar." }));
+        });
+    });
+    return () => { active = false; };
+  }, []);
+
+  /** Última carga registrada por exercício + aparelho. */
+  const lastLoadByExercise = useMemo(() => {
+    const map = new Map<string, LoadLog>();
+    for (const log of loadLogs ?? []) {
+      const key = loadKey(log.exerciseName, log.equipment);
+      if (!map.has(key)) map.set(key, log); // a lista já vem da mais recente para a mais antiga
+    }
+    return map;
+  }, [loadLogs]);
+
+  const lastLoadFor = useCallback(
+    (exercise: BackendExercise | null | undefined) =>
+      exercise ? lastLoadByExercise.get(loadKey(exercise.exerciseName, exercise.equipment)) ?? null : null,
+    [lastLoadByExercise]
+  );
+
   // 1. Carregar perfil do membro
   useEffect(() => {
     let active = true;
@@ -425,8 +477,43 @@ export default function PlanoAlunoPage({
     setRestSecondsLeft(currentWorkoutExercises[0]?.restSeconds || 45);
   };
 
+  /** Registra a carga da série concluída. O campo é opcional (ex.: exercícios com peso corporal). */
+  const recordLoad = (exercise: BackendExercise, setNumber: number) => {
+    const raw = loadInput.trim().replace(",", ".");
+    if (!raw || !exercise.id) return;
+    const loadKg = Number(raw);
+    const reps = Number.parseInt(repsInput, 10) || exercise.reps;
+    if (!Number.isFinite(loadKg) || loadKg < 0 || loadKg > 999) {
+      setLoadFeedback({ tone: "error", text: "Carga inválida: use um número entre 0 e 999 kg. A série não foi registrada." });
+      return;
+    }
+    logExerciseLoad({ workoutExerciseId: exercise.id, setNumber, reps, loadKg })
+      .then((saved: LoadLog) => {
+        setLoadLogs((current) => [saved, ...(current ?? [])]);
+        setLoadFeedback({ tone: "ok", text: `Série ${setNumber}: ${formatKg(loadKg)} × ${reps} registrada.` });
+      })
+      .catch((err: Error) => setLoadFeedback({ tone: "error", text: err.message || "Não foi possível registrar a carga." }));
+  };
+
+  // Ao trocar de exercício, sugere a última carga usada nele e as repetições prescritas.
+  const currentExerciseId = currentExercise?.id;
+  useEffect(() => {
+    if (!isTraining || !currentExercise) return;
+    const last = lastLoadFor(currentExercise);
+    setLoadInput(last ? String(last.loadKg).replace(".", ",") : "");
+    setRepsInput(String(currentExercise.reps || ""));
+    setLoadFeedback(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recalcula só na troca de exercício
+  }, [isTraining, currentExerciseId]);
+
   const handleNextSet = () => {
     if (!currentExercise) return;
+    // Durante o descanso o botão apenas encerra o intervalo; a série seguinte ainda não foi feita.
+    if (isResting) {
+      setIsResting(false);
+      return;
+    }
+    recordLoad(currentExercise, currentSet);
     if (currentSet < currentExercise.sets) {
       setCurrentSet((s) => s + 1);
       setIsResting(true);
@@ -921,6 +1008,12 @@ export default function PlanoAlunoPage({
                             {exercise.sets} séries × {exercise.reps} reps ·{" "}
                             {formatRestSeconds(exercise.restSeconds)} descanso
                           </span>
+                          {lastLoadFor(exercise) && (
+                            <span className="gp-tr-last-load">
+                              Última carga: {formatKg(lastLoadFor(exercise)!.loadKg)}
+                              {exercise.equipment ? ` · ${exercise.equipment}` : ""}
+                            </span>
+                          )}
                         </div>
                       </li>
                     ))}
@@ -994,17 +1087,48 @@ export default function PlanoAlunoPage({
                     </div>
                   </div>
 
+                  {!isResting && currentExercise && (
+                    <div className="gp-tr-load-panel">
+                      <div className="gp-tr-load-panel-head">
+                        Carga desta série
+                        <span>
+                          {lastLoadFor(currentExercise)
+                            ? `Última: ${formatKg(lastLoadFor(currentExercise)!.loadKg)} × ${lastLoadFor(currentExercise)!.reps}`
+                            : "Primeiro registro neste aparelho"}
+                          {currentExercise.equipment ? ` · ${currentExercise.equipment}` : ""}
+                        </span>
+                      </div>
+                      <div className="gp-tr-load-inputs">
+                        <label>
+                          Carga (kg)
+                          <input inputMode="decimal" autoComplete="off" value={loadInput} placeholder="Opcional"
+                            onChange={(event) => setLoadInput(event.target.value)} />
+                        </label>
+                        <label>
+                          Repetições feitas
+                          <input inputMode="numeric" autoComplete="off" value={repsInput}
+                            onChange={(event) => setRepsInput(event.target.value.replace(/\D/g, "").slice(0, 3))} />
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                  {loadFeedback && (
+                    <p className="gp-tr-load-feedback" data-tone={loadFeedback.tone} role={loadFeedback.tone === "error" ? "alert" : "status"}>
+                      {loadFeedback.text}
+                    </p>
+                  )}
+
                   <button
                     type="button"
                     className="gp-aluno-action-btn"
                     onClick={handleNextSet}
                   >
                     <Check className="size-4 mr-1" aria-hidden="true" />
-                    {currentSet === currentExercise?.sets &&
-                    currentExerciseIdx + 1 === currentWorkoutExercises.length
+                    {isResting
+                      ? "Pular descanso"
+                      : currentSet === currentExercise?.sets &&
+                        currentExerciseIdx + 1 === currentWorkoutExercises.length
                       ? "Concluir treino"
-                      : isResting
-                      ? "Pular descanso e avançar"
                       : "Concluir série"}
                   </button>
                 </div>
@@ -1066,6 +1190,66 @@ export default function PlanoAlunoPage({
             )}
           </div>
         </section>
+
+        {/* ─── Avaliação física, cargas e pagamentos (somente leitura) ─────── */}
+        <div className="gp-tr-section-grid">
+          <section className="gp-tr-card gp-tr-card-wide" aria-labelledby="heading-avaliacao">
+            <div className="gp-tr-card-head">
+              <div>
+                <h2 id="heading-avaliacao">Avaliação física</h2>
+                <p>Resultados registrados pelo seu personal e a evolução desde a avaliação anterior.</p>
+              </div>
+            </div>
+            <div className="gp-tr-card-body">
+              {assessments === null ? (
+                <div role="status" aria-label="Carregando avaliações"><div className="gp-tr-skeleton" style={{ width: "50%" }} /><div className="gp-tr-skeleton" /></div>
+              ) : recordsError.assessments ? (
+                <p className="gp-tr-load-feedback" data-tone="error" role="alert">{recordsError.assessments}</p>
+              ) : (
+                <AssessmentSummary
+                  assessments={assessments}
+                  emptyText="A avaliação física é opcional. Se você fizer uma com seu personal, os resultados e a sua evolução aparecem aqui."
+                />
+              )}
+            </div>
+          </section>
+
+          <section className="gp-tr-card" aria-labelledby="heading-cargas">
+            <div className="gp-tr-card-head">
+              <div>
+                <h2 id="heading-cargas">Evolução de cargas</h2>
+                <p>Cargas que você registrou por exercício e aparelho.</p>
+              </div>
+            </div>
+            <div className="gp-tr-card-body">
+              {loadLogs === null ? (
+                <div role="status" aria-label="Carregando cargas"><div className="gp-tr-skeleton" /><div className="gp-tr-skeleton" style={{ width: "70%" }} /></div>
+              ) : recordsError.loads ? (
+                <p className="gp-tr-load-feedback" data-tone="error" role="alert">{recordsError.loads}</p>
+              ) : (
+                <LoadHistory logs={loadLogs} emptyText="Ao iniciar o treino, informe a carga usada em cada série para acompanhar sua evolução." />
+              )}
+            </div>
+          </section>
+
+          <section className="gp-tr-card" aria-labelledby="heading-pagamentos">
+            <div className="gp-tr-card-head">
+              <div>
+                <h2 id="heading-pagamentos">Histórico de pagamentos</h2>
+                <p>Lançamentos da sua assinatura. Em caso de dúvida, fale com a recepção.</p>
+              </div>
+            </div>
+            <div className="gp-tr-card-body">
+              {payments === null ? (
+                <div role="status" aria-label="Carregando pagamentos"><div className="gp-tr-skeleton" /><div className="gp-tr-skeleton" style={{ width: "70%" }} /></div>
+              ) : recordsError.payments ? (
+                <p className="gp-tr-load-feedback" data-tone="error" role="alert">{recordsError.payments}</p>
+              ) : (
+                <PaymentHistory payments={payments} />
+              )}
+            </div>
+          </section>
+        </div>
       </main>
 
       {/* Chat Flutuante Persistente */}

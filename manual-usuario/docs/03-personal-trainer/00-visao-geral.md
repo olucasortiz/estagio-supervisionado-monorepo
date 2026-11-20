@@ -15,6 +15,7 @@ O personal trainer usa a **Área do Personal** para acompanhar os **alunos vincu
 - **Montar o treino** usando o catálogo de exercícios ou exercícios **personalizados**.
 - Consultar o **histórico de alterações** de cada ficha.
 - **Exportar a ficha em PDF**.
+- Registrar a **avaliação física** (opcional) e acompanhar a **evolução** e as **cargas por aparelho** de cada aluno. Veja [Avaliação física e cargas](./avaliacao-fisica-e-cargas).
 - **Conversar** com os alunos e responder dúvidas (chat e notificações).
 
 ## Estrutura da Área do Personal

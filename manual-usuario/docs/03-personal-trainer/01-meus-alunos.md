@@ -19,6 +19,7 @@ Encontrar um aluno vinculado a você e **continuar a prescrição do treino** �
 | **Situação do aluno** | Filtro **Todos · Ativos · Inativos**. |
 | Tabela | Colunas **Aluno, Situação, Ficha ativa, Treino**. Em telas pequenas, os dados viram cartões com CPF, Situação e Ficha ativa. |
 | **Gerenciar ficha** | Abre as fichas daquele aluno. |
+| **Acompanhamento** | Abre a avaliação física (opcional) e as cargas por aparelho do aluno. Veja [Avaliação física e cargas](./avaliacao-fisica-e-cargas). |
 | **Conversar com (nome)** | Abre o chat com o aluno. |
 | **Tentar novamente** | Aparece se a lista falhar ao carregar. |
 

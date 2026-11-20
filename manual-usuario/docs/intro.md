@@ -63,6 +63,8 @@ Um computador ou celular com internet e um navegador atualizado (Google Chrome, 
 
 ## O que o sistema ainda não faz
 
-Para evitar expectativas erradas, estas funções **estão fora da versão atual**: avaliação física, registro persistente de carga/peso por aparelho, agendamento de aulas e reserva de aparelhos, aplicativo móvel nativo, biometria, cálculo de multa/juros por atraso e jobs automáticos de notificação de vigência.
+Para evitar expectativas erradas, estas funções **estão fora da versão atual**: agendamento de aulas e reserva de aparelhos, aplicativo móvel nativo, biometria, cálculo de multa/juros por atraso e jobs automáticos de notificação de vigência.
+
+A **avaliação física** e o **registro de carga por aparelho** fazem parte desta versão. A avaliação física é **opcional**: nenhum aluno é obrigado a fazer, e o sistema funciona normalmente sem ela. Veja [Avaliação física e cargas](./personal-trainer/avaliacao-fisica-e-cargas).
 
 Os pagamentos online (Pix e cartão via Mercado Pago) foram validados **em ambiente de testes com simulações**.

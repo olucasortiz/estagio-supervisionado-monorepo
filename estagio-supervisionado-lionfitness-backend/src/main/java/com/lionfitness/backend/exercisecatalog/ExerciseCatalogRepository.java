@@ -116,6 +116,11 @@ public class ExerciseCatalogRepository {
     }
 
     public boolean existsStandardByNameAndCategory(String name, String category) {
+        return existsStandardByNameAndCategory(name, category, null);
+    }
+
+    /** Mesma regra, ignorando o próprio exercício (usada na edição). */
+    public boolean existsStandardByNameAndCategory(String name, String category, UUID excludedId) {
         Integer count = jdbcTemplate.queryForObject(
                 """
                 SELECT COUNT(*)
@@ -124,24 +129,32 @@ public class ExerciseCatalogRepository {
                   AND LOWER(category) = LOWER(?)
                   AND is_custom = false
                   AND is_active = true
+                  AND (CAST(? AS UUID) IS NULL OR id <> CAST(? AS UUID))
                 """,
                 Integer.class,
                 name,
-                category
+                category,
+                excludedId,
+                excludedId
         );
 
         return count != null && count > 0;
     }
 
+    /**
+     * Exercícios criados pelo ADMIN entram como padrão do catálogo interno (Estória 5);
+     * os criados por personal trainer são personalizados e ficam vinculados a ele (Estória 6).
+     */
     public ExerciseCatalog save(UUID id, ExerciseCatalogCreateRequest request, UUID createdByPersonalTrainerId) {
         LocalDateTime now = LocalDateTime.now();
         String equipment = StringUtils.hasText(request.equipment()) ? request.equipment().trim() : null;
+        boolean isCustom = createdByPersonalTrainerId != null;
 
         jdbcTemplate.update(
                 """
                 INSERT INTO exercise_catalog
                 (id, name, category, muscle, equipment, instructions, is_custom, created_by_personal_trainer_id, is_active, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, true, ?, true, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, true, ?)
                 """,
                 id,
                 request.name().trim(),
@@ -149,6 +162,7 @@ public class ExerciseCatalogRepository {
                 request.muscle().trim(),
                 equipment,
                 request.instructions().trim(),
+                isCustom,
                 createdByPersonalTrainerId,
                 Timestamp.valueOf(now)
         );
@@ -160,11 +174,29 @@ public class ExerciseCatalogRepository {
                 request.muscle().trim(),
                 equipment,
                 request.instructions().trim(),
-                true,
+                isCustom,
                 createdByPersonalTrainerId,
                 true,
                 now
         );
+    }
+
+    /** Atualiza os dados descritivos; origem, autor e situação não mudam. Fichas já salvas guardam cópia própria. */
+    public boolean update(UUID id, ExerciseCatalogCreateRequest request) {
+        String equipment = StringUtils.hasText(request.equipment()) ? request.equipment().trim() : null;
+        return jdbcTemplate.update(
+                """
+                UPDATE exercise_catalog
+                SET name = ?, category = ?, muscle = ?, equipment = ?, instructions = ?
+                WHERE id = ?
+                """,
+                request.name().trim(),
+                request.category().trim(),
+                request.muscle().trim(),
+                equipment,
+                request.instructions().trim(),
+                id
+        ) > 0;
     }
 
     // ----- DDL em runtime (padrão do projeto, usa IF NOT EXISTS) -----

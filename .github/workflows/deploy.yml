@@ -13,7 +13,69 @@ permissions:
   contents: read
 
 jobs:
+  # Backend: só publica quando o código do backend (ou este processo) mudou, ou em execução manual.
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect backend changes
+        id: changes
+        run: |
+          base="${{ github.event.before }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          elif git diff --quiet "$base" "${{ github.sha }}" -- estagio-supervisionado-lionfitness-backend .github/scripts/deploy-backend.py .github/scripts/backend.Dockerfile; then
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-java@v4
+        if: steps.changes.outputs.deploy == 'true'
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Test and package backend
+        if: steps.changes.outputs.deploy == 'true'
+        working-directory: estagio-supervisionado-lionfitness-backend
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -ntp test
+          ./mvnw -B -ntp -DskipTests package
+          mkdir -p "$GITHUB_WORKSPACE/backend-release"
+          cp "$(ls target/*.jar | grep -v plain | head -1)" "$GITHUB_WORKSPACE/backend-release/app.jar"
+          cp ../.github/scripts/backend.Dockerfile "$GITHUB_WORKSPACE/backend-release/Dockerfile"
+          cp ../.github/scripts/deploy-backend.py "$GITHUB_WORKSPACE/backend-release/deploy-backend.py"
+          tar -czf "$GITHUB_WORKSPACE/backend-release.tgz" -C "$GITHUB_WORKSPACE/backend-release" .
+      - name: Upload backend release
+        if: steps.changes.outputs.deploy == 'true'
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          source: backend-release.tgz
+          target: /home/ubuntu/lion-deploy-input
+      - name: Activate backend with rollback
+        if: steps.changes.outputs.deploy == 'true'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AWS_HOST }}
+          username: ${{ secrets.AWS_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          command_timeout: 20m
+          script: |
+            set -eu
+            release="/home/ubuntu/lion-backend-releases/${{ github.sha }}"
+            mkdir -p "$release"
+            tar -xzf /home/ubuntu/lion-deploy-input/backend-release.tgz -C "$release"
+            python3 "$release/deploy-backend.py" "$release" "$(echo ${{ github.sha }} | cut -c1-12)"
+
   deploy:
+    needs: backend
+    if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -22,6 +22,7 @@ Gerenciar os alunos da academia: **listar, buscar, cadastrar, editar e inativar*
 | Busca | Procura por **nome** ou **CPF**. |
 | **Situação** | Filtro: **Todos**, **Ativos** ou **Inativos**. |
 | **Editar** | Abre o painel com os dados do aluno. |
+| **Avaliação** | Abre a avaliação física (opcional) e as cargas do aluno. Veja [Avaliação física e cargas](../../personal-trainer/avaliacao-fisica-e-cargas). Desabilitado para aluno inativo. |
 | **Inativar** | Desativa o aluno (pede confirmação). Já inativo: botão desabilitado. |
 
 Sem alunos: *“Clique em ‘Novo aluno’ para começar.”* Com filtro sem resultado: *“Selecione outra situação para consultar os cadastros.”*

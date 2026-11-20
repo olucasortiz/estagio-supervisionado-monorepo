@@ -37,8 +37,8 @@ Em **Exercícios prescritos** aparece cada exercício do dia, com **séries**, *
 
 1. Clique em **Iniciar treino**.
 2. A tela mostra **Exercício n de N**, o nome do exercício, o **Grupo muscular**, a **Série** atual, as **Repetições** e o **Progresso da sessão**.
-3. Faça a série e clique em **Concluir série**.
-4. Começa o **descanso entre séries**, com a contagem regressiva no formato minutos:segundos (por exemplo, **01:00**) do **intervalo recomendado**. Para encurtá-lo, use **Pular descanso e avançar**.
+3. Faça a série. Se quiser registrar, informe em **Carga desta série** a **Carga (kg)** e as **Repetições feitas** (o campo já vem com a última carga usada nesse exercício). Clique em **Concluir série**.
+4. Começa o **descanso entre séries**, com a contagem regressiva no formato minutos:segundos (por exemplo, **01:00**) do **intervalo recomendado**. Para encurtá-lo, use **Pular descanso**: ele só encerra o intervalo, e a próxima série continua por fazer.
 5. Ao terminar a última série do último exercício, o botão passa a **Concluir treino**.
 6. Para sair no meio, clique em **Voltar ao resumo**.
 
@@ -47,7 +47,7 @@ Em **Exercícios prescritos** aparece cada exercício do dia, com **séries**, *
 Dicas exibidas durante o treino: *“Execute os movimentos com amplitude, boa postura e carga controlada.”* e, no descanso, *“Respire fundo, hidrate-se e recupere o fôlego para a próxima série.”*
 
 :::info[O que é registrado]
-O progresso da sessão serve de apoio durante o treino. **Carga/peso por aparelho** e **avaliação física** não são gravados nesta versão.
+A **carga** é gravada a cada série concluída com o campo preenchido, e aparece como *“Série 1: 40 kg × 12 registrada.”* Deixe em branco em exercícios com o peso do corpo: a série é concluída sem registro. Na lista **Exercícios prescritos**, cada exercício mostra a **Última carga**. A evolução fica em [Avaliação, cargas e pagamentos](./avaliacao-cargas-e-pagamentos).
 :::
 
 ## Regras

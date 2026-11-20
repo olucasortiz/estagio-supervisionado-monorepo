@@ -16,7 +16,7 @@ Dar, em uma única tela, o retrato da academia: quantos alunos há, como está a
 
 | Bloco | O que mostra |
 |---|---|
-| **Indicadores da academia** | Cartões com totais: alunos cadastrados, ativos, inativos, inadimplentes, pagamentos e cancelamentos. Os números “contam” até o valor final ao abrir a tela. |
+| **Indicadores da academia** | Cinco cartões: **Alunos ativos** (com o total de alunos cadastrados), **Alunos inativos** (com o número de cancelamentos registrados), **Assinaturas ativas**, **Receita realizada** e **Alunos inadimplentes**. Os números “contam” até o valor final ao abrir a tela. |
 | **Receita mensal** | Gráfico de **pagamentos agrupados nos últimos seis meses**. Os botões com o nome dos meses, abaixo do gráfico, servem de eixo: toque em um mês para ver o valor daquele período no topo do gráfico. |
 | **Receita por plano** | Estimativa de participação de cada plano, a partir das assinaturas vinculadas. Sem planos: *“Nenhum plano cadastrado.”* |
 | **Registros recentes — Pagamentos** | Tabela com Aluno/Assinatura, Método, Valor, Data e Situação. Sem dados: *“Nenhum pagamento registrado ainda.”* |
