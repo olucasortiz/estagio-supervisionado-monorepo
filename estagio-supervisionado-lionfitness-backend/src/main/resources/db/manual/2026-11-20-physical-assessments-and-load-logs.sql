@@ -1,8 +1,10 @@
 -- Estórias "Registrar avaliação física" e "Registrar carga/peso por aparelho".
 -- Migração aditiva e idempotente, executada na inicialização do backend.
 -- A avaliação física é opcional: nenhum aluno precisa ter avaliação, e só data, peso e altura são exigidos nela.
+-- O nome physical_assessment_records evita a tabela physical_assessments que já existia no banco de produção
+-- (modelagem anterior, com outras colunas); essa tabela antiga não é usada nem alterada.
 
-CREATE TABLE IF NOT EXISTS physical_assessments (
+CREATE TABLE IF NOT EXISTS physical_assessment_records (
     id UUID PRIMARY KEY,
     member_id UUID NOT NULL REFERENCES members(id),
     assessment_date DATE NOT NULL,
@@ -41,8 +43,8 @@ CREATE TABLE IF NOT EXISTS physical_assessments (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_physical_assessments_member_date
-    ON physical_assessments(member_id, assessment_date DESC);
+CREATE INDEX IF NOT EXISTS idx_physical_assessment_records_member_date
+    ON physical_assessment_records(member_id, assessment_date DESC);
 
 CREATE TABLE IF NOT EXISTS exercise_load_logs (
     id UUID PRIMARY KEY,

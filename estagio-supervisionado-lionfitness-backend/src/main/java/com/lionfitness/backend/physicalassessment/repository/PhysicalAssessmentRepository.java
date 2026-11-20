@@ -43,7 +43,7 @@ public class PhysicalAssessmentRepository {
         Circumferences c = a.circumferences() == null ? Circumferences.EMPTY : a.circumferences();
         Skinfolds s = a.skinfolds() == null ? Skinfolds.EMPTY : a.skinfolds();
         jdbcTemplate.update("""
-                insert into physical_assessments (
+                insert into physical_assessment_records (
                     id, member_id, assessment_date, sex, age_years, objective, parq_answers, health_notes,
                     resting_heart_rate, systolic_pressure, diastolic_pressure, weight_kg, height_cm,
                     chest_cm, waist_cm, abdomen_cm, hip_cm, right_arm_cm, left_arm_cm, right_thigh_cm, left_thigh_cm,
@@ -64,7 +64,7 @@ public class PhysicalAssessmentRepository {
 
     public List<PhysicalAssessment> findActiveByMemberId(UUID memberId) {
         return jdbcTemplate.query("select " + COLUMNS + """
-                from physical_assessments pa
+                from physical_assessment_records pa
                 join members m on m.id = pa.member_id
                 where pa.member_id = ? and pa.is_active = true
                 order by pa.assessment_date desc, pa.created_at desc
@@ -73,7 +73,7 @@ public class PhysicalAssessmentRepository {
 
     public Optional<PhysicalAssessment> findActiveById(UUID id) {
         return jdbcTemplate.query("select " + COLUMNS + """
-                from physical_assessments pa
+                from physical_assessment_records pa
                 join members m on m.id = pa.member_id
                 where pa.id = ? and pa.is_active = true
                 """, ROW_MAPPER, id).stream().findFirst();
@@ -81,7 +81,7 @@ public class PhysicalAssessmentRepository {
 
     /** Exclusão lógica: a avaliação some das consultas, mas o registro permanece no banco. */
     public boolean deactivate(UUID id) {
-        return jdbcTemplate.update("update physical_assessments set is_active = false where id = ? and is_active = true", id) > 0;
+        return jdbcTemplate.update("update physical_assessment_records set is_active = false where id = ? and is_active = true", id) > 0;
     }
 
     static String encodeParq(List<Boolean> answers) {
