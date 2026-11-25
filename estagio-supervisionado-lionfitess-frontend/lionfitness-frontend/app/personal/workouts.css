@@ -28,9 +28,9 @@
 .gp-workout-dialog :is(button,input,select,textarea,[tabindex]):focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
 .gp-workout-dialog :is(button,a) { touch-action:manipulation; }
 .gp-workout-dialog button:disabled { cursor:not-allowed; }
-[data-dialog-layer]:has(> .gp-workout-dialog) > [aria-hidden="true"] { background:#0009; backdrop-filter:none; } /* taste-skill-ignore: this removes the inherited blur from these overlays. */
+[data-dialog-layer]:has(> .gp-workout-dialog) > [aria-hidden="true"] { background:#0009; backdrop-filter:none; } /* this removes the inherited blur from these overlays. */
 .gp-workout-dialog :is(input,textarea), .gp-workout :is(input,textarea) { transition:border-color 160ms,box-shadow 160ms; }
-.gp-workout-dialog :is(input,textarea):focus-visible, .gp-workout :is(input,textarea):focus-visible { border-color:var(--ring); box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 20%,transparent); } /* taste-skill-ignore: MicroKit keyboard focus indicator, not a resting shadow. */
+.gp-workout-dialog :is(input,textarea):focus-visible, .gp-workout :is(input,textarea):focus-visible { border-color:var(--ring); box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 20%,transparent); } /* MicroKit keyboard focus indicator, not a resting shadow. */
 .gp-workout-error, .gp-workout [role="alert"], .gp-workout-dialog [role="alert"] { color:var(--error-text); font-size:13px; line-height:1.6; }
 .gp-workout-dialog [role="alert"] { padding:12px; border:1px solid var(--border); border-radius:8px; background:var(--error-bg); }
 .gp-workout [role="status"], .gp-workout-dialog [role="status"] { color:var(--success-text); }
