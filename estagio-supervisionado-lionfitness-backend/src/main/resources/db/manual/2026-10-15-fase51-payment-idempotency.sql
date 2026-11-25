@@ -1,4 +1,4 @@
--- Apply before enabling keyed manual payment creation. No remote execution by Codex.
+-- Apply manually before enabling keyed manual payment creation.
 BEGIN;
 CREATE TABLE IF NOT EXISTS payment_creation_keys (
     subscription_id uuid NOT NULL REFERENCES subscriptions(id),
